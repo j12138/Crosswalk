@@ -8,6 +8,7 @@ import cv2
 import math
 
 img_files = glob.glob('./preprocessed_data/*.png')
+path_check_img = "annotated_data\\"
 point = [0, (0,0)] # click_cnt, location carrier
 
 #=======================#
@@ -50,9 +51,10 @@ def compute_label(img, points):
     neg = (-1)**(w < (x_2 +  x_1))
     print(neg)
 
-    ang = math.atan(0.5 * (w - x_2 + x_1) / h) * neg
+    ang = math.atan(0.5 * (w - x_2 + x_1) / h)
+    ang = math.degrees(ang) * neg
 
-    return loc, ang
+    return format(loc, '.3f'), format(ang, '.3f')
 
 
 #==================#
@@ -64,6 +66,7 @@ cv2.setMouseCallback('tool', draw_point)
 
 for img_file in img_files:
     img = cv2.imread(img_file)
+    img_name = img_file.split('\\')[1]
 
     point[0] = 0 
     points = [(0, 0)]*4
@@ -81,8 +84,19 @@ for img_file in img_files:
             cv2.line(visual, points[2], points[3], (0, 0, 255), 2)
             draw_second_line = True
 
-        if done: break
+            loc, ang = compute_label(img, points)
+            print loc, ang
 
+            cv2.putText(visual, loc + '  ' + ang, (15,15), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
+            cv2.putText(visual, loc + '  ' + ang, (15,15), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
+
+            cv2.imwrite(path_check_img + img_name +'.png', visual)
+
+        if done: break
+        
+        cv2.namedWindow('tool')
         cv2.imshow('tool', visual)
 
         if cv2.waitKey(2) == 32:
@@ -92,12 +106,10 @@ for img_file in img_files:
     print(points)
 
     if draw_first_line and draw_second_line:
-        loc, ang = compute_label(img, points)
-        print loc, ang
-
         result = open('annotation.txt', 'a')
-        result.writelines(img_file + ' ' + str(loc) + ' ' + str(ang) + '\n')
+        result.writelines(img_file + ' ' + loc + ' ' + ang + '\n')
         result.close()
+        
 
     
 

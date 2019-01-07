@@ -6,6 +6,7 @@
 import glob
 import cv2
 import math
+import csv
 
 img_files = glob.glob('./preprocessed_data/*.png')
 path_check_img = "annotated_data\\"
@@ -85,7 +86,7 @@ for img_file in img_files:
             draw_second_line = True
 
             loc, ang = compute_label(img, points)
-            print loc, ang
+            print(loc, ang)
 
             cv2.putText(visual, loc + '  ' + ang, (15,15), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
@@ -106,9 +107,14 @@ for img_file in img_files:
     print(points)
 
     if draw_first_line and draw_second_line:
-        result = open('annotation.txt', 'a')
-        result.writelines(img_file + ' ' + loc + ' ' + ang + '\n')
-        result.close()
+        #result = open('annotation.txt', 'a')
+        #result.writelines(img_file + ' ' + loc + ' ' + ang + '\n')
+        #result.close()
+
+        # csv
+        with open('annotation.csv', 'a', newline='') as csvfile:
+            mywriter = csv.writer(csvfile)
+            mywriter.writerow([img_file, loc, ang])
         
 
     

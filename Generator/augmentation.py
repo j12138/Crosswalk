@@ -1,10 +1,3 @@
-"""
-Augmentation System
-By: Tyler Staudinger
-Using CPU based augmentation from a dataset loaded into memory incurs about 10% additional per epoch 
-processing time
-Copyright 2018 The Boeing Company
-"""
 
 from imgaug import augmenters as iaa
 import numpy as np

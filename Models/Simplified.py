@@ -1,7 +1,7 @@
 """
 Taejoon Byun
 
-Model inspired by the end-to-end model from NVIDIA
+Model inspired by the end-to-end NVIDIA
 
 "End to End Deep Learning For Self-Driving Cars
 - https://images.nvidia.com/content/tegra/automotive/images/2016/solution

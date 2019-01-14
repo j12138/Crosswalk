@@ -1,9 +1,3 @@
-"""
-Evaluate the model
-By: Tyler Staudinger
-Copyright 2018 The Boeing Company
-"""
-
 from keras.models import load_model 
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -58,20 +52,6 @@ plt.show()
 
 #Plot the model error histogram
 error_test=np.squeeze(y_test[:,0])-outputs_cte
-#plt.figure()
-#plt.hist(error_test,bins=50)
-#plt.title('Testing Error Histogram')
-#plt.xlabel('Error in meters')
-#plt.ylabel('number of instances')
-#plt.show()
-
-#Plot the inference time histogram
-#plt.figure()
-#plt.hist(inference_time[1:],bins=50)
-#plt.title('Inference Time Histogram')
-#plt.xlabel('Inference Time in Hz')
-#plt.ylabel('number of instances')
-#plt.show()
 
 #Print error metrics
 print(" ")
@@ -98,12 +78,6 @@ plt.show()
 
 #Plot the model error histogram
 error_test=np.squeeze(y_test[:,1])-outputs_heading
-#plt.figure()
-#plt.hist(error_test,bins=50)
-#plt.title('Testing Error Histogram')
-#plt.xlabel('Error in degrees')
-#plt.ylabel('number of instances')
-#plt.show()
 
 print(" ")
 print("Heading Error")

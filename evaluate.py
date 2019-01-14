@@ -10,17 +10,18 @@ import matplotlib.pyplot as plt
 from Models.loss import smoothL1
 import time
 import argparse
+import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--eval_folder', help="path to folder of data to evaluate", 
-                    default='./ProcessedData/new_val/')    
+                    default='./preprocessed_data/eval/')    
 parser.add_argument('-m', '--model_path', help="path to model", 
-                    default='./Training_Runs/TaxiNet-Simple-39k/SimpleModel.h5')
+                    default='./Training_Runs/Crosswalk_guide/SimpleModel.h5')
 args = parser.parse_args()
 
 #Load the data (change path as needed')
 x_test=np.load(args.eval_folder+'X.npy')
-y_test=np.load(args.eval_folder+'Y.npy')
+y_test=np.load(args.eval_folder+'Y.npy') #Truth
 
 
 model=load_model(args.model_path,custom_objects={'smoothL1':smoothL1}) 
@@ -28,13 +29,18 @@ print('Running Evaluation Now Please Wait')
 
 outputs_test=[]
 inference_time=[]
+cnt = 0
 
 for img in x_test:
+    cnt = cnt + 1
     t=time.time()
-    outputs_test.append(model.predict(np.expand_dims(img/255.0,axis=0)))  
+    outputs_test.append(model.predict(np.expand_dims(img/255.0,axis=0)))
     inference_time.append((1/(time.time()-t)))
         
 outputs_test=np.squeeze(np.asarray(outputs_test))
+print('# of imgs : ', cnt)
+print(outputs_test)
+print(y_test)
 inference_time=np.squeeze(np.asarray(inference_time))
 
 #Scale the predictions

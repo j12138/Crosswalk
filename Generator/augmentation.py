@@ -67,7 +67,12 @@ def augment(imgs,max_augs,affine=False,debug=False):
         if affine:
             affine_augs=[translate(),rotate()]            
             seq_affine=iaa.Sequential(affine_augs)
-            img=seq_affine.augment_image(img)
+            
+            try:
+                img=seq_affine.augment_image(img)
+            except:
+                print(img)
+                pass
         #Choose a number of augmentations to use
         num_aug=np.random.randint(0,max_augs+1)
         #set of augmentations to use
@@ -107,18 +112,12 @@ class BatchGenerator:
         if self.noaugs:
             images=self.X[indecies]/255.0
             target=self.y[indecies]
-            #Normalize cte with max magnitude of 8 meters
-            target[:,0]/=8.0 #16.0
-            #Normalize heading with max magnitude of 35 degrees
-            target[:,1]/=35.0 #30.0
+            target[1] = target[1]/90.0
+
             return images,target
         imgs=augment(self.X[indecies],self.num_aug,self.affine)/255.0
         
         target=self.y[indecies]
-        #Normalize cte with max magnitude of 16 meters
-        target[:,0]/=8.0
-        #Normalize heading with max magnitude of 35 degrees
-        target[:,1]/=35.0
         return imgs,target
     
     

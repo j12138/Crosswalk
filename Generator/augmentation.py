@@ -86,7 +86,8 @@ def augment(imgs,max_augs,affine=False,debug=False):
     
 class BatchGenerator:
     
-    def __init__(self,X,y, batch_size,noaugs=False, num_aug=5, affine=False,height=None, width=None): 
+    def __init__(self,X,y, batch_size,noaugs=False, num_aug=5,
+            affine=False,height=None, width=None):
         self.X=X
         self.y=y
         self.batch_size = batch_size
@@ -99,7 +100,7 @@ class BatchGenerator:
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def next(self):
         indecies=np.random.randint(0,self.X.shape[0],self.batch_size)
         
         if self.noaugs:

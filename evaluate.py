@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--eval_folder', help="path to folder of data to evaluate", 
                     default='./preprocessed_data/eval/')    
 parser.add_argument('-m', '--model_path', help="path to model", 
-                    default='./Training_Runs/Crosswalk_guide/SimpleModel.h5')
+                    default='./trainings/Crosswalk_guide/SimpleModel.h5')
 args = parser.parse_args()
 
 #Load the data (change path as needed')
@@ -33,7 +33,9 @@ for img in x_test:
         
 outputs_test=np.squeeze(np.asarray(outputs_test))
 print('# of imgs : ', cnt)
+print('--- prediction ---')
 print(outputs_test)
+print('----- Truth -----')
 print(y_test)
 inference_time=np.squeeze(np.asarray(inference_time))
 

@@ -4,8 +4,7 @@ import csv
 
 
 train_files = []
-y_train = []
-cv2.namedWindow('tool')
+y_train = [] # labels
 
 with open('annotation.csv', 'r') as reader:
     data = reader.read()
@@ -14,17 +13,27 @@ with open('annotation.csv', 'r') as reader:
     for line in lines:
         if line != 'path,loc,ang':
             info = line.split(',')
-            print(info)
+            
+            try:
+                img = cv2.imread(info[0])
+                cv2.namedWindow('tool')
+                cv2.imshow('tool', img)
+            except :
+                print(info[0])
+                continue
 
-            img = cv2.imread(info[0])
+            print(info)
             loc = float(info[1])
-            ang = float(info[2])
+            ang = float(info[2])/90.0
             train_files.append(img)
             y_train.append([loc, ang])
             
+#print(train_files)
+#print(y_train)
+
 size = len(train_files)
-test_size = int(size/5)
-np.save('./preprocessed_data/train/X.npy', train_files)
-np.save('./preprocessed_data/train/Y.npy', y_train)
-np.save('./preprocessed_data/test/X.npy', train_files[size-test_size:])
-np.save('./preprocessed_data/test/Y.npy', y_train[size-test_size:])
+test_size = int(size/6)
+np.save('./preprocessed_data/train/X.npy', train_files[test_size:])
+np.save('./preprocessed_data/train/Y.npy', y_train[test_size:])
+np.save('./preprocessed_data/test/X.npy', train_files[:test_size])
+np.save('./preprocessed_data/test/Y.npy', y_train[:test_size])

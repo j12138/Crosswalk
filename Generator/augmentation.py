@@ -100,7 +100,7 @@ class BatchGenerator:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         indecies=np.random.randint(0,self.X.shape[0],self.batch_size)
         
         if self.noaugs:

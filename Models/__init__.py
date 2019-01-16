@@ -1,1 +1,1 @@
-import Simplified
+from Models.Simplified import SimpleModel

@@ -93,7 +93,7 @@ for img_file in img_files:
             cv2.putText(visual, loc + '  ' + ang, (15,15), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
 
-            cv2.imwrite(path_check_img + img_name +'.png', visual)
+            #cv2.imwrite(path_check_img + img_name +'.png', visual)
 
         if done: break
         

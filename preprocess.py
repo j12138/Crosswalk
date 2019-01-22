@@ -24,7 +24,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def preprocess_images(data_path):
+def preprocess_images(args):
     if args.color:
         path_of_outputs = "preprocessed_data\\above\\"
     else:
@@ -34,8 +34,8 @@ def preprocess_images(data_path):
     
     metadata = []
 
-    for img_name in os.listdir(data_path):
-        load_name = os.path.join(data_path, img_name)
+    for img_name in os.listdir(args.data_path):
+        load_name = os.path.join(args.data_path, img_name)
         img = cv2.imread(load_name)
         # extract metadata
         meta = get_exif(load_name)
@@ -51,11 +51,13 @@ def preprocess_images(data_path):
             gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             eq = cv2.equalizeHist(gray_img)
         # save
+
         #TODO: hash the image name. e.g: hased = md5(img_name)
         hashed = hashlib.md5()
         hashed.update(img_name.encode())
-        meta['filehash'] = hashed.hexdigest()
+        meta['filehash'] = str(hashed.hexdigest())
         #img_name = hashed.hexdigest()
+        metadata.append(meta)
         cv2.imwrite(path_of_outputs + img_name + '.png', eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
     return metadata
@@ -68,21 +70,21 @@ def get_exif(fn):
     for tag, value in info.items():
         decoded = TAGS.get(tag, tag)
         if decoded in components:
-            meta[decoded] = value
+            meta[decoded] = str(value)
     return meta
 
 def annotate_additional_metadata():
     pass
 
 def populate_metadata_db(db, metadata):
-    collection.insert(metadata)
+    pass
     
 
 def connect_to_db():
     client = MongoClient('localhost', 27017)
-    db = connection["Batoners"]
-    collection = db["Crosswalk"]
-    return db
+    db = client["Batoners"]
+    collection = db.Crosswalk
+    return collection
 
 def example():
     metadata = []
@@ -93,13 +95,24 @@ def example():
     #....
 
 def main():
-    db = connect_to_db()
-    args = parse_args()
-    metadata = preprocess_images(args.data_path)
-    #metadata.append(annotate_additional_metadata())
-    populate_metadata_db(db, metadata)
-    #example() 
+    # Connect ot DB
+    #db = connect_to_db()
+    client = MongoClient('localhost', 27017)
+    db = client["Batoners"]
+    collection = db.Crosswalk
 
+    # Preprocessing images with extracting metadata
+    args = parse_args()
+    metadata = preprocess_images(args)
+
+    # Populating metadata to DB
+    collection.insert(metadata)
+    print(db.collection_names)
+    print(collection.find_one({'Make':'Apple'}))
+
+    #metadata.append(annotate_additional_metadata())
+    #populate_metadata_db(db, metadata)
+    
 
 if __name__ == '__main__':
     main()

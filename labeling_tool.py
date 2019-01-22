@@ -1,7 +1,6 @@
 # crosswalk labeling tool
 # use preprocessed_data images
 # input both side of crosswalk --> location / direction(angle)
-# reference : https://tykimos.github.io/2018/10/16/Simple_Annotation_Tool_1/
 
 import glob
 import cv2
@@ -57,6 +56,52 @@ def compute_label(img, points):
 
     return format(loc, '.3f'), format(ang, '.3f')
 
+def get_manual_metadata():
+    # TODO :: write manual metadata
+
+    print('obs_car(0,1) : ')
+    cv2.waitKey(0)
+    obs_car = int(input())
+    
+    print('obs_human(0,1) : ')
+    cv2.waitKey(0)
+    obs_human = int(input())
+
+    print('shadow(0,1) : ')
+    cv2.waitKey(0)
+    shadow = int(input())
+
+    print('zebra_rate(0-1) : ')
+    cv2.waitKey(0)
+    zebra_rate = float(input())
+
+    print('column(1,2) : ')
+    cv2.waitKey(0)
+    column = int(input())
+
+    print(obs_car, obs_human, shadow, zebra_rate, column)
+
+    return
+
+def assign_obs_car(x):
+    global obs_car
+    obs_car = x
+
+def assign_obs_human(x):
+    global obs_human
+    obs_human = x
+
+def assign_shadow(x):
+    global shadow
+    shadow = x
+
+def assign_column(x):  
+    global column
+    column = x
+
+def assign_zebra_rate(x):
+    global zebra_rate
+    zebra_rate = x / 100.0
 
 #==================#
 #       MAIN       # 
@@ -75,6 +120,21 @@ for img_file in img_files:
     draw_second_line = False
     done = False
     visual = img.copy()
+
+    #cv2.imshow('tool', visual)
+    #get_manual_metadata()
+
+    obs_car = 0
+    obs_human = 0
+    shadow = 0
+    column = 1
+    zebra_rate = 0.0
+
+    cv2.createTrackbar('obs_car', 'tool', 0, 1, assign_obs_car)
+    cv2.createTrackbar('obs_human', 'tool', 0, 1, assign_obs_human)
+    cv2.createTrackbar('shadow', 'tool', 0, 1, assign_shadow)
+    cv2.createTrackbar('column', 'tool', 1, 2, assign_column)
+    cv2.createTrackbar('zebra_rate', 'tool', 0, 100, assign_zebra_rate)
 
     while True:
         if point[0] == 2 and not draw_first_line:
@@ -96,6 +156,7 @@ for img_file in img_files:
             #cv2.imwrite(path_check_img + img_name +'.png', visual)
 
         if done: break
+
         
         cv2.namedWindow('tool')
         cv2.imshow('tool', visual)
@@ -105,12 +166,8 @@ for img_file in img_files:
         ## TODO: press 'q' --> quit //nested loop break
 
     print(points)
-
+    print(obs_car, obs_human, shadow, column, zebra_rate)
     if draw_first_line and draw_second_line:
-        #result = open('annotation.txt', 'a')
-        #result.writelines(img_file + ' ' + loc + ' ' + ang + '\n')
-        #result.close()
-
         # csv
         with open('annotation.csv', 'a', newline='') as csvfile:
             mywriter = csv.writer(csvfile)

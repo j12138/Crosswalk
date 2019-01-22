@@ -103,6 +103,31 @@ def assign_zebra_rate(x):
     global zebra_rate
     zebra_rate = x / 100.0
 
+def lambda_sample():
+    # NOTE(TJ): I think it's a more elegant solution
+    meta = {
+            'obs_car': 0,
+            'obs_human': 0,
+            'shadow': 0,
+            'column': 1,
+            'zebra_ratio': 0.0,
+            }
+
+    def assign(dic, key, x):
+        # an assigner function
+        dic[key] = x
+
+    cv2.createTrackbar('obs_car', 'tool', 0, 1, lambda x: assign(meta,
+        'obs_car', x))
+    cv2.createTrackbar('column', 'tool', 1, 2, lambda x: assign(meta,
+        'column', x))
+
+
+# NOTE(TJ): What if we create a function `main` since the whole script is
+# growing in its length and complexity? It's easier if main() explains the
+# highest-level abstraction and separate functions are designated to
+# encapsulate the implementation-level details.
+
 #==================#
 #       MAIN       # 
 #==================#
@@ -110,6 +135,14 @@ def assign_zebra_rate(x):
 cv2.namedWindow('tool')
 cv2.setMouseCallback('tool', draw_point)
 
+# NOTE(TJ): I see that `img_files` is defined in a much earlier line while it's
+# only being used here in the `for` statement. It's generally better to keep
+# the definition and usage close together. Even better, in this particular
+# case, is to have the configuration variable separate at the top like 
+#   IMG_DIR = './preprocessed_data'
+# and use it in the `for` such as:
+#   for img_file in glob.glob(IMG_DIR + '/*.png'):
+# in my opinion.
 for img_file in img_files:
     img = cv2.imread(img_file)
     img_name = img_file.split('\\')[1]
@@ -130,6 +163,10 @@ for img_file in img_files:
     column = 1
     zebra_rate = 0.0
 
+    # NOTE(TJ): I think you can deal with this issue of having to define a
+    # function only to assign a value to a variable by introducing lambda
+    # functions. Please look at the sample code at `lambda_sample` function and
+    # refactor the code accordingly.
     cv2.createTrackbar('obs_car', 'tool', 0, 1, assign_obs_car)
     cv2.createTrackbar('obs_human', 'tool', 0, 1, assign_obs_human)
     cv2.createTrackbar('shadow', 'tool', 0, 1, assign_shadow)
@@ -155,6 +192,7 @@ for img_file in img_files:
 
             #cv2.imwrite(path_check_img + img_name +'.png', visual)
 
+        # NOTE(TJ): it is better to line-break these two statements.
         if done: break
 
         
@@ -162,6 +200,9 @@ for img_file in img_files:
         cv2.imshow('tool', visual)
 
         if cv2.waitKey(2) == 32:
+            # NOTE(TJ): What does it mean that a waitKey(2) equals 32 ? When
+            # the intent of the code is not obvious by reading it, as a general
+            # principle, it is better to leave a comment of its intent.
             break
         ## TODO: press 'q' --> quit //nested loop break
 

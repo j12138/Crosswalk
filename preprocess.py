@@ -4,7 +4,15 @@ import os
 import scipy.misc
 import argparse
 from PIL import Image
+from PIL.ExifTags import TAGS
 from matplotlib import pyplot as plt
+import hashlib
+import json
+from pymongo import MongoClient
+import pymongo
+
+# Selected components of metadata from exif
+components = {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}
 
 def parse_args():
     # python preprocess.py data --w 300 --h 240
@@ -16,17 +24,21 @@ def parse_args():
     return parser.parse_args()
 
 
-def preprocess_images(data_path)
+def preprocess_images(data_path):
     if args.color:
         path_of_outputs = "preprocessed_data\\above\\"
     else:
         path_of_outputs = "preprocessed_data\\"
 
     out_width, out_height = args.width, args.height
+    
+    metadata = []
 
     for img_name in os.listdir(data_path):
         load_name = os.path.join(data_path, img_name)
         img = cv2.imread(load_name)
+        # extract metadata
+        meta = get_exif(load_name)
         # resizing
         img = scipy.misc.imresize(img, (int(out_width*1.3333), out_width))
         H, W = img.shape[:2]
@@ -40,21 +52,36 @@ def preprocess_images(data_path)
             eq = cv2.equalizeHist(gray_img)
         # save
         #TODO: hash the image name. e.g: hased = md5(img_name)
+        hashed = hashlib.md5()
+        hashed.update(img_name.encode())
+        meta['filehash'] = hashed.hexdigest()
+        #img_name = hashed.hexdigest()
         cv2.imwrite(path_of_outputs + img_name + '.png', eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
+    return metadata
 
 
-def extract_metadata():
-    pass
+def get_exif(fn):
+    meta = {}
+    i = Image.open(fn)
+    info = i._getexif()
+    for tag, value in info.items():
+        decoded = TAGS.get(tag, tag)
+        if decoded in components:
+            meta[decoded] = value
+    return meta
 
 def annotate_additional_metadata():
     pass
 
-def populate_metadata_db():
-    pass
+def populate_metadata_db(db, metadata):
+    collection.insert(metadata)
+    
 
 def connect_to_db():
-    db = None
+    client = MongoClient('localhost', 27017)
+    db = connection["Batoners"]
+    collection = db["Crosswalk"]
     return db
 
 def example():
@@ -68,11 +95,10 @@ def example():
 def main():
     db = connect_to_db()
     args = parse_args()
-    metadata = extract_metadata()
-    metadata.append(annotate_additional_metadata())
-    preprocess_images(args.data_path)
-    populate_metadata_db(metadata)
-    example() 
+    metadata = preprocess_images(args.data_path)
+    #metadata.append(annotate_additional_metadata())
+    populate_metadata_db(db, metadata)
+    #example() 
 
 
 if __name__ == '__main__':

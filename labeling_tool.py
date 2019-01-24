@@ -8,7 +8,7 @@ import math
 import csv
 
 img_files = glob.glob('./preprocessed_data/*.png')
-path_check_img = "annotated_data\\"
+path_check_img = "annotated_data/"
 point = [0, (0,0)] # click_cnt, location carrier
 
 #=======================#
@@ -145,7 +145,7 @@ cv2.setMouseCallback('tool', draw_point)
 # in my opinion.
 for img_file in img_files:
     img = cv2.imread(img_file)
-    img_name = img_file.split('\\')[1]
+    img_name = img_file.split('/')[-1]
 
     point[0] = 0 
     points = [(0, 0)]*4

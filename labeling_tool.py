@@ -7,7 +7,6 @@ import cv2
 import math
 import csv
 import pymongo
-import crosswalk_data
 
 IMG_DIR = './preprocessed_data'
 path_check_img = "annotated_data\\"

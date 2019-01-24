@@ -6,10 +6,29 @@ import glob
 import cv2
 import math
 import csv
+import pymongo
+import crosswalk_data
 
-img_files = glob.glob('./preprocessed_data/*.png')
+IMG_DIR = './preprocessed_data'
 path_check_img = "annotated_data\\"
 point = [0, (0,0)] # click_cnt, location carrier
+points = [(0, 0)]*4
+
+draw_first_line = False
+draw_second_line = False
+
+# TODO :: combine common parameter on configure
+# class metadata
+meta = {
+        'obs_car': [0, 1, 0],
+        'obs_human': [0, 1, 0],
+        'shadow': [0, 1, 0],
+        'column': [1, 2, 1],
+        'zebra_ratio': [0, 100, 0],
+        # not zebra
+        'out_of_range' : [0, 1, 0],
+        'old' : [0, 1, 0]
+        }
 
 #=======================#
 #       FUNCTIONS       # 
@@ -23,7 +42,7 @@ def draw_point(event, x, y, flags, param):
             done = True
             return
 
-        cv2.circle(visual, (x,y), 3, (0, 0, 255), -1)
+        cv2.circle(param, (x,y), 3, (0, 0, 255), -1)
 
         global point, points
         points[point[0]] = (x, y)
@@ -56,166 +75,77 @@ def compute_label(img, points):
 
     return format(loc, '.3f'), format(ang, '.3f')
 
-def get_manual_metadata():
-    # TODO :: write manual metadata
 
-    print('obs_car(0,1) : ')
-    cv2.waitKey(0)
-    obs_car = int(input())
-    
-    print('obs_human(0,1) : ')
-    cv2.waitKey(0)
-    obs_human = int(input())
-
-    print('shadow(0,1) : ')
-    cv2.waitKey(0)
-    shadow = int(input())
-
-    print('zebra_rate(0-1) : ')
-    cv2.waitKey(0)
-    zebra_rate = float(input())
-
-    print('column(1,2) : ')
-    cv2.waitKey(0)
-    column = int(input())
-
-    print(obs_car, obs_human, shadow, zebra_rate, column)
-
-    return
-
-def assign_obs_car(x):
-    global obs_car
-    obs_car = x
-
-def assign_obs_human(x):
-    global obs_human
-    obs_human = x
-
-def assign_shadow(x):
-    global shadow
-    shadow = x
-
-def assign_column(x):  
-    global column
-    column = x
-
-def assign_zebra_rate(x):
-    global zebra_rate
-    zebra_rate = x / 100.0
-
-def lambda_sample():
-    # NOTE(TJ): I think it's a more elegant solution
-    meta = {
-            'obs_car': 0,
-            'obs_human': 0,
-            'shadow': 0,
-            'column': 1,
-            'zebra_ratio': 0.0,
-            }
-
-    def assign(dic, key, x):
-        # an assigner function
-        dic[key] = x
-
-    cv2.createTrackbar('obs_car', 'tool', 0, 1, lambda x: assign(meta,
-        'obs_car', x))
-    cv2.createTrackbar('column', 'tool', 1, 2, lambda x: assign(meta,
-        'column', x))
-
-
-# NOTE(TJ): What if we create a function `main` since the whole script is
-# growing in its length and complexity? It's easier if main() explains the
-# highest-level abstraction and separate functions are designated to
-# encapsulate the implementation-level details.
+# TODO : encapsulate the implementation-level details.
 
 #==================#
 #       MAIN       # 
 #==================#
+def main():
+    cv2.namedWindow('tool')
+    global points
 
-cv2.namedWindow('tool')
-cv2.setMouseCallback('tool', draw_point)
+    for img_file in glob.glob(IMG_DIR + '/*.png'):
+        img = cv2.imread(img_file)
+        img_name = img_file.split('\\')[1]
 
-# NOTE(TJ): I see that `img_files` is defined in a much earlier line while it's
-# only being used here in the `for` statement. It's generally better to keep
-# the definition and usage close together. Even better, in this particular
-# case, is to have the configuration variable separate at the top like 
-#   IMG_DIR = './preprocessed_data'
-# and use it in the `for` such as:
-#   for img_file in glob.glob(IMG_DIR + '/*.png'):
-# in my opinion.
-for img_file in img_files:
-    img = cv2.imread(img_file)
-    img_name = img_file.split('\\')[1]
+        point[0] = 0 
+        points = [(0, 0)]*4
+        draw_first_line = False
+        draw_second_line = False
+        done = False
+        visual = img.copy()
 
-    point[0] = 0 
-    points = [(0, 0)]*4
-    draw_first_line = False
-    draw_second_line = False
-    done = False
-    visual = img.copy()
+        cv2.setMouseCallback('tool', draw_point, visual)
 
-    #cv2.imshow('tool', visual)
-    #get_manual_metadata()
-
-    obs_car = 0
-    obs_human = 0
-    shadow = 0
-    column = 1
-    zebra_rate = 0.0
-
-    # NOTE(TJ): I think you can deal with this issue of having to define a
-    # function only to assign a value to a variable by introducing lambda
-    # functions. Please look at the sample code at `lambda_sample` function and
-    # refactor the code accordingly.
-    cv2.createTrackbar('obs_car', 'tool', 0, 1, assign_obs_car)
-    cv2.createTrackbar('obs_human', 'tool', 0, 1, assign_obs_human)
-    cv2.createTrackbar('shadow', 'tool', 0, 1, assign_shadow)
-    cv2.createTrackbar('column', 'tool', 1, 2, assign_column)
-    cv2.createTrackbar('zebra_rate', 'tool', 0, 100, assign_zebra_rate)
-
-    while True:
-        if point[0] == 2 and not draw_first_line:
-            cv2.line(visual, points[0], points[1], (0, 0, 255), 2)
-            draw_first_line = True
-
-        if point[0] == 4 and not draw_second_line:
-            cv2.line(visual, points[2], points[3], (0, 0, 255), 2)
-            draw_second_line = True
-
-            loc, ang = compute_label(img, points)
-            print(loc, ang)
-
-            cv2.putText(visual, loc + '  ' + ang, (15,15), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
-            cv2.putText(visual, loc + '  ' + ang, (15,15), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
-
-            #cv2.imwrite(path_check_img + img_name +'.png', visual)
-
-        # NOTE(TJ): it is better to line-break these two statements.
-        if done: break
-
+        for name in meta:
+            cv2.createTrackbar(name, 'tool', meta[name][0], meta[name][1], lambda x: x)
         
-        cv2.namedWindow('tool')
-        cv2.imshow('tool', visual)
+        while True:
 
-        if cv2.waitKey(2) == 32:
-            # NOTE(TJ): What does it mean that a waitKey(2) equals 32 ? When
-            # the intent of the code is not obvious by reading it, as a general
-            # principle, it is better to leave a comment of its intent.
-            break
-        ## TODO: press 'q' --> quit //nested loop break
+            cv2.getTrackbarPos('old', 'tool')
+            if point[0] == 2 and not draw_first_line:
+                print('hello')
+                print(points)
+                cv2.line(visual, points[0], points[1], (0, 0, 255), 2)
+                draw_first_line = True
 
-    print(points)
-    print(obs_car, obs_human, shadow, column, zebra_rate)
-    if draw_first_line and draw_second_line:
-        # csv
-        with open('annotation.csv', 'a', newline='') as csvfile:
-            mywriter = csv.writer(csvfile)
-            mywriter.writerow([img_file, loc, ang])
+            if point[0] == 4 and not draw_second_line:
+                cv2.line(visual, points[2], points[3], (0, 0, 255), 2)
+                draw_second_line = True
+
+                loc, ang = compute_label(img, points)
+                print(loc, ang)
+
+                cv2.putText(visual, loc + '  ' + ang, (15,15), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
+                cv2.putText(visual, loc + '  ' + ang, (15,15), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
+
+                #cv2.imwrite(path_check_img + img_name +'.png', visual)
+
+            if done:
+                break
+
+            cv2.imshow('tool', visual)
+
+            # press 'spacebar' -> turn to next image
+            if cv2.waitKey(2) == 32:
+                break
+
+        for name in meta:
+            meta[name][2] = cv2.getTrackbarPos(name, 'tool')
+        
+        #print(points)
+
+        for name in meta:
+            print(meta[name][2])
+        
+        if draw_first_line and draw_second_line:
+            with open('annotation.csv', 'a', newline='') as csvfile:
+                mywriter = csv.writer(csvfile)
+                mywriter.writerow([img_file, loc, ang])
         
 
-    
-
-
-
+if __name__ == "__main__":
+    main()

@@ -11,7 +11,7 @@ from pymongo import MongoClient
 import pymongo
 
 # Selected components of metadata from exif
-components = {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}
+exifmeta = {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}
 
 def parse_args():
     # python preprocess.py data --w 300 --h 240
@@ -47,13 +47,6 @@ def preprocess_images(args):
             gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             eq = cv2.equalizeHist(gray_img)
         # save
-
-        #TODO: hash the image name. e.g: hased = md5(img_name)
-        hashed = hashlib.md5()
-        hashed.update(img_name.encode())
-        meta['filehash'] = str(hashed.hexdigest())
-        #img_name = hashed.hexdigest()
-        metadata.append(meta)
         cv2.imwrite(path_of_outputs + img_name + '.png', eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
 
@@ -70,8 +63,16 @@ def extract_metadata(args):
 
         for tag, value in info.items():
             decoded = TAGS.get(tag, tag)
-            if decoded in components:
+            if decoded in exifmeta:
                 meta[decoded] = str(value)
+        
+        # Hash the image name
+        hashed = hashlib.md5()
+        hashed.update(img_name.encode())
+        meta['originalfname'] = str(img_name)
+        meta['filehash'] = str(hashed.hexdigest())
+        #img_name = hashed.hexdigest()
+        metadata.append(meta)
 
     return metadata
 
@@ -99,7 +100,7 @@ def example():
 def main():
     # Connect ot DB
     #db = connect_to_db()
-    client = MongoClient('localhost', 27017)
+    client = MongoClient()
     db = client["Batoners"]
     collection = db.Crosswalk
 

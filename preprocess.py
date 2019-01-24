@@ -7,7 +7,6 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from matplotlib import pyplot as plt
 import hashlib
-import json
 from pymongo import MongoClient
 import pymongo
 
@@ -26,19 +25,16 @@ def parse_args():
 
 def preprocess_images(args):
     if args.color:
-        path_of_outputs = "preprocessed_data\\above\\"
+        path_of_outputs = "preprocessed_data/above/"
     else:
-        path_of_outputs = "preprocessed_data\\"
+        path_of_outputs = "preprocessed_data/"
 
     out_width, out_height = args.width, args.height
-    
-    metadata = []
 
     for img_name in os.listdir(args.data_path):
         load_name = os.path.join(args.data_path, img_name)
         img = cv2.imread(load_name)
-        # extract metadata
-        meta = get_exif(load_name)
+        
         # resizing
         img = scipy.misc.imresize(img, (int(out_width*1.3333), out_width))
         H, W = img.shape[:2]
@@ -60,18 +56,24 @@ def preprocess_images(args):
         metadata.append(meta)
         cv2.imwrite(path_of_outputs + img_name + '.png', eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
+
+
+def extract_metadata(args):
+    metadata = []
+
+    for img_name in os.listdir(args.data_path):
+        load_name = os.path.join(args.data_path, img_name)
+
+        meta = {}
+        i = Image.open(load_name)
+        info = i._getexif()
+
+        for tag, value in info.items():
+            decoded = TAGS.get(tag, tag)
+            if decoded in components:
+                meta[decoded] = str(value)
+
     return metadata
-
-
-def get_exif(fn):
-    meta = {}
-    i = Image.open(fn)
-    info = i._getexif()
-    for tag, value in info.items():
-        decoded = TAGS.get(tag, tag)
-        if decoded in components:
-            meta[decoded] = str(value)
-    return meta
 
 def annotate_additional_metadata():
     pass
@@ -101,9 +103,13 @@ def main():
     db = client["Batoners"]
     collection = db.Crosswalk
 
-    # Preprocessing images with extracting metadata
     args = parse_args()
-    metadata = preprocess_images(args)
+
+    # Extract metadata of JPG images
+    metadata = extract_metadata(args)
+
+    # Preprocess images saving PNG
+    preprocess_images(args)
 
     # Populating metadata to DB
     collection.insert(metadata)

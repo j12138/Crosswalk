@@ -8,7 +8,6 @@ import math
 import csv
 import crosswalk_data as cd
 
-
 #===================#
 #       CLASS       # 
 #===================#
@@ -102,7 +101,6 @@ class Annotator(object):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
-
 
 #=======================#
 #       FUNCTIONS       # 

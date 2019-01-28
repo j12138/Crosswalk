@@ -1,6 +1,7 @@
 # A pseudo-code for managing crosswalk data (and its metadata)
 
 import cv2
+import csv
 
 class CrosswalkData:
 
@@ -23,12 +24,6 @@ class CrosswalkData:
             'ang': 0.0
         }
 
-    def __display_image(self):
-        pass
-
-    def __create_track_bars(self):
-        pass
-
     def display_manual_meta(self):
         for name in self.meta:
             print(name, self.meta[name][2])
@@ -48,4 +43,10 @@ class CrosswalkData:
     def input_labels(self, loc, ang):
         self.labels['loc'] = loc
         self.labels['ang'] = ang
+
+    def write_on_csv(self):
+        with open('annotation.csv', 'a', newline='') as csvfile:
+            mywriter = csv.writer(csvfile)
+            mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
+
 

@@ -7,8 +7,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from matplotlib import pyplot as plt
 import hashlib
-from pymongo import MongoClient
-import pymongo
+import json
 
 # Selected components of metadata from exif
 exifmeta = {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}
@@ -52,7 +51,7 @@ def preprocess_images(args):
 
 
 def extract_metadata(args):
-    metadata = []
+    metadata = {}
 
     for img_name in os.listdir(args.data_path):
         load_name = os.path.join(args.data_path, img_name)
@@ -67,27 +66,14 @@ def extract_metadata(args):
                 meta[decoded] = str(value)
         
         # Hash the image name
+        img_name += '.png'
         hashed = hashlib.md5()
-        hashed.update(img_name.encode())
+        hashname = str(hashed.update(img_name.encode()))
         meta['originalfname'] = str(img_name)
-        meta['filehash'] = str(hashed.hexdigest())
-        #img_name = hashed.hexdigest()
-        metadata.append(meta)
+        meta['filehash'] = hashname
+        metadata[hashname] = meta
 
     return metadata
-
-def annotate_additional_metadata():
-    pass
-
-def populate_metadata_db(db, metadata):
-    pass
-    
-
-def connect_to_db():
-    client = MongoClient('localhost', 27017)
-    db = client["Batoners"]
-    collection = db.Crosswalk
-    return collection
 
 def example():
     metadata = []
@@ -98,28 +84,18 @@ def example():
     #....
 
 def main():
-    # Connect ot DB
-    #db = connect_to_db()
-    client = MongoClient()
-    db = client["Batoners"]
-    collection = db.Crosswalk
-
     args = parse_args()
 
     # Extract metadata of JPG images
     metadata = extract_metadata(args)
 
+    # Upload metadata database in JSON form
+    with open("Crosswalk_Database.json", "w") as write_file:
+        json.dump(metadata, write_file)
+
     # Preprocess images saving PNG
     preprocess_images(args)
 
-    # Populating metadata to DB
-    collection.insert(metadata)
-    print(db.collection_names)
-    print(collection.find_one({'Make':'Apple'}))
-
-    #metadata.append(annotate_additional_metadata())
-    #populate_metadata_db(db, metadata)
-    
 
 if __name__ == '__main__':
     main()

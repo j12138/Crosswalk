@@ -66,22 +66,14 @@ def extract_metadata(args):
                 meta[decoded] = str(value)
         
         # Hash the image name
-        img_name += '.png'
-        hashed = hashlib.md5()
-        hashname = str(hashed.update(img_name.encode()))
-        meta['originalfname'] = str(img_name)
+        img_name = img_name + '.png'
+        hashed = hashlib.md5(img_name.encode()).hexdigest()
+        hashname = str(hashed)
+        meta['originalname'] = str(img_name)
         meta['filehash'] = hashname
         metadata[hashname] = meta
-
+        
     return metadata
-
-def example():
-    metadata = []
-    meta = {}
-    meta['filename'] = '3f7sfee'
-    meta['horizontal_offset'] = 0.3
-    metadata.append(meta)
-    #....
 
 def main():
     args = parse_args()
@@ -90,8 +82,12 @@ def main():
     metadata = extract_metadata(args)
 
     # Upload metadata database in JSON form
+    with open("Crosswalk_Database.json", "r") as read_file:
+        loaddata = json.load(read_file)
+        updatedata = {**loaddata, **metadata}
     with open("Crosswalk_Database.json", "w") as write_file:
-        json.dump(metadata, write_file)
+    #    updatedata = loaddata.update(metadata)
+        json.dump(updatedata, write_file)
 
     # Preprocess images saving PNG
     preprocess_images(args)

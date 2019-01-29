@@ -41,12 +41,13 @@ class Annotator(object):
                     break # press 'spacebar' -> turn to next image
 
             data.input_manual_meta('tool')
-            data.display_manual_meta()
-            data.display_labels()
+            #data.display_manual_meta()
+            #data.display_labels()
             
             if self.is_input_finished:
-
                 data.write_on_csv()
+                #data.write_on_db()
+                
 
     def __draw_line_and_compute_label(self, data):
         if self.current_point[0] == 2 and not self.is_line_drawn[0]:
@@ -101,7 +102,6 @@ class Annotator(object):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
-
 #=======================#
 #       FUNCTIONS       # 
 #=======================#

@@ -30,7 +30,7 @@ class Annotator(object):
             data = cd.CrosswalkData(img_file)
             self.__initialize_screen()
             self.img_to_display = data.img.copy()
-            self.__launch_annotator()
+            self.__launch_window()
             data.make_trackbar('tool')
             
             while not self.is_input_finished:
@@ -49,13 +49,34 @@ class Annotator(object):
                 #data.write_on_db()
                 
 
+    # NOTE(TJ): I thought we can squeeze this call-back function into the
+    # Annotator class. I've tried some tricks but not sure if it'd work.
+    # TODO: Please test.
+    @staticmethod
+    def mouse_callback(event, x, y, flags, annotator):
+        annotator.draw_and_record_point(event, x, y, flags)
+
+    def draw_and_record_point(self, event, x, y, flags):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if self.is_line_drawn[1]:
+                self.is_input_finished = True
+                return
+
+            cv2.circle(self.img_to_display, (x,y), 3, (0, 0, 255), -1)
+
+            self.all_points[self.current_point[0]] = (x, y)
+            self.current_point[0] = self.current_point[0] + 1
+            self.current_point[1] = (x, y)
+
     def __draw_line_and_compute_label(self, data):
         if self.current_point[0] == 2 and not self.is_line_drawn[0]:
-            cv2.line(self.img_to_display, self.all_points[0], self.all_points[1], (0, 0, 255), 2)
+            cv2.line(self.img_to_display, self.all_points[0],
+                    self.all_points[1], (0, 0, 255), 2)
             self.is_line_drawn[0] = True
 
         if self.current_point[0] == 4 and not self.is_line_drawn[1]:
-            cv2.line(self.img_to_display, self.all_points[2], self.all_points[3], (0, 0, 255), 2)
+            cv2.line(self.img_to_display, self.all_points[2],
+                    self.all_points[3], (0, 0, 255), 2)
             self.is_line_drawn[1] = True
 
             loc, ang = self.__compute_label(data)
@@ -70,9 +91,9 @@ class Annotator(object):
         self.is_line_drawn[1] = False
         self.is_input_finished = False
 
-    def __launch_annotator(self):
+    def __launch_window(self):
         cv2.namedWindow('tool')
-        cv2.setMouseCallback('tool', self.mouse_callback, self)
+        cv2.setMouseCallback('tool', Annotator.mouse_callback, self)
         pass
 
     def __compute_label(self, data):
@@ -84,12 +105,10 @@ class Annotator(object):
 
         x_1 = float(h - y1) * (x1 - x2) / (y1 - y2) + x2
         x_2 = float(h - y3) * (x3 - x4) / (y3 - y4) + x3
-
         loc = (w - (x_1 + x_2)) / (x_2 - 1)
         
         x_1 = float(-y1) * (x1 - x2) / (y1 - y2) + x1
         x_2 = float(-y3) * (x3 - x4) / (y3 - y4) + x3
-        
         neg = (-1)**(w < (x_2 +  x_1))
 
         ang = math.atan(0.5 * (w - x_2 + x_1) / h)
@@ -98,14 +117,16 @@ class Annotator(object):
         return format(loc, '.3f'), format(ang, '.3f')
 
     def __write_labels_on_screen(self, loc, ang):
-        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
-        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
+        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
+        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
+
 #=======================#
 #       FUNCTIONS       # 
 #=======================#
 
+#TODO: Please delete if the new solution works
 def draw_and_record_point(event, x, y, flags, annotator):
     if event == cv2.EVENT_LBUTTONDOWN:
 

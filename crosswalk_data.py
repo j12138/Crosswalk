@@ -54,13 +54,10 @@ class CrosswalkData:
     def write_on_db(self):
         with open('Crosswalk_Database.json', 'r+') as db_json:
             db = json.load(db_json)
-
-            print(self.hashname)
         
         for name in self.meta:
             
             db[self.hashname][name] = self.meta[name][2]
-            print(db[self.hashname][name])
         
         for label in self.labels:
             db[self.hashname][label] = self.labels[label]

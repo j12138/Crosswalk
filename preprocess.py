@@ -21,6 +21,11 @@ def parse_args():
     parser.add_argument('-c', '--color', dest = 'color', default = False, type = bool)
     return parser.parse_args()
 
+def hashing(name):
+    name = name + '.png'
+    hashed = hashlib.md5(name.encode()).hexdigest()
+    hashname = str(hashed)
+    return hashname
 
 def preprocess_images(args):
     if args.color:
@@ -46,7 +51,8 @@ def preprocess_images(args):
             gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             eq = cv2.equalizeHist(gray_img)
         # save
-        cv2.imwrite(path_of_outputs + img_name + '.png', eq)
+        hashname = hashing(img_name)
+        cv2.imwrite(path_of_outputs + hashname, eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
 
 
@@ -66,14 +72,24 @@ def extract_metadata(args):
                 meta[decoded] = str(value)
         
         # Hash the image name
-        img_name = img_name + '.png'
-        hashed = hashlib.md5(img_name.encode()).hexdigest()
-        hashname = str(hashed)
+        hashname = hashing(img_name)
         meta['originalname'] = str(img_name)
-        meta['filehash'] = hashname
         metadata[hashname] = meta
         
     return metadata
+
+def updateJSON(metadata):
+    try:
+        with open("Crosswalk_Database.json", "r") as read_file:
+            loaddata = json.load(read_file)
+    except:
+        print('Database Loading Error')
+    else:
+        updatedata = {**loaddata, **metadata}
+    finally:
+        with open("Crosswalk_Database.json", "w") as write_file:
+            json.dump(updatedata, write_file)
+        print('Successfully upload database!')
 
 def main():
     args = parse_args()
@@ -81,16 +97,11 @@ def main():
     # Extract metadata of JPG images
     metadata = extract_metadata(args)
 
-    # Upload metadata database in JSON form
-    with open("Crosswalk_Database.json", "r") as read_file:
-        loaddata = json.load(read_file)
-        updatedata = {**loaddata, **metadata}
-    with open("Crosswalk_Database.json", "w") as write_file:
-    #    updatedata = loaddata.update(metadata)
-        json.dump(updatedata, write_file)
-
     # Preprocess images saving PNG
     preprocess_images(args)
+
+    # Upload metadata database in JSON form
+    updateJSON(metadata)
 
 
 if __name__ == '__main__':

@@ -22,7 +22,6 @@ def parse_args():
     return parser.parse_args()
 
 def hashing(name):
-    name = name + '.png'
     hashed = hashlib.md5(name.encode()).hexdigest()
     hashname = str(hashed)
     return hashname
@@ -51,8 +50,10 @@ def preprocess_images(args):
             gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             eq = cv2.equalizeHist(gray_img)
         # save
+        img_name = img_name + '.png'
         hashname = hashing(img_name)
-        cv2.imwrite(path_of_outputs + hashname, eq)
+        cv2.imwrite(path_of_outputs + img_name, eq)
+        os.rename(path_of_outputs + img_name, path_of_outputs + hashname)
         #np.save(path_of_outputs + img_name + '.npy', eq)
 
 
@@ -72,6 +73,7 @@ def extract_metadata(args):
                 meta[decoded] = str(value)
         
         # Hash the image name
+        img_name = img_name + '.png'
         hashname = hashing(img_name)
         meta['originalname'] = str(img_name)
         metadata[hashname] = meta
@@ -84,9 +86,9 @@ def updateJSON(metadata):
             loaddata = json.load(read_file)
     except:
         print('Database Loading Error')
+        
     else:
         updatedata = {**loaddata, **metadata}
-    finally:
         with open("Crosswalk_Database.json", "w") as write_file:
             json.dump(updatedata, write_file)
         print('Successfully upload database!')

@@ -2,11 +2,17 @@
 # use preprocessed_data images
 # input both side of crosswalk --> location / direction(angle)
 
+import argparse
 import glob
 import cv2
 import math
 import csv
 import crosswalk_data as cd
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', help = 'Path of folder containing images', default = '', type = str)
+    return parser.parse_args()
 
 #===================#
 #       CLASS       # 
@@ -25,7 +31,7 @@ class Annotator(object):
         self.img_to_display = None
 
     def launch(self):
-        for img_file in glob.glob(self.img_dir + '/temp/*'):
+        for img_file in glob.glob(self.img_dir + '/*'):
             data = cd.CrosswalkData(img_file)
             self.__initialize_screen()
             self.img_to_display = data.img.copy()
@@ -43,12 +49,12 @@ class Annotator(object):
             
             if self.is_input_finished:
                 data.write_on_db()
+                #data.write_on_csv()
                 
-
     @staticmethod
     def mouse_callback(event, x, y, flags, annotator):
         annotator.draw_and_record_point(event, x, y, flags)
-                                                    
+                                                
     def draw_and_record_point(self, event, x, y, flags):
         if event == cv2.EVENT_LBUTTONDOWN:
             if self.is_line_drawn[1]:
@@ -120,8 +126,9 @@ class Annotator(object):
 #       MAIN       # 
 #==================#
 def main():
-    
-    annotator = Annotator('./preprocessed_data')
+    args = parse_args()
+
+    annotator = Annotator('./preprocessed_data/' + args.data_path)
     annotator.launch()
         
 if __name__ == "__main__":

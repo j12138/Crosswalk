@@ -16,17 +16,16 @@ class Annotator(object):
     """ An Annotator displays input window for each image and lets user draw
     points (label) for each image data. """
 
-    def __init__(self, img_dir, draw_point_callback):
+    def __init__(self, img_dir):
         self.img_dir = img_dir
         self.is_input_finished = False
         self.current_point = [0, (0,0)]
         self.all_points = [(0, 0)]*4
         self.is_line_drawn = [False, False]
         self.img_to_display = None
-        self.mouse_callback = draw_point_callback
 
     def launch(self):
-        for img_file in glob.glob(self.img_dir + '/*.png'):
+        for img_file in glob.glob(self.img_dir + '/temp/*'):
             data = cd.CrosswalkData(img_file)
             self.__initialize_screen()
             self.img_to_display = data.img.copy()
@@ -41,21 +40,15 @@ class Annotator(object):
                     break # press 'spacebar' -> turn to next image
 
             data.input_manual_meta('tool')
-            #data.display_manual_meta()
-            #data.display_labels()
             
             if self.is_input_finished:
-                data.write_on_csv()
-                #data.write_on_db()
+                data.write_on_db()
                 
 
-    # NOTE(TJ): I thought we can squeeze this call-back function into the
-    # Annotator class. I've tried some tricks but not sure if it'd work.
-    # TODO: Please test.
     @staticmethod
     def mouse_callback(event, x, y, flags, annotator):
         annotator.draw_and_record_point(event, x, y, flags)
-
+                                                    
     def draw_and_record_point(self, event, x, y, flags):
         if event == cv2.EVENT_LBUTTONDOWN:
             if self.is_line_drawn[1]:
@@ -122,30 +115,13 @@ class Annotator(object):
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
 
-#=======================#
-#       FUNCTIONS       # 
-#=======================#
-
-#TODO: Please delete if the new solution works
-def draw_and_record_point(event, x, y, flags, annotator):
-    if event == cv2.EVENT_LBUTTONDOWN:
-
-        if annotator.is_line_drawn[1]:
-            annotator.is_input_finished = True
-            return
-
-        cv2.circle(annotator.img_to_display, (x,y), 3, (0, 0, 255), -1)
-
-        annotator.all_points[annotator.current_point[0]] = (x, y)
-        annotator.current_point[0] = annotator.current_point[0] + 1
-        annotator.current_point[1] = (x, y)
 
 #==================#
 #       MAIN       # 
 #==================#
 def main():
     
-    annotator = Annotator('./preprocessed_data', draw_and_record_point)
+    annotator = Annotator('./preprocessed_data')
     annotator.launch()
         
 if __name__ == "__main__":

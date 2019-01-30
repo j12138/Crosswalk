@@ -9,7 +9,7 @@ class CrosswalkData:
 
     def __init__(self, img_file):
         self.img_file = img_file
-        self.hashname = self.__hash_img_name()
+        self.hashname = self.__parse_img_name()
         self.img = cv2.imread(img_file)
         self.meta = { # value is 3rd elem
                 'obs_car': [0, 1, 0],
@@ -52,26 +52,27 @@ class CrosswalkData:
             mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
-        with open('Crosswalk_Database.json', 'r') as db_json:
+        with open('Crosswalk_Database.json', 'r+') as db_json:
             db = json.load(db_json)
 
             print(self.hashname)
         
         for name in self.meta:
-            #print(db[self.hashname][name])
+            
             db[self.hashname][name] = self.meta[name][2]
+            print(db[self.hashname][name])
         
         for label in self.labels:
             db[self.hashname][label] = self.labels[label]
 
-        
-    
-    def __hash_img_name(self):
+        with open("Crosswalk_Database.json", "w") as db_json:
+            json.dump(db, db_json)
+
+
+    def __parse_img_name(self):
         print(self.img_file)
         img_name = (self.img_file).split('\\')[1]
         print(img_name)
-        hashed = hashlib.md5(img_name.encode()).hexdigest()
-        print(hashed)
-        return str(hashed)
+        return img_name
 
         

@@ -27,10 +27,11 @@ def hashing(name):
     return hashname
 
 def preprocess_images(args):
-    if args.color:
-        path_of_outputs = "preprocessed_data/above/"
-    else:
-        path_of_outputs = "preprocessed_data/"
+
+    folder = args.data_path.split('\\')[-2]
+    path_of_outputs = "preprocessed_data/" + folder + "/"
+
+    os. mkdir(path_of_outputs)
 
     out_width, out_height = args.width, args.height
 

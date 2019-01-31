@@ -89,7 +89,7 @@ model.compile(loss=smoothL1, optimizer=optim, metrics=['mae'])
 tensorboard = TensorBoard(log_dir='./trainings/'+experiment_name,
         histogram_freq=0, write_graph=True, write_images=False)
 checkpoint = ModelCheckpoint('./trainings/'+experiment_name+'/'+network+'.h5',
-        monitor='val_loss', verbose=1, save_best_only=True, mode='min',
+        monitor='mean_absolute_error', verbose=1, save_best_only=True, mode='min',
         period=1)
 csv_logger = CSVLogger('./trainings/'+experiment_name+'/training_log.csv')
 callbacks = [tensorboard, checkpoint, csv_logger]

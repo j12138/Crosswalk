@@ -125,11 +125,18 @@ class Annotator(object):
 #==================#
 #       MAIN       # 
 #==================#
-def main():
-    args = parse_args()
 
-    annotator = Annotator('./preprocessed_data/' + args.data_path)
+def launch_annotator(data_path):
+    """ the actual 'main' function. Other modules that import this module shall
+    call this as the entry point. """
+    annotator = Annotator('./preprocessed_data/' + data_path)
     annotator.launch()
+
+
+def main(args):
+    launch_annotator(args.data_path)
+
         
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)

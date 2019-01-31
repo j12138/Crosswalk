@@ -76,6 +76,7 @@ def extract_metadata(args):
         img_name = img_name + '.png'
         hashname = hashing(img_name)
         meta['originalname'] = str(img_name)
+        meta['filehash'] = hashname
         metadata[hashname] = meta
         
     return metadata

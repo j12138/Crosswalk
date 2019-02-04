@@ -129,7 +129,9 @@ class Annotator(object):
 def launch_annotator(data_path):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    annotator = Annotator('./preprocessed_data/' + data_path)
+    folder = args.data_path.split('/')[-1]
+    annotator = Annotator("preprocessed_data/" + folder + "/")
+    print("preprocessed_data/" + folder + "/")
     annotator.launch()
 
 

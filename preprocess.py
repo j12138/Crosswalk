@@ -21,17 +21,19 @@ def parse_args():
     parser.add_argument('-c', '--color', dest = 'color', default = False, type = bool)
     return parser.parse_args()
 
-def hashing(name):
+def namehashing(name):
     hashed = hashlib.md5(name.encode()).hexdigest()
     hashname = str(hashed)
     return hashname
 
 def preprocess_images(args):
+    folder = args.data_path.split('/')[-1]
+    print(args.data_path.split('/')[-1])
 
-    folder = args.data_path.split('\\')[-2]
     path_of_outputs = "preprocessed_data/" + folder + "/"
 
-    os. mkdir(path_of_outputs)
+    if not os.path.exists(path_of_outputs):
+        os.mkdir(path_of_outputs)
 
     out_width, out_height = args.width, args.height
 
@@ -50,13 +52,18 @@ def preprocess_images(args):
         else:
             gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             eq = cv2.equalizeHist(gray_img)
+
         # save
-        img_name = img_name + '.png'
-        hashname = hashing(img_name)
-        cv2.imwrite(path_of_outputs + img_name, eq)
-        os.rename(path_of_outputs + img_name, path_of_outputs + hashname)
+        cv2.imwrite(path_of_outputs + img_name + '.png', eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
 
+def hash_images(args):
+    folder = args.data_path.split('/')[-1]
+    path_of_outputs = "preprocessed_data/" + folder + "/"
+
+    for img_name in os.listdir(path_of_outputs):
+        hashname = namehashing(img_name)
+        os.rename(path_of_outputs + img_name, path_of_outputs + hashname)
 
 def extract_metadata(args):
     metadata = {}
@@ -75,7 +82,7 @@ def extract_metadata(args):
         
         # Hash the image name
         img_name = img_name + '.png'
-        hashname = hashing(img_name)
+        hashname = namehashing(img_name)
         meta['originalname'] = str(img_name)
         meta['filehash'] = hashname
         metadata[hashname] = meta
@@ -87,7 +94,7 @@ def updateJSON(metadata):
         with open("Crosswalk_Database.json", "r") as read_file:
             loaddata = json.load(read_file)
     except:
-        print('Database Loading Error')
+        print('Database Loading Error >>> Fail to upload')
         
     else:
         updatedata = {**loaddata, **metadata}
@@ -103,6 +110,9 @@ def main():
 
     # Preprocess images saving PNG
     preprocess_images(args)
+
+    # Hashing the preprocessed images
+    hash_images(args)
 
     # Upload metadata database in JSON form
     updateJSON(metadata)

@@ -68,7 +68,7 @@ class CrosswalkData:
 
     def __parse_img_name(self):
         print(self.img_file)
-        img_name = (self.img_file).split('\\')[1]
+        img_name = (self.img_file).split('/')[-1]
         print(img_name)
         return img_name
 

@@ -1,0 +1,16 @@
+<directoryname - date, model, labeller>
+
+dec28I - Dec 28, iphone 6s, Hong
+jan8I - Jan 8, iphone 6s, Hong
+jan9I - Jan 9, iphone 6s, Hong
+jan16I - Jan 16, iphone 6s, Hong
+jan17I - Jan 17, iphone 6s, Hong
+jan17SGI - Jan 17, iphone 8, Hong
+jan18SGI - Jan 18, iphone 8, Hong
+jan23I - Jan 23, iphone 6s, Hong
+jan26I - Jan 26, iphone 6s, Hong
+181227A - Dec 27, Galaxy A8, Hong
+190115A - Jan 15, Galaxy A8, Hong
+
+
+

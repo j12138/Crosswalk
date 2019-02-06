@@ -100,7 +100,8 @@ def updateJSON(metadata):
         updatedata = {**loaddata, **metadata}
         with open("Crosswalk_Database.json", "w") as write_file:
             json.dump(updatedata, write_file)
-        print('Successfully upload database!')
+        print('Successfully update database!')
+
 
 def main():
     args = parse_args()

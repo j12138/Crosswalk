@@ -7,7 +7,8 @@ filterlist = {'Apple':lambda x:x['Make']=='Apple', 'Samsung':lambda x:x['Make']=
                 'car':lambda x:x['obs_car'][2]==1, 'human':lambda x:x['obs_human'][2]==1,
                 'onecol':lambda x:x['column'][2]==1, 'twocol':lambda x:x['column'][2]==2,
                 'boundary':lambda x:abs(float(x['loc']))>0.8, 'old':lambda x:x['old'][2]==1,
-                'test':lambda x:x['filehash']=='fe5cd9cc638854df2430e027ba12e6a9'}
+                'not_out_of_range':lambda x:x['out_of_range'][2]==0
+                'no_obs':lambda x:x['obs_car'][2]==0 and x['obs_human'][2]==0}
 
 class DBMS(object):
     def __init__(self, json_file):

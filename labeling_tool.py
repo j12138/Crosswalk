@@ -11,7 +11,7 @@ import crosswalk_data as cd
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', help = 'Path of folder containing images', default = '', type = str)
+    parser.add_argument('data_path', help = 'Path of folder containing images', default = '', type = str)
     return parser.parse_args()
 
 #===================#

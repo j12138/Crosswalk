@@ -20,8 +20,7 @@ def pre_process(data_path):
 
 def launch_labeling_tool(data_path):
     print('launch labeling tool..')
-    folder = data_path.split('\\')[-2]
-    os.system("python labeling_tool.py " + folder)
+    os.system("python labeling_tool.py " + data_path)
 
 def make_npy_sets():
     pass
@@ -34,9 +33,9 @@ def main():
     args = parse_args()
 
     pre_process(args.data_path)
-    launch_labeling_tool(args.data_path)
-    make_npy_sets()
-    execute_training()
+    #launch_labeling_tool(args.data_path)
+    #make_npy_sets()
+    #execute_training()
 
 
 if __name__ == '__main__':

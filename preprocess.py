@@ -8,18 +8,24 @@ from PIL.ExifTags import TAGS
 from matplotlib import pyplot as plt
 import hashlib
 import json
+import yaml
 
-# Selected components of metadata from exif
-exifmeta = {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}
-
-def parse_args():
+def parse_args(options):
     # python preprocess.py data --w 300 --h 240
+
     parser = argparse.ArgumentParser()
     parser.add_argument('data_path', help = 'Path of folder containing images', type = str)
-    parser.add_argument('-W', '--width', dest = 'width', default = 300, type = int)
-    parser.add_argument('-H', '--height', dest = 'height', default = 240, type = int)
+    parser.add_argument('-W', '--width', dest = 'width', default = options['preprocess_width'], type = int)
+    parser.add_argument('-H', '--height', dest = 'height', default = options['preprocess_height'], type = int)
     parser.add_argument('-c', '--color', dest = 'color', default = False, type = bool)
+    parser.add_argument('-d', '--db_file', dest = 'db_file', default = options['db_file'], type = str)
+
     return parser.parse_args()
+
+def loadyaml():
+    with open('./config.yaml', 'r') as stream: 
+        options = yaml.load(stream)
+    return options
 
 def namehashing(name):
     hashed = hashlib.md5(name.encode()).hexdigest()
@@ -65,7 +71,7 @@ def hash_images(args):
         hashname = namehashing(img_name)
         os.rename(path_of_outputs + img_name, path_of_outputs + hashname)
 
-def extract_metadata(args):
+def extract_metadata(args, exifmeta):
     metadata = {}
 
     for img_name in os.listdir(args.data_path):
@@ -89,25 +95,26 @@ def extract_metadata(args):
         
     return metadata
 
-def updateJSON(metadata):
+def updateJSON(metadata, db_file):
     try:
-        with open("Crosswalk_Database.json", "r") as read_file:
+        with open(db_file, "r") as read_file:
             loaddata = json.load(read_file)
     except:
         print('Database Loading Error >>> Fail to upload')
         
     else:
         updatedata = {**loaddata, **metadata}
-        with open("Crosswalk_Database.json", "w") as write_file:
+        with open(db_file, "w") as write_file:
             json.dump(updatedata, write_file)
         print('Successfully update database!')
 
 
 def main():
-    args = parse_args()
+    options = loadyaml()
+    args = parse_args(options)
 
     # Extract metadata of JPG images
-    metadata = extract_metadata(args)
+    metadata = extract_metadata(args, options['exifmeta'])
 
     # Preprocess images saving PNG
     preprocess_images(args)
@@ -116,7 +123,7 @@ def main():
     hash_images(args)
 
     # Upload metadata database in JSON form
-    updateJSON(metadata)
+    updateJSON(metadata, args.db_file)
 
 
 

@@ -4,27 +4,26 @@ import cv2
 import csv
 import hashlib
 import json
+import yaml
+
+def loadyaml():
+    with open('./config.yaml', 'r') as stream: 
+        options = yaml.load(stream)
+    return options
 
 class CrosswalkData:
 
     def __init__(self, img_file):
+        options = loadyaml()
         self.img_file = img_file
         self.hashname = self.__parse_img_name()
         self.img = cv2.imread(img_file)
-        self.meta = { # value is 3rd elem
-                'obs_car': [0, 1, 0],
-                'obs_human': [0, 1, 0],
-                'shadow': [0, 1, 0],
-                'column': [1, 2, 1],
-                'zebra_ratio': [0, 100, 0],
-                # not zebra
-                'out_of_range' : [0, 1, 0],
-                'old' : [0, 1, 0]
-                }
+        self.meta = options['manualmeta']
         self.labels = {
             'loc': 0.0,
             'ang': 0.0
         }
+        self.db = options['db_file']
 
     def display_manual_meta(self):
         for name in self.meta:
@@ -52,7 +51,7 @@ class CrosswalkData:
             mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
-        with open('Crosswalk_Database.json', 'r+') as db_json:
+        with open(self.db, 'r+') as db_json:
             db = json.load(db_json)
         
         for name in self.meta:
@@ -62,7 +61,7 @@ class CrosswalkData:
         for label in self.labels:
             db[self.hashname][label] = self.labels[label]
 
-        with open("Crosswalk_Database.json", "w") as db_json:
+        with open(self.db, "w") as db_json:
             json.dump(db, db_json)
 
 
@@ -71,5 +70,3 @@ class CrosswalkData:
         img_name = (self.img_file).split('/')[-1]
         print(img_name)
         return img_name
-
-        

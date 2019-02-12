@@ -1,6 +1,6 @@
 experiment_name: 'Crosswalk_guide'
-train_imgs: './preprocessed_data/train/X.npy'
-train_labels: './preprocessed_data/train/Y.npy'
+train_imgs: './X.npy'
+train_labels: './Y.npy'
 val_imgs: './preprocessed_data/test/X.npy'
 val_labels: './preprocessed_data/test/Y.npy'
 num_gpus: 1

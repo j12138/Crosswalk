@@ -65,7 +65,7 @@ def preprocess_images(args):
 
 def hash_images(args):
     folder = args.data_path.split('/')[-1]
-    path_of_outputs = "preprocessed_data/" + folder + "/"
+    path_of_outputs = "preprocessed_data/hashed/"
 
     for img_name in os.listdir(path_of_outputs):
         hashname = namehashing(img_name)
@@ -95,7 +95,7 @@ def extract_metadata(args, exifmeta):
         
     return metadata
 
-def updateJSON(metadata, db_file):
+def updateDB(metadata, db_file):
     try:
         with open(db_file, "r") as read_file:
             loaddata = json.load(read_file)
@@ -109,9 +109,9 @@ def updateJSON(metadata, db_file):
         print('Successfully update database!')
 
 
-def main():
-    options = loadyaml()
-    args = parse_args(options)
+def preprocess_img(args):
+    """ the actual 'main' function. Other modules that import this module shall
+    call this as the entry point. """
 
     # Extract metadata of JPG images
     metadata = extract_metadata(args, options['exifmeta'])
@@ -123,8 +123,13 @@ def main():
     hash_images(args)
 
     # Upload metadata database in JSON form
-    updateJSON(metadata, args.db_file)
+    updateDB(metadata, args.db_file)
 
+
+def main():
+    options = loadyaml()
+    args = parse_args(options)
+    preprocess_img(args)
 
 
 if __name__ == '__main__':

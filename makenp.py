@@ -56,13 +56,17 @@ def merge_list(list):
         merged = merged + elem
     return merged
 
-
-def main():
-    options = loadyaml()
+def make_npy_file(options):
+    """ the actual 'main' function. Other modules that import this module shall
+    call this as the entry point. """
     db = DBMS(options['dp_file'])
     entries = get_entries(db, options['filterlist'], 'no_obs_not_old', 'not_out_of_range')
     db.make_npy(entries)
 
+
+def main():
+    options = loadyaml()
+    make_npy_file(options)
 
 if __name__ == "__main__":
     main()

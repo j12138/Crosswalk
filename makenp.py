@@ -2,6 +2,7 @@ import json
 import numpy as np
 import os
 import yaml
+import cv2
 
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
@@ -26,8 +27,19 @@ class DBMS(object):
 
         for item in entries:
             hash = item['filehash'] #wrong method
+
+            try:
+                img = cv2.imread('./preprocessed_data/' + hash)
+                cv2.namedWindow('tool')
+                cv2.imshow('tool', img)
+            except :
+                print('Fail: ' + hash)
+                continue
+
+            print('Success: ' + hash)
             label = [item['loc'], item['ang']]
-            train_hash.append(hash)
+
+            train_hash.append(img)
             y_train.append(label)
 
         #TODO: let name include filter info

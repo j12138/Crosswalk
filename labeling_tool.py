@@ -134,10 +134,8 @@ def launch_annotator(data_path):
     print("preprocessed_data/" + folder + "/")
     annotator.launch()
 
-
 def main(args):
     launch_annotator(args.data_path)
-
         
 if __name__ == "__main__":
     args = parse_args()

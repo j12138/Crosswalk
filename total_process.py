@@ -2,40 +2,32 @@ import argparse
 import os
 import preprocess
 import labeling_tool
-import makenpy
+import makenp
 import train
+import yaml
 
-def parse_args():
+def parse_args(options):
     parser = argparse.ArgumentParser()
     parser.add_argument('data_path', help = 'Path of folder containing images', type = str)
-    parser.add_argument('-W', '--width', dest = 'width', default = 300, type = int)
-    parser.add_argument('-H', '--height', dest = 'height', default = 240, type = int)
+    parser.add_argument('-W', '--width', dest = 'width', default = options['preprocess_width'], type = int)
+    parser.add_argument('-H', '--height', dest = 'height', default = options['preprocess_height'], type = int)
     parser.add_argument('-c', '--color', dest = 'color', default = False, type = bool)
+    parser.add_argument('-d', '--db_file', dest = 'db_file', default = options['db_file'], type = str)
+
     return parser.parse_args()
 
-
-def pre_process(data_path):
-    print('prepreoceesing..')
-    os.system("python preprocess.py " + data_path)
-
-def launch_labeling_tool(data_path):
-    print('launch labeling tool..')
-    os.system("python labeling_tool.py " + data_path)
-
-def make_npy_sets():
-    pass
-
-def execute_training():
-    pass
-
+def loadyaml():
+    with open('./config.yaml', 'r') as stream: 
+        options = yaml.load(stream)
+    return options
 
 def main():
-    args = parse_args()
+    options = loadyaml()
+    args = parse_args(options)
 
-    pre_process(args.data_path)
-    #launch_labeling_tool(args.data_path)
-    #make_npy_sets()
-    #execute_training()
+    preprocess.preprocess_img(args)
+    labeling_tool.launch_annotator(args.data_path)
+    makenp.make_npy_file(options)
 
 
 if __name__ == '__main__':

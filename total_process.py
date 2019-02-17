@@ -25,9 +25,10 @@ def main():
     options = loadyaml()
     args = parse_args(options)
 
-    preprocess.preprocess_img(args)
+    preprocess.preprocess_img(args, options)
     labeling_tool.launch_annotator(args.data_path)
-    makenp.make_npy_file(options)
+    #makenp.make_npy_file(options) 
+    # 알바에게 필오없다
 
 
 if __name__ == '__main__':

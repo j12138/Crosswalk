@@ -4,6 +4,20 @@ import os
 import yaml
 import cv2
 
+filterlist = {'Apple':lambda x:x['Make']=='Apple',
+             'Samsung':lambda x:x['Make']=='Samsung',
+             'shadow':lambda x:x['shadow']==1,
+             'obstacle':lambda x:x['obs_car']==1 and x['obs_human']==1,
+             'car':lambda x:x['obs_car']==1,
+             'human':lambda x:x['obs_human']==1,
+             'onecol':lambda x:x['column']==1,
+             'twocol':lambda x:x['column']==2,
+             'boundary':lambda x:abs(float(x['loc']))>0.8,
+             'old':lambda x:x['old']==1,
+             'not_out_of_range':lambda x:x['out_of_range']==0,
+             'no_obs_not_old':lambda x:x['obs_car']==0 and x['obs_human']==0 and x['old']==0
+            }
+
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
         options = yaml.load(stream)
@@ -19,6 +33,11 @@ class DBMS(object):
             self.db = json.load(read_file).values()
 		
     def query(self, custom_filter):
+        '''
+        for it in self.db:
+            print(it)
+            print(custom_filter(it))
+        '''
         return [item for item in self.db if custom_filter(item)]
 	
     def make_npy(self, entries: list):
@@ -26,10 +45,10 @@ class DBMS(object):
         y_train = []
 
         for item in entries:
-            hash = item['filehash'] #wrong method
+            hash = item['filehash']
 
             try:
-                img = cv2.imread('./preprocessed_data/' + hash)
+                img = cv2.imread('./hased/' + hash)
                 cv2.namedWindow('tool')
                 cv2.imshow('tool', img)
             except :
@@ -42,7 +61,7 @@ class DBMS(object):
             train_hash.append(img)
             y_train.append(label)
 
-        #TODO: let name include filter info
+        #TODO: let name include filter info?
         np.save('./X.npy', train_hash)
         np.save('./Y.npy', y_train)
 
@@ -59,8 +78,8 @@ def merge_list(list):
 def make_npy_file(options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    db = DBMS(options['dp_file'])
-    entries = get_entries(db, options['filterlist'], 'no_obs_not_old', 'not_out_of_range')
+    db = DBMS(options['db_file'])
+    entries = get_entries(db, filterlist, 'no_obs_not_old', 'onecol')
     db.make_npy(entries)
 
 

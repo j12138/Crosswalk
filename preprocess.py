@@ -33,9 +33,9 @@ def namehashing(name):
     return hashname
 
 def preprocess_images(args):
-    folder = args.data_path.split('/')[-1]
-    print(args.data_path.split('/')[-1])
+    #TODO: Do not write img at preprocessed_data
 
+    folder = args.data_path.split('/')[-1]
     path_of_outputs = "preprocessed_data/" + folder + "/"
 
     if not os.path.exists(path_of_outputs):
@@ -64,12 +64,17 @@ def preprocess_images(args):
         #np.save(path_of_outputs + img_name + '.npy', eq)
 
 def hash_images(args):
+    #TODO: manage '/' component (Regex)
     folder = args.data_path.split('/')[-1]
-    path_of_outputs = "preprocessed_data/hashed/"
+    origin_path = "preprocessed_data/" + folder + "/"
+    path_of_outputs = "./hashed/"
 
-    for img_name in os.listdir(path_of_outputs):
+    print(folder)
+
+    for img_name in os.listdir(origin_path):
         hashname = namehashing(img_name)
-        os.rename(path_of_outputs + img_name, path_of_outputs + hashname)
+        os.rename(origin_path + img_name, path_of_outputs + hashname)
+        print(path_of_outputs + hashname)
 
 def extract_metadata(args, exifmeta):
     metadata = {}
@@ -109,7 +114,7 @@ def updateDB(metadata, db_file):
         print('Successfully update database!')
 
 
-def preprocess_img(args):
+def preprocess_img(args,options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
 
@@ -129,7 +134,7 @@ def preprocess_img(args):
 def main():
     options = loadyaml()
     args = parse_args(options)
-    preprocess_img(args)
+    preprocess_img(args, options)
 
 
 if __name__ == '__main__':

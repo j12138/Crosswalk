@@ -2,20 +2,6 @@ db_file: './Crosswalk_Database.json'
 preprocess_width: 300
 preprocess_height: 240
 exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',         'DateTimeOriginal', 'BrightnessValue'}
-filterlist: {
-             'Apple':lambda x:x['Make']=='Apple',
-             'Samsung':lambda x:x['Make']=='Samsung',
-             'shadow':lambda x:x['shadow']==1,
-             'obstacle':lambda x:x['obs_car']==1 and x['obs_human']==1,
-             'car':lambda x:x['obs_car']==1,
-             'human':lambda x:x['obs_human']==1,
-             'onecol':lambda x:x['column']==1,
-             'twocol':lambda x:x['column']==2,
-             'boundary':lambda x:abs(float(x['loc']))>0.8,
-             'old':lambda x:x['old']==1,
-             'not_out_of_range':lambda x:x['out_of_range']==0,
-             'no_obs_not_old':lambda x:x['obs_car']==0 and x['obs_human']==0 and x['old']==0
-            }
 manualmeta: { # [min, max, initial]
               'obs_car': [0, 1, 0],
               'obs_human': [0, 1, 0],

@@ -3,6 +3,7 @@ import numpy as np
 import os
 import yaml
 import cv2
+from scipy.misc import imread
 
 filterlist = {'Apple':lambda x:x['Make']=='Apple',
              'Samsung':lambda x:x['Make']=='Samsung',
@@ -33,12 +34,19 @@ class DBMS(object):
             self.db = json.load(read_file).values()
 		
     def query(self, custom_filter):
-        '''
-        for it in self.db:
-            print(it)
-            print(custom_filter(it))
-        '''
-        return [item for item in self.db if custom_filter(item)]
+        query_list = []
+        for item in self.db:
+            try:
+                if custom_filter(item):
+                    #print('Success: ' + item['filehash'])
+                    query_list.append(item)
+            except :
+                #print('Fail: ' + item['filehash'])
+                continue
+
+        #print(query_list)    
+        print('Selected data: ', len(query_list))
+        return query_list
 	
     def make_npy(self, entries: list):
         train_hash = []
@@ -48,19 +56,21 @@ class DBMS(object):
             hash = item['filehash']
 
             try:
-                img = cv2.imread('./hased/' + hash)
-                cv2.namedWindow('tool')
-                cv2.imshow('tool', img)
-            except :
-                print('Fail: ' + hash)
+                img = imread('./hashed/' + hash)
+                #print(img)
+                #cv2.namedWindow('tool')
+                #cv2.imshow('tool', img)
+            except:
+                #print('Fail: ' + hash)
                 continue
 
-            print('Success: ' + hash)
+            #print('Success: ' + hash)
             label = [item['loc'], item['ang']]
 
             train_hash.append(img)
             y_train.append(label)
 
+        print('Packed data: ', len(train_hash))
         #TODO: let name include filter info?
         np.save('./X.npy', train_hash)
         np.save('./Y.npy', y_train)
@@ -79,7 +89,7 @@ def make_npy_file(options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
     db = DBMS(options['db_file'])
-    entries = get_entries(db, filterlist, 'no_obs_not_old', 'onecol')
+    entries = get_entries(db, filterlist, 'no_obs_not_old', 'not_out_of_range')
     db.make_npy(entries)
 
 

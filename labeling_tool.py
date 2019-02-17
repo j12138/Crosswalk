@@ -37,7 +37,7 @@ class Annotator(object):
             self.img_to_display = data.img.copy()
             self.__launch_window()
             data.make_trackbar('tool')
-            
+
             while not self.is_input_finished:
                 cv2.imshow('tool', self.img_to_display)
                 self.__draw_line_and_compute_label(data)
@@ -129,8 +129,8 @@ class Annotator(object):
 def launch_annotator(data_path):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    folder = args.data_path.split('/')[-1]
-    annotator = Annotator("preprocessed_data/" + folder + "/")
+    folder = args.data_path.split('\\')[-1]
+    annotator = Annotator(folder + "/")
     print("preprocessed_data/" + folder + "/")
     annotator.launch()
 

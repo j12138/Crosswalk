@@ -55,7 +55,6 @@ class CrosswalkData:
             db = json.load(db_json)
         
         for name in self.meta:
-            
             db[self.hashname][name] = self.meta[name][2]
         
         for label in self.labels:
@@ -64,9 +63,8 @@ class CrosswalkData:
         with open(self.db, "w") as db_json:
             json.dump(db, db_json)
 
-
     def __parse_img_name(self):
         print(self.img_file)
-        img_name = (self.img_file).split('/')[-1]
+        img_name = (self.img_file).split('\\')[-1]
         print(img_name)
         return img_name

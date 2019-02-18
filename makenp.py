@@ -51,15 +51,15 @@ class DBMS(object):
     def make_npy(self, entries: list):
         train_hash = []
         y_train = []
+        cv2.namedWindow('tool')
 
         for item in entries:
             hash = item['filehash']
 
             try:
-                img = imread('./hashed/' + hash)
+                img = imread('./hashed/' + hash, mode='RGB')
                 #print(img)
-                #cv2.namedWindow('tool')
-                #cv2.imshow('tool', img)
+                cv2.imshow('tool', img)
             except:
                 #print('Fail: ' + hash)
                 continue

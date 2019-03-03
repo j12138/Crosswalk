@@ -5,8 +5,8 @@ val_imgs: './preprocessed_data/test/X.npy'
 val_labels: './preprocessed_data/test/Y.npy'
 num_gpus: 1
 network: 'SimpleModel'
-height: 240
-width: 300
+height: 120
+width: 150
 epochs: 60
 batch_size: 16
 learning_rate: 0.001

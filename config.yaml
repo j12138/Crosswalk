@@ -1,6 +1,6 @@
 db_file: './Crosswalk_Database.json'
-preprocess_width: 300
-preprocess_height: 240
+preprocess_width: 150
+preprocess_height: 120
 exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',         'DateTimeOriginal', 'BrightnessValue'}
 manualmeta: { # [min, max, initial]
               'obs_car': [0, 1, 0],

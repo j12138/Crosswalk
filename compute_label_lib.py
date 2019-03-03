@@ -22,14 +22,11 @@ def bottom_mid_point_and_width(H, l1, l2):
     mid_pt = (right_end[0] + left_end[0])/2.0, H
     bottom_width = right_end[0] - left_end[0]
 
-    print(left_end, right_end)
-
     return mid_pt, bottom_width
 
 def compute_loc(mid, W, bottom_width):
     # loc label 계산
     loc = W / 2.0 - mid[0]
-    print(loc)
     scaled_loc = (loc / bottom_width) * 2
 
     return scaled_loc

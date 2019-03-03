@@ -62,7 +62,7 @@ class Annotator(object):
                 self.is_input_finished = True
                 return
 
-            cv2.circle(self.img_to_display, (x,y), 3, (0, 0, 255), -1)
+            cv2.circle(self.img_to_display, (x,y), 2, (0, 0, 255), -1)
 
             self.all_points[self.current_point[0]] = (x, y)
             self.current_point[0] = self.current_point[0] + 1
@@ -92,7 +92,8 @@ class Annotator(object):
         self.is_input_finished = False
 
     def __launch_window(self):
-        cv2.namedWindow('tool')
+        cv2.namedWindow('tool', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('image', 600,600)
         cv2.setMouseCallback('tool', Annotator.mouse_callback, self)
         pass
 
@@ -107,7 +108,6 @@ class Annotator(object):
         left_line = cl.line(p1, p2)
         right_line = cl.line(p3, p4)
         mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line, right_line)
-        print(left_line, right_line, mid_pt, bottom_width)
 
         loc = cl.compute_loc(mid_pt, w, bottom_width)
         ang = cl.compute_ang(left_line, right_line, mid_pt, h)
@@ -116,9 +116,9 @@ class Annotator(object):
 
     def __write_labels_on_screen(self, loc, ang):
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,255), 3)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,255,255), 3)
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,0), 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,0,0), 1)
 
 
 #==================#

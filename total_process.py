@@ -30,6 +30,5 @@ def main():
     #makenp.make_npy_file(options) 
     # 알바에게 필오없다
 
-
 if __name__ == '__main__':
     main()

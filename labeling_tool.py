@@ -8,6 +8,7 @@ import cv2
 import math
 import csv
 import crosswalk_data as cd
+import compute_label_lib as cl
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -96,22 +97,20 @@ class Annotator(object):
         pass
 
     def __compute_label(self, data):
+
         h, w = data.img.shape[:2]
-        x1, y1 = self.all_points[0]
-        x2, y2 = self.all_points[1]
-        x3, y3 = self.all_points[2]
-        x4, y4 = self.all_points[3]
+        p1 = self.all_points[0]
+        p2 = self.all_points[1]
+        p3 = self.all_points[2]
+        p4 = self.all_points[3]
 
-        x_1 = float(h - y1) * (x1 - x2) / (y1 - y2) + x2
-        x_2 = float(h - y3) * (x3 - x4) / (y3 - y4) + x3
-        loc = (w - (x_1 + x_2)) / (x_2 - 1)
-        
-        x_1 = float(-y1) * (x1 - x2) / (y1 - y2) + x1
-        x_2 = float(-y3) * (x3 - x4) / (y3 - y4) + x3
-        neg = (-1)**(w < (x_2 +  x_1))
+        left_line = cl.line(p1, p2)
+        right_line = cl.line(p3, p4)
+        mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line, right_line)
+        print(left_line, right_line, mid_pt, bottom_width)
 
-        ang = math.atan(0.5 * (w - x_2 + x_1) / h)
-        ang = math.degrees(ang) * neg
+        loc = cl.compute_loc(mid_pt, w, bottom_width)
+        ang = cl.compute_ang(left_line, right_line, mid_pt, h)
 
         return format(loc, '.3f'), format(ang, '.3f')
 
@@ -131,7 +130,6 @@ def launch_annotator(data_path):
     call this as the entry point. """
     folder = args.data_path.split('\\')[-1]
     annotator = Annotator(folder + "/")
-    print("preprocessed_data/" + folder + "/")
     annotator.launch()
 
 def main(args):

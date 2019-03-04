@@ -41,16 +41,22 @@ class Annotator(object):
 
             while not self.is_input_finished:
                 cv2.imshow('tool', self.img_to_display)
+                cv2.resizeWindow('tool', 270,360)
                 self.__draw_line_and_compute_label(data)
-                
-                if cv2.waitKey(2) == 32:
-                    break # press 'spacebar' -> turn to next image
 
-            data.input_manual_meta('tool')
+                '''
+                if cv2.waitKey(1) == 32:
+                    break # press 'spacebar' -> turn to next image
+                '''
+                
+                if cv2.waitKey(1) == 120: # press 'x'
+                    data.set_invalid()
+                    data.write_on_db()
+                    break
             
             if self.is_input_finished:
+                data.input_manual_meta('tool')
                 data.write_on_db()
-                #data.write_on_csv()
                 
     @staticmethod
     def mouse_callback(event, x, y, flags, annotator):
@@ -92,13 +98,11 @@ class Annotator(object):
         self.is_input_finished = False
 
     def __launch_window(self):
-        cv2.namedWindow('tool', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('image', 600,600)
+        cv2.namedWindow('tool', cv2.WINDOW_KEEPRATIO)
         cv2.setMouseCallback('tool', Annotator.mouse_callback, self)
         pass
 
     def __compute_label(self, data):
-
         h, w = data.img.shape[:2]
         p1 = self.all_points[0]
         p2 = self.all_points[1]

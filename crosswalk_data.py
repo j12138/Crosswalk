@@ -36,6 +36,7 @@ class CrosswalkData:
     def make_trackbar(self, winname):
         for name in self.meta:
             cv2.createTrackbar(name, winname, self.meta[name][0], self.meta[name][1], lambda x: x)
+        cv2.setTrackbarPos('zebra_ratio', winname, 60)
 
     def input_manual_meta(self, winname):
         for name in self.meta:
@@ -62,6 +63,12 @@ class CrosswalkData:
 
         with open(self.db, "w") as db_json:
             json.dump(db, db_json)
+
+    def set_invalid(self):
+        for name in self.meta:
+            self.meta[name][2] = -1
+
+        self.meta['invalid'][2] = 1
 
     def __parse_img_name(self):
         print(self.img_file)

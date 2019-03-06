@@ -9,11 +9,9 @@ import cv2
 import yaml
 
 def parse_args(options):
-    # python preprocess.py data --w 300 --h 240
     parser = argparse.ArgumentParser()
-    #parser.add_argument('data_path', help = 'Path of folder containing images', type = str)
     parser.add_argument('-m', '--model_path', help="path to model", 
-                    default='./trainings/Crosswalk_guide/SimpleModel.h5')
+                    default='./trainings/'+options['experiment_name']+'/SimpleModel.h5')
     parser.add_argument('-d', '--db_file', dest = 'db_file', default = options['db_file'], type = str)
 
     return parser.parse_args()

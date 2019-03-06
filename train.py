@@ -18,7 +18,7 @@ from Models.loss import smoothL1
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-yaml',default='train.yaml',
+    parser.add_argument('-yaml',default='config.yaml',
                     help='Name of yaml config file for experiments') 
     args = parser.parse_args()
     return args

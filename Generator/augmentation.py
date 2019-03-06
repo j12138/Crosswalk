@@ -101,17 +101,22 @@ class BatchGenerator:
         return self
 
     def __next__(self):
-        indecies=np.random.randint(0,self.X.shape[0],self.batch_size)
+        indecies = np.random.randint(0,self.X.shape[0],self.batch_size)
         
         if self.noaugs:
-            images=self.X[indecies]/255.0
-            target=self.y[indecies]
-            target[1] = target[1]/90.0
+            images = self.X[indecies]/255.0
+            target = self.y[indecies]
 
-            return images,target
-        imgs=augment(self.X[indecies],self.num_aug,self.affine)/255.0
+            for i in range(self.batch_size):
+                target[i][1] /= 90.0
+            
+           # print(target[1])
+
+            return images, target
+
+        imgs = augment(self.X[indecies],self.num_aug,self.affine)/255.0
         
-        target=self.y[indecies]
-        return imgs,target
+        target = self.y[indecies]
+        return imgs, target
     
     

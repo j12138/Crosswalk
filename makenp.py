@@ -38,10 +38,10 @@ class DBMS(object):
         for item in self.db:
             try:
                 if custom_filter(item):
-                    #print('Success: ' + item['filehash'])
+                    print('Success: ' + item['filehash'])
                     query_list.append(item)
             except :
-                #print('Fail: ' + item['filehash'])
+                print('Fail: ' + item['filehash'])
                 continue
 
         #print(query_list)    
@@ -57,7 +57,7 @@ class DBMS(object):
             hash = item['filehash']
 
             try:
-                img = imread('./hashed/' + hash, mode='RGB')
+                img = imread('./labeling_done/' + hash, mode='RGB')
                 #print(img)
                 cv2.imshow('tool', img)
             except:
@@ -65,7 +65,7 @@ class DBMS(object):
                 continue
 
             #print('Success: ' + hash)
-            label = [item['loc'], item['ang']]
+            label = [float(item['loc']), float(item['ang'])]
 
             train_hash.append(img)
             y_train.append(label)

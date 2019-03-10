@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 import yaml
+import os
 
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
@@ -52,6 +53,9 @@ class CrosswalkData:
             mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
+        save_path = './hashed/'
+        os.rename(self.img_file, save_path + self.hashname)
+
         with open(self.db, 'r+') as db_json:
             db = json.load(db_json)
         

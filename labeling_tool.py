@@ -41,7 +41,6 @@ class Annotator(object):
 
             while not self.is_input_finished:
                 cv2.imshow('tool', self.img_to_display)
-                cv2.resizeWindow('tool', 270,360)
                 self.__draw_line_and_compute_label(data)
 
                 '''
@@ -98,7 +97,8 @@ class Annotator(object):
         self.is_input_finished = False
 
     def __launch_window(self):
-        cv2.namedWindow('tool', cv2.WINDOW_KEEPRATIO)
+        cv2.namedWindow('tool', cv2.WINDOW_FREERATIO)
+        #cv2.resizeWindow('tool', 700,720)
         cv2.setMouseCallback('tool', Annotator.mouse_callback, self)
         pass
 

@@ -32,14 +32,14 @@ def namehashing(name):
     hashname = str(hashed)
     return hashname
 
-def preprocess_images(args):
+def preprocess_images(args, save_path):
     #TODO: Do not write img at preprocessed_data
 
-    folder = args.data_path.split('/')[-1]
-    path_of_outputs = "preprocessed_data/" + folder + "/"
+    #folder = args.data_path.split('/')[-1]
+    #path_of_outputs = "preprocessed_data/" + args.data_path + "/"
 
-    if not os.path.exists(path_of_outputs):
-        os.mkdir(path_of_outputs)
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
 
     out_width, out_height = args.width, args.height
 
@@ -60,21 +60,20 @@ def preprocess_images(args):
             eq = cv2.equalizeHist(gray_img)
 
         # save
-        cv2.imwrite(path_of_outputs + img_name + '.png', eq)
+        print(save_path + img_name + '.png')
+        cv2.imwrite(save_path + img_name + '.png', eq)
         #np.save(path_of_outputs + img_name + '.npy', eq)
 
-def hash_images(args):
+def hash_images(save_path):
     #TODO: manage '/' component (Regex)
-    folder = args.data_path.split('/')[-1]
-    origin_path = "preprocessed_data/" + folder + "/"
-    path_of_outputs = "./hashed/"
+    #folder = args.data_path.split('/')[-1]
+    #origin_path = "preprocessed_data/" + args.data_path + "/"
+    #path_of_outputs = "./hashed/"
 
-    print(folder)
-
-    for img_name in os.listdir(origin_path):
+    for img_name in os.listdir(save_path):
         hashname = namehashing(img_name)
-        os.rename(origin_path + img_name, path_of_outputs + hashname)
-        print(path_of_outputs + hashname)
+        os.rename(save_path + img_name, save_path + hashname)
+        print(save_path + hashname)
 
 def extract_metadata(args, exifmeta):
     metadata = {}
@@ -114,18 +113,33 @@ def updateDB(metadata, db_file):
         print('Successfully update database!')
 
 
+def get_save_path(args):
+    #return path for preprocessed(and hashed) image
+
+    origin_path = args.data_path
+    removed_root = origin_path.strip('.')
+    #print(removed_root)
+    replaced_slash = removed_root.replace('/', '_')
+    #print(replaced_slash)
+    full = './preprocessed_data/' + replaced_slash + '/'
+
+    return full
+
+
 def preprocess_img(args,options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
+    save_path = get_save_path(args)
+    print(save_path)
 
     # Extract metadata of JPG images
     metadata = extract_metadata(args, options['exifmeta'])
 
     # Preprocess images saving PNG
-    preprocess_images(args)
+    preprocess_images(args, save_path)
 
     # Hashing the preprocessed images
-    hash_images(args)
+    hash_images(save_path)
 
     # Upload metadata database in JSON form
     updateDB(metadata, args.db_file)

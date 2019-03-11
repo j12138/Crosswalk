@@ -120,6 +120,7 @@ def get_save_path(args):
     removed_root = origin_path.strip('.')
     #print(removed_root)
     replaced_slash = removed_root.replace('/', '_')
+    replaced_slash = removed_root.replace('\\', '_')
     #print(replaced_slash)
     full = './preprocessed_data/' + replaced_slash + '/'
 

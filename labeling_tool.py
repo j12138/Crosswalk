@@ -86,7 +86,7 @@ class Annotator(object):
 
             loc, ang = self.__compute_label(data)
             data.input_labels(loc, ang)
-            self.__write_labels_on_screen(loc, ang)
+            self.__write_labels_on_screen(str(loc), str(ang))
 
     def __initialize_screen(self):
         self.current_point[0] = 0 
@@ -116,7 +116,7 @@ class Annotator(object):
         loc = cl.compute_loc(mid_pt, w, bottom_width)
         ang = cl.compute_ang(left_line, right_line, mid_pt, h)
 
-        return format(loc, '.3f'), format(ang, '.3f')
+        return round(loc, 3), round(ang, 3)
 
     def __write_labels_on_screen(self, loc, ang):
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
@@ -133,7 +133,7 @@ def launch_annotator(data_path):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
     folder = args.data_path.split('\\')[-1]
-    annotator = Annotator(folder + "/")
+    annotator = Annotator(data_path)
     annotator.launch()
 
 def main(args):

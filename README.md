@@ -1,8 +1,6 @@
 # Crosswalk
 Crosswalk guide application
 
-preprocess.py data --w 300 --h 240
-(saved to 'preprocessed_data/')
+>> python preprocess.py ./(data_folder)
+-- will be saved at ./preprocessed_data/_(data_folder)_
 
-labeling_tool.py
-(data written at 'annotation.txt', annotated image in 'annotated_data/')

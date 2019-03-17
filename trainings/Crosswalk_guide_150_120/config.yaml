@@ -22,7 +22,7 @@ network: 'SimpleModel'
 width: 150
 height: 120
 epochs: 30
-batch_size: 16
+batch_size: 8
 learning_rate: 0.001
 sgd_momentum: .9
 step_decay: False

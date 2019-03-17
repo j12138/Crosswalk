@@ -16,7 +16,7 @@ filterlist = {'Apple':lambda x:x['Make']=='Apple',
              'boundary':lambda x:abs(float(x['loc']))>0.8,
              'old':lambda x:x['old']==1,
              'not_out_of_range':lambda x:x['out_of_range']==0,
-             'no_obs_not_old':lambda x:x['obs_car']==0 and x['obs_human']==0 and x['old']==0
+             'no_obs_not_old_over_60':lambda x:(x['obs_car']==0 and x['obs_human']==0 and x['old']==0 and x['zebra_ratio'] >= 60)
             }
 
 def loadyaml():
@@ -89,7 +89,7 @@ def make_npy_file(options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
     db = DBMS(options['db_file'])
-    entries = get_entries(db, filterlist, 'no_obs_not_old', 'not_out_of_range')
+    entries = get_entries(db, filterlist, 'no_obs_not_old_over_60', 'onecol')
     db.make_npy(entries)
 
 

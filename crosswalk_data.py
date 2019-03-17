@@ -53,7 +53,7 @@ class CrosswalkData:
             mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
-        save_path = './hashed/'
+        save_path = './labeling_done/'
         os.rename(self.img_file, save_path + self.hashname)
 
         with open(self.db, 'r+') as db_json:

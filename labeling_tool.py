@@ -37,10 +37,10 @@ class Annotator(object):
             self.__initialize_screen()
             self.img_to_display = data.img.copy()
             self.__launch_window()
-            data.make_trackbar('tool')
+            data.make_trackbar('trackbar')
 
             while not self.is_input_finished:
-                cv2.imshow('tool', self.img_to_display)
+                cv2.imshow('image', self.img_to_display)
                 self.__draw_line_and_compute_label(data)
 
                 '''
@@ -54,7 +54,7 @@ class Annotator(object):
                     break
             
             if self.is_input_finished:
-                data.input_manual_meta('tool')
+                data.input_manual_meta('trackbar')
                 data.write_on_db()
                 
     @staticmethod
@@ -97,9 +97,16 @@ class Annotator(object):
         self.is_input_finished = False
 
     def __launch_window(self):
-        cv2.namedWindow('tool', cv2.WINDOW_FREERATIO)
-        #cv2.resizeWindow('tool', 700,720)
-        cv2.setMouseCallback('tool', Annotator.mouse_callback, self)
+        cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('trackbar', cv2.WINDOW_NORMAL)
+        
+        cv2.resizeWindow('trackbar', 300,260)
+        cv2.resizeWindow('image', 300,240)
+
+        cv2.moveWindow('image', 100, 100)
+        cv2.moveWindow('trackbar', 420, 100)
+
+        cv2.setMouseCallback('image', Annotator.mouse_callback, self)
         pass
 
     def __compute_label(self, data):
@@ -135,6 +142,7 @@ def launch_annotator(data_path):
     folder = args.data_path.split('\\')[-1]
     annotator = Annotator(data_path)
     annotator.launch()
+    cv2.destroyAllWindows()
 
 def main(args):
     launch_annotator(args.data_path)

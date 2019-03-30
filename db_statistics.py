@@ -72,19 +72,41 @@ def show_manualmeta_stat(db):
     print('obs_human: ', obs_human)
     print('shadow: ', shadow)
     print('column: [1]', one_column, ' [2]', two_column)
+    print('old: ', old)
     print('zebra_ratio: (~20)', under_20, ' (~40)', under_40, ' (~60)', under_60)
     print('             (~80)', under_80, ' (80~)', over_80)
-    print('old: ', old)
+    
+    pass
+
+def show_exifmeta_stat(db):
+    Samsung = 0
+    Apple = 0
+
+    for item in db:
+        try:
+            if item['Make'] == 'samsung':
+                Samsung = Samsung + 1
+            if item['Make'] == 'Apple':
+                Apple = Apple + 1
+
+        except :
+            print('Fail: ' + item['filehash'])
+            continue
+
+    print('Make: [Samsung] ', Samsung, '  [Apple] ', Apple)
+    print('')
+
     pass
 
 def main():
     options = loadyaml()
     db = load_DB(options)
-    print('--------- total ---------')
+    print('\n--------- total ---------\n')
     show_total_stat(db)
-    print('--------- manual matadata ---------')
+    print('\n--------- manual metadata ---------\n')
     show_manualmeta_stat(db)
-    print('--------- exif meta ---------')
+    print('\n--------- exif metadata ---------\n')
+    show_exifmeta_stat(db)
     
 
 if __name__ == '__main__':

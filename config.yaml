@@ -1,7 +1,7 @@
 db_file: './Crosswalk_Database.json'
 preprocess_width: 150
 preprocess_height: 120
-exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',         'DateTimeOriginal', 'BrightnessValue'}
+exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}
 manualmeta: { # [min, max, initial]
               'obs_car': [0, 1, 0],
               'obs_human': [0, 1, 0],
@@ -31,5 +31,5 @@ epochs_until_drop: 10
 optimizer: 'SGD'
 batch_momentum: .9 
 weight_decay: 0.0001
-augmentation: True
-affine_augs: True
+augmentation: False
+affine_augs: False

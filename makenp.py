@@ -4,6 +4,7 @@ import os
 import yaml
 import cv2
 from scipy.misc import imread
+# coding=utf-8
 
 filterlist = {'Apple':lambda x:x['Make']=='Apple',
              'Samsung':lambda x:x['Make']=='Samsung',
@@ -38,6 +39,8 @@ class DBMS(object):
         for item in self.db:
             try:
                 if custom_filter(item):
+                    print(custom_filter(item))
+                    print(item['obs_car'])
                     print('Success: ' + item['filehash'])
                     query_list.append(item)
             except :

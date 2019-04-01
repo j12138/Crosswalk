@@ -24,6 +24,38 @@ def loadyaml():
     with open('./config.yaml', 'r') as stream: 
         options = yaml.load(stream)
     return options
+    
+def merge_list(list):
+    merged = []
+    for elem in list:
+        merged = merged + elem
+    return merged
+
+def show_and_pick_filters(filterlist):
+    picked = []
+    cnt = 0
+    print('\n------- filter lists -------')
+    
+    for fil in filterlist:
+        cnt = cnt + 1
+        print('['+ str(cnt) +'] ', fil)
+
+    print('----------------------------')
+    print('select filters (ex: 1 2 3 4 5)')
+    picked_num = input('└─ here: ')
+    picked_num_list = picked_num.split(' ')
+
+    filter_keys = list(filterlist.keys())
+    #print(filter_keys)
+    
+    print('\n------- selected filters -------')
+    for num in picked_num_list:
+        key = filter_keys[int(num) - 1]
+        print('['+ num +']',key)
+        picked.append(filterlist[key])
+    print('--------------------------------\n')
+
+    return picked
 
 class DBMS(object):
     def __init__(self, json_file):
@@ -34,14 +66,17 @@ class DBMS(object):
             #list of metadata dictionaries
             self.db = json.load(read_file).values()
 		
-    def query(self, custom_filter):
+    def query(self, picked_filters):
         query_list = []
         for item in self.db:
+            #print(item['obs_car'], item['column'])
+            suc = True
             try:
-                if custom_filter(item):
-                    print(custom_filter(item))
-                    print(item['obs_car'])
-                    print('Success: ' + item['filehash'])
+                for filt in picked_filters:
+                    suc = suc and filt(item)
+                        
+                if suc:
+                    #print('Success: ' + item['filehash'])
                     query_list.append(item)
             except :
                 print('Fail: ' + item['filehash'])
@@ -78,27 +113,22 @@ class DBMS(object):
         np.save('./X.npy', train_hash)
         np.save('./Y.npy', y_train)
 
-def get_entries(db, filterlist, fil1, fil2):
-    entries = db.query(filterlist[fil1]and filterlist[fil2])
+def get_entries(db, picked_filters):
+    entries = db.query(picked_filters)
     return entries
 
-def merge_list(list):
-    merged = []
-    for elem in list:
-        merged = merged + elem
-    return merged
-
-def make_npy_file(options):
+def make_npy_file(options, picked_filters):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
     db = DBMS(options['db_file'])
-    entries = get_entries(db, filterlist, 'no_obs_not_old_over_60', 'onecol')
+    entries = get_entries(db, picked_filters)
     db.make_npy(entries)
 
 
 def main():
     options = loadyaml()
-    make_npy_file(options)
+    picked_filters = show_and_pick_filters(filterlist)
+    make_npy_file(options, picked_filters)
 
 if __name__ == "__main__":
     main()

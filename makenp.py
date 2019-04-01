@@ -4,6 +4,7 @@ import os
 import yaml
 import cv2
 from scipy.misc import imread
+import datetime
 # coding=utf-8
 
 filterlist = {'Apple':lambda x:x['Make']=='Apple',
@@ -52,46 +53,46 @@ def show_and_pick_filters(filterlist):
     for num in picked_num_list:
         key = filter_keys[int(num) - 1]
         print('['+ num +']',key)
-        picked.append(filterlist[key])
+        picked.append(key)
     print('--------------------------------\n')
 
     return picked
 
 class DBMS(object):
-    def __init__(self, json_file):
+    def __init__(self, json_file, picked_filters):
         self.__load(json_file)
+        self.filters = picked_filters #keys
+        self.query_list = []
 		
     def __load(self, json_file):
         with open(json_file, "r") as read_file:
             #list of metadata dictionaries
             self.db = json.load(read_file).values()
 		
-    def query(self, picked_filters):
-        query_list = []
+    def query(self):
         for item in self.db:
             #print(item['obs_car'], item['column'])
             suc = True
             try:
-                for filt in picked_filters:
-                    suc = suc and filt(item)
+                for filt in self.filters:
+                    suc = suc and filterlist[filt](item)
                         
                 if suc:
                     #print('Success: ' + item['filehash'])
-                    query_list.append(item)
+                    self.query_list.append(item)
             except :
                 print('Fail: ' + item['filehash'])
                 continue
 
         #print(query_list)    
-        print('Selected data: ', len(query_list))
-        return query_list
+        print('Selected data: ', len(self.query_list))
 	
-    def make_npy(self, entries: list):
+    def make_npy(self):
         train_hash = []
         y_train = []
         cv2.namedWindow('tool')
 
-        for item in entries:
+        for item in self.query_list:
             hash = item['filehash']
 
             try:
@@ -108,26 +109,34 @@ class DBMS(object):
             train_hash.append(img)
             y_train.append(label)
 
-        print('Packed data: ', len(train_hash))
-        #TODO: let name include filter info?
-        np.save('./X.npy', train_hash)
-        np.save('./Y.npy', y_train)
+        cnt = len(train_hash)
+        print('Packed data: ', cnt)
+        
+        nowDatetime = self.__write_log(cnt)
+        np.save('./npy/'+ nowDatetime +'_X.npy', train_hash)
+        np.save('./npy/'+ nowDatetime +'_Y.npy', y_train)
 
-def get_entries(db, picked_filters):
-    entries = db.query(picked_filters)
-    return entries
+
+    def __write_log(self, num):
+        now = datetime.datetime.now()
+        nowDatetime = now.strftime('%Y-%m-%d__%H-%M-%S')
+
+        with open('./makenp_log.txt', "a") as f:
+            f.write(nowDatetime + '\t' + str(num) + '\t' + str(self.filters) + '\n')
+
+        return nowDatetime
 
 def make_npy_file(options, picked_filters):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    db = DBMS(options['db_file'])
-    entries = get_entries(db, picked_filters)
-    db.make_npy(entries)
+    db = DBMS(options['db_file'], picked_filters)
+    db.query()
+    db.make_npy()
 
 
 def main():
     options = loadyaml()
-    picked_filters = show_and_pick_filters(filterlist)
+    picked_filters = show_and_pick_filters(filterlist) #key
     make_npy_file(options, picked_filters)
 
 if __name__ == "__main__":

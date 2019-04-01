@@ -1,5 +1,6 @@
 import json
 import yaml
+from math import ceil
 
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
@@ -10,6 +11,15 @@ def load_DB(options):
     with open(options['db_file'], "r") as db_file:
         db = json.load(db_file).values()
     return db
+
+def show_proportion_bar(target, total):
+    # 100% / 25 blocks -> 1% / 0.25 block
+    proportion = 100 * float(target) / total
+    blocks = ceil(proportion * 0.25)
+    
+    bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) + ' / ' + str(total) + ' ]'
+    
+    return bar
 
 def show_total_stat(db):
     cnt = 0
@@ -22,11 +32,11 @@ def show_total_stat(db):
 
     print('total_#: ', cnt)
     print('invalid: ', invalid)
-    print('*valid: ', cnt - invalid)
+    print('*valid: ' + show_proportion_bar(cnt-invalid, cnt))
 
-    pass
+    return cnt
 
-def show_manualmeta_stat(db):
+def show_manualmeta_stat(db, total):
     obs_car = 0
     obs_human = 0
     shadow = 0
@@ -68,17 +78,25 @@ def show_manualmeta_stat(db):
             print('Fail: ' + item['filehash'])
             continue
 
-    print('obs_car: ', obs_car)
-    print('obs_human: ', obs_human)
-    print('shadow: ', shadow)
-    print('column: [1]', one_column, ' [2]', two_column)
-    print('old: ', old)
-    print('zebra_ratio: (~20)', under_20, ' (~40)', under_40, ' (~60)', under_60)
-    print('             (~80)', under_80, ' (80~)', over_80)
+    print('obs_car:  ', show_proportion_bar(obs_car, total))
+    print('obs_human:', show_proportion_bar(obs_human, total))
+    print('shadow:   ', show_proportion_bar(shadow, total))
+    print('old:      ', show_proportion_bar(old, total), '\n')
+
+    print('column:')
+    print('  └─ [1]  ', show_proportion_bar(one_column, total))
+    print('  └─ [2]  ', show_proportion_bar(two_column, total), '\n')
+
+    print('zebra_ratio:')
+    print(' └─ [~20] ', show_proportion_bar(under_20, total))
+    print(' └─ [~40] ', show_proportion_bar(under_40, total))
+    print(' └─ [~60] ', show_proportion_bar(under_60, total))
+    print(' └─ [~80] ', show_proportion_bar(under_80, total))
+    print(' └─ [80~] ', show_proportion_bar(over_80, total))
     
     pass
 
-def show_exifmeta_stat(db):
+def show_exifmeta_stat(db, total):
     Samsung = 0
     Apple = 0
 
@@ -93,8 +111,12 @@ def show_exifmeta_stat(db):
             print('Fail: ' + item['filehash'])
             continue
 
-    print('Make: [Samsung] ', Samsung, '  [Apple] ', Apple)
-    print('')
+    print('Make')
+    print('└─Samsung:', show_proportion_bar(Samsung, total))
+    print('└─Apple:  ', show_proportion_bar(Apple, total))
+
+    print('\n')
+
 
     pass
 
@@ -102,11 +124,11 @@ def main():
     options = loadyaml()
     db = load_DB(options)
     print('\n--------- total ---------\n')
-    show_total_stat(db)
+    total = show_total_stat(db)
     print('\n--------- manual metadata ---------\n')
-    show_manualmeta_stat(db)
+    show_manualmeta_stat(db, total)
     print('\n--------- exif metadata ---------\n')
-    show_exifmeta_stat(db)
+    show_exifmeta_stat(db, total)
     
 
 if __name__ == '__main__':

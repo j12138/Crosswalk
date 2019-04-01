@@ -1,4 +1,5 @@
 db_file: './Crosswalk_Database.json'
+npy_log_file: './makenp_log.txt'
 preprocess_width: 150
 preprocess_height: 120
 exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo', 'DateTimeOriginal', 'BrightnessValue'}

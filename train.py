@@ -29,12 +29,39 @@ def loadyaml(filename):
         options = yaml.load(stream)
     return options
 
+def select_npy_data(npy_log_file):
+    with open(npy_log_file, "r") as f:
+        lines = f.readlines()
+        cnt = 0
+
+        print('\n---------- npy list ----------')
+        for line in lines:
+            cnt = cnt + 1
+            print('['+str(cnt)+']', line.strip())
+            pass
+
+        print('------------------------------')
+        
+        picked_num = input('select npy: ')
+        picked_npy_file = (lines[int(picked_num) - 1].split('\t'))[0]
+        print(picked_npy_file)
+
+        x_npy = './npy/' + picked_npy_file + '_X.npy'
+        y_npy = './npy/' + picked_npy_file + '_Y.npy'
+
+    return x_npy, y_npy
+
 args = parse_args()
 options = loadyaml(args.yaml)    
+
 print('Training Configuration')
 print(yaml.dump(options,default_flow_style=False, default_style=''))
-x_train = np.load(options['train_imgs'])
-y_train = np.load(options['train_labels'])
+
+npy_log_file = options['npy_log_file']
+x_npy, y_npy = select_npy_data(npy_log_file)
+
+x_train = np.load(x_npy)
+y_train = np.load(y_npy)
 x_val = np.load(options['val_imgs'])
 y_val = np.load(options['val_labels'])
 experiment_name = options['experiment_name']

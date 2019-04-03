@@ -7,7 +7,7 @@ Crosswalk guide application
 
 `>> python labeling_tool.py ./preprocessed_data/_(data_folder)_`
 -- labeling manual metadata
--- transfer preprocessed img at `./labeling_don`e` as hashed name(no extension)
+-- transfer preprocessed img at `./labeling_done` as hashed name(no extension)
 -- store metadata at DB (`Crosswalk_Database.json`)
 
 `>> python makenp.py`

@@ -1,6 +1,7 @@
 import json
 import yaml
 from math import ceil
+import matplotlib.pyplot as plt
 
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
@@ -20,6 +21,27 @@ def show_proportion_bar(target, total):
     bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) + ' / ' + str(total) + ' ]'
     
     return bar
+
+def show_label_scatter_plot(db):
+    loc = []
+    ang = []
+    cnt = 0
+
+    for item in db:
+        if item['invalid'] == 0:
+            loc.append(item['loc'])
+            ang.append(item['ang'])
+    
+    plt.scatter(loc, ang)
+    plt.xlim((-2.0, 2.0))
+    plt.ylim((-90, 90))
+    plt.xlabel('loc')
+    plt.ylabel('ang')
+    plt.title('Scatterplot of labels')
+    plt.show()
+
+    pass
+
 
 def show_total_stat(db):
     cnt = 0
@@ -93,7 +115,7 @@ def show_manualmeta_stat(db, total):
     print(' └─ [~60] ', show_proportion_bar(under_60, total))
     print(' └─ [~80] ', show_proportion_bar(under_80, total))
     print(' └─ [80~] ', show_proportion_bar(over_80, total))
-    
+
     pass
 
 def show_exifmeta_stat(db, total):
@@ -114,9 +136,7 @@ def show_exifmeta_stat(db, total):
     print('Make')
     print('└─Samsung:', show_proportion_bar(Samsung, total))
     print('└─Apple:  ', show_proportion_bar(Apple, total))
-
     print('\n')
-
 
     pass
 
@@ -129,6 +149,7 @@ def main():
     show_manualmeta_stat(db, total)
     print('\n--------- exif metadata ---------\n')
     show_exifmeta_stat(db, total)
+    show_label_scatter_plot(db)
     
 
 if __name__ == '__main__':

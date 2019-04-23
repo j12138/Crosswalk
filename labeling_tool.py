@@ -9,10 +9,12 @@ import math
 import csv
 import crosswalk_data as cd
 import compute_label_lib as cl
-from PyQt5.QtWidgets import QSlider, QDialog, QApplication, QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory
-from PyQt5.QtGui import QImage, QPaintEvent, QKeyEvent, QMouseEvent, QPainter, QPixmap, QFont, QPainter, QCursor
+from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory
+from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, QPainter, QCursor, QPalette, QColor
 from PyQt5.QtCore import Qt
 import sys
+
+fixed_w = 400
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -47,18 +49,19 @@ class LabelingTool(QWidget):
             'rb_2col': QRadioButton('2 Columns'),
             'slider_ratio': QSlider(Qt.Horizontal)
         }
-
         self.initUI()
 
     def initUI(self):
         but_done = QPushButton('Done')
         but_done.clicked.connect(self.__get_manual_meta)
-        but = QPushButton('하기싫다')
+        but_invalid = QPushButton('Invalid')
+        but_invalid.setStyleSheet("background-color: red")
+        but_invalid.clicked.connect(self.__set_invalid)
 
         # Image show
         pixmap = QPixmap('qimage.png')
-        pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
         self.imgsize = pixmap.size()
+        pixmap = pixmap.scaled(fixed_w, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
 
         # make metadata widgets
@@ -66,7 +69,6 @@ class LabelingTool(QWidget):
 
         label_ratio = QLabel('zebra_ratio')
 
-        
         self.widgets['slider_ratio'].setRange(0, 50)
         self.widgets['slider_ratio'].setSingleStep(20)
         self.widgets['slider_ratio'].setTickInterval(10)
@@ -112,7 +114,12 @@ class LabelingTool(QWidget):
         vbox_meta.addStretch(2)
         vbox_meta.addWidget(self.widgets['cb_outrange'])
         vbox_meta.addStretch(5)
-        vbox_meta.addWidget(but_done)
+
+        hbox_button = QHBoxLayout()
+        hbox_button.addWidget(but_invalid)
+        hbox_button.addWidget(but_done)
+
+        vbox_meta.addLayout(hbox_button)
         gbox_meta.setLayout(vbox_meta)
     
         grid.addWidget(self.gbox_image, 0, 0)
@@ -129,16 +136,26 @@ class LabelingTool(QWidget):
         #print(self.gbox_image.size().width())
 
     def launch(self):
-        img_files = glob.glob(self.img_dir + '/*')
-        img_file = img_files[self.img_idx]
+        self.__initialize_screen()
+        if self.img_idx >= len(self.img_files):
+            done_msg = QMessageBox.question(self, 'Message', 'Labeling all done!\nDo you want to quit the tool?',
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            
+            if done_msg == QMessageBox.Yes:
+                self.close()
+                return
+            else:
+                self.img_idx = self.img_idx - 1
+                return
+
+        img_file = self.img_files[self.img_idx]
 
         self.data = cd.CrosswalkData(img_file)
         self.img_to_display = self.data.img.copy()
         img = self.img_to_display
 
         self.update_img(img)
-        
-        
+
     def center(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
@@ -149,6 +166,13 @@ class LabelingTool(QWidget):
         if event.button() == Qt.LeftButton:
             img_pos = self.abs2img_pos(event.pos(), self.gbox_image, self.imgsize)
             print(img_pos)
+
+            if (img_pos[0] < 0) or (img_pos[0] >= self.imgsize.width()):
+                #print('w')
+                return
+            if (img_pos[1] < 0) or (img_pos[1] >= self.imgsize.height()):
+                #print('w')
+                return
 
             if self.is_line_drawn[1]:
                 self.is_input_finished = True
@@ -174,12 +198,17 @@ class LabelingTool(QWidget):
             cv2.line(self.img_to_display, self.all_points[2],
                     self.all_points[3], (0, 0, 255), 2)
             self.is_line_drawn[1] = True
+            self.is_input_finished = True
 
             loc, ang = self.__compute_label()
             self.data.input_labels(loc, ang)
             self.__write_labels_on_screen(str(loc), str(ang))
 
     def __get_manual_meta(self):
+        if not self.is_input_finished:
+            print('Do labeling')
+            return
+
         self.data.meta['obs_car'][2] = int(self.widgets['cb_obscar'].isChecked())
         self.data.meta['obs_human'][2] = int(self.widgets['cb_obshuman'].isChecked())
         self.data.meta['shadow'][2] = int(self.widgets['cb_shadow'].isChecked())
@@ -190,10 +219,20 @@ class LabelingTool(QWidget):
             self.data.meta['column'][2] = 2
         
         self.data.meta['zebra_ratio'][2] = int(self.widgets['slider_ratio'].value() * 2)
-        self.data.display_manual_meta()
-        #print(self.widgets['slider_ratio'].value())
 
-        pass
+        self.data.write_on_db()
+        self.img_idx = self.img_idx + 1
+        self.launch()
+
+    def __set_invalid(self):
+        self.data.set_invalid()
+        self.data.display_labels()
+        self.data.display_manual_meta()
+
+        self.data.write_on_db()
+        self.img_idx = self.img_idx + 1
+        self.launch()
+        
 
     def __compute_label(self):
         h, w = self.img_to_display.shape[:2]
@@ -218,21 +257,24 @@ class LabelingTool(QWidget):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,0,0), 1)
 
     def abs2img_pos(self, absPos, gbox, imgsize):
+        ratio = fixed_w / float(imgsize.width())
+
         gw, gh = gbox.size().width(), gbox.size().height()
-        iw, ih = imgsize.width(), imgsize.height()
+        iw, ih = imgsize.width() * ratio, imgsize.height() * ratio
         hb = int((gh - 25 - ih) / 2)
         wb = int((gw - iw) / 2)
 
         ix = absPos.x() - gbox.pos().x() - wb
         iy = absPos.y() - gbox.pos().y() - 25 - hb
-        return int(ix * 0.375), int(iy * 0.375)
+
+        return int(ix / ratio), int(iy / ratio)
 
     def update_img(self, img):
         qimage = qimage =QImage(img, img.shape[1],img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
         pixmap = QPixmap(qimage)
+        self.imgsize = pixmap.size()
         pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
-        pass
     
     def __initialize_screen(self):
         self.current_point[0] = 0 
@@ -242,6 +284,14 @@ class LabelingTool(QWidget):
         self.is_line_drawn[1] = False
         self.is_input_finished = False
 
+        # Set check widgets default value
+        self.widgets['cb_obscar'].setChecked(False)
+        self.widgets['cb_obshuman'].setChecked(False)
+        self.widgets['cb_shadow'].setChecked(False)
+        self.widgets['cb_old'].setChecked(False)
+        self.widgets['cb_outrange'].setChecked(False)
+        self.widgets['rb_1col'].setChecked(True)
+        self.widgets['slider_ratio'].setValue(30)
 
 
 class Annotator(object):
@@ -268,7 +318,6 @@ class Annotator(object):
             while not self.is_input_finished:
                 cv2.imshow('image', self.img_to_display)
                 self.__draw_line_and_compute_label(data)
-
 
                 '''
                 if cv2.waitKey(1) == 32:

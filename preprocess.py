@@ -90,19 +90,22 @@ def extract_metadata(input_dir, exifmeta):
                 meta[decoded] = str(value)
 
         # Hash the image name
-        img_name = img_name + '.png'
-        hashname = get_hash_name(img_name)
-        meta['originalname'] = str(img_name)
-        meta['filehash'] = hashname
-        metadata[hashname] = meta
+        hashed = get_hash_name(img_name)
+        # TODO: Please take a look, Dain. is it necessary to keep the original
+        #   name ? --TJ
+        # img_name = img_name + '.png'
+        # meta['originalname'] = str(img_name)
+        meta['filehash'] = hashed
+        metadata[hashed] = meta
 
     return metadata
 
 
 def update_database(metadata, db_file):
     if not os.path.exists(db_file):
-        # touch
-        open(db_file, 'a').close()
+        # create an empty JSON file
+        with open(db_file, 'w') as f:
+            f.write("{}")
     try:
         # check if the db_file is a legitimate json file
         with open(db_file, "r") as f:

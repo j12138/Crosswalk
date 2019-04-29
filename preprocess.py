@@ -1,85 +1,84 @@
-import numpy as np
 import cv2
 import os
-import scipy.misc
 import argparse
 from PIL import Image
 from PIL.ExifTags import TAGS
-from matplotlib import pyplot as plt
 import hashlib
 import json
 import yaml
+from tqdm import tqdm
+from joblib import Parallel, delayed
+
 
 def parse_args(options):
-    # python preprocess.py data --w 300 --h 240
-
+    """ Parse command-line arguments
+    ex: $ python preprocess.py data --w 300 --h 240
+    :param options: default values for the arguments; comes from the
+        configuration file
+    :return: parsed arguments
+    """
     parser = argparse.ArgumentParser()
-    parser.add_argument('data_path', help = 'Path of folder containing images', type = str)
-    parser.add_argument('-W', '--width', dest = 'width', default = options['preprocess_width'], type = int)
-    parser.add_argument('-H', '--height', dest = 'height', default = options['preprocess_height'], type = int)
-    parser.add_argument('-c', '--color', dest = 'color', default = False, type = bool)
-    parser.add_argument('-d', '--db_file', dest = 'db_file', default = options['db_file'], type = str)
+    parser.add_argument('input_dir', help='Path of folder containing images',
+                        type=str)
+    parser.add_argument('db_file', default=options['db_file'], type=str,
+                        nargs='?', help="JSON database file")
 
     return parser.parse_args()
 
-def loadyaml():
-    with open('./config.yaml', 'r') as stream: 
+
+def load_yaml():
+    with open('./config.yaml', 'r') as stream:
         options = yaml.load(stream)
     return options
 
-def namehashing(name):
-    hashed = hashlib.md5(name.encode()).hexdigest()
-    hashname = str(hashed)
-    return hashname
 
-def preprocess_images(args, save_path):
-    #TODO: Do not write img at preprocessed_data
+def get_hash_name(name):
+    """ Hash the given filename to create a unique key
+    :param name: file name
+    :return: hashed value
+    """
+    return str(hashlib.md5(name.encode()).hexdigest())
 
-    #folder = args.data_path.split('/')[-1]
-    #path_of_outputs = "preprocessed_data/" + args.data_path + "/"
 
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
+def resize_and_save(input_dir, output_dir, img_path):
+    """ A worker function for `preprocess_images`, which implements a
+    Joblib-based parallelism. Re-sizes and saves each image.
+    :param input_dir: original image directory
+    :param output_dir: output base directory
+    :param img_path: Path to an image to process
+    :return: None
+    """
+    img = cv2.imread(os.path.join(input_dir, img_path))
+    # compress the image size by .15 for saving the storage by 1/4
+    resized = cv2.resize(img, None, fx=0.15, fy=0.15,
+                         interpolation=cv2.INTER_AREA)
+    # cv2.imwrite determines the format by the extension in the path
+    save_path = os.path.join(output_dir, get_hash_name(img_path) + ".png")
+    cv2.imwrite(save_path, resized)
+    # remove the extension
+    os.rename(save_path, save_path[:-4])
 
-    out_width, out_height = args.width, args.height
 
-    for img_name in os.listdir(args.data_path):
-        load_name = os.path.join(args.data_path, img_name)
-        img = cv2.imread(load_name)
-        
-        # resizing
-        img = scipy.misc.imresize(img, (int(out_width*1.3333), out_width))
-        H, W = img.shape[:2]
-        # cut
-        img = img[int(H-out_height):, :]
-        # adjust
-        if args.color:
-            eq = img
-        else:
-            gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            eq = cv2.equalizeHist(gray_img)
+def preprocess_images(input_dir, output_dir):
+    """ Preprocess all the images
+    :param input_dir: original image file directory
+    :param output_dir: output directory to which the re-sized images are saved
+    """
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
-        # save
-        print(save_path + img_name + '.png')
-        cv2.imwrite(save_path + img_name + '.png', eq)
-        #np.save(path_of_outputs + img_name + '.npy', eq)
+    files = os.listdir(input_dir)
+    print("Resizing {} images".format(len(files)))
+    Parallel(n_jobs=-1)(
+        delayed(resize_and_save)(input_dir, output_dir, img)
+        for img in tqdm(files))
 
-def hash_images(save_path):
-    #TODO: manage '/' component (Regex)
-    #folder = args.data_path.split('/')[-1]
-    #origin_path = "preprocessed_data/" + args.data_path + "/"
-    #path_of_outputs = "./hashed/"
 
-    for img_name in os.listdir(save_path):
-        hashname = namehashing(img_name)
-        os.rename(save_path + img_name, save_path + hashname)
-        print(save_path + hashname)
-
-def extract_metadata(args, exifmeta):
+def extract_metadata(input_dir, exifmeta):
     metadata = {}
 
-    for img_name in os.listdir(args.data_path):
-        load_name = os.path.join(args.data_path, img_name)
+    for img_name in os.listdir(input_dir):
+        load_name = os.path.join(input_dir, img_name)
 
         meta = {}
         i = Image.open(load_name)
@@ -89,65 +88,57 @@ def extract_metadata(args, exifmeta):
             decoded = TAGS.get(tag, tag)
             if decoded in exifmeta:
                 meta[decoded] = str(value)
-        
+
         # Hash the image name
         img_name = img_name + '.png'
-        hashname = namehashing(img_name)
+        hashname = get_hash_name(img_name)
         meta['originalname'] = str(img_name)
         meta['filehash'] = hashname
         metadata[hashname] = meta
-        
+
     return metadata
 
-def updateDB(metadata, db_file):
+
+def update_database(metadata, db_file):
+    if not os.path.exists(db_file):
+        # touch
+        open(db_file, 'a').close()
     try:
-        with open(db_file, "r") as read_file:
-            loaddata = json.load(read_file)
-    except:
-        print('Database Loading Error >>> Fail to upload')
-        
+        # check if the db_file is a legitimate json file
+        with open(db_file, "r") as f:
+            loaded = json.load(f)
+    except Exception as e:
+        print('Failed to open database file {}: {}'.format(db_file, e))
     else:
-        updatedata = {**loaddata, **metadata}
-        with open(db_file, "w") as write_file:
-            json.dump(updatedata, write_file)
-        print('Successfully update database!')
+        load = {**loaded, **metadata}
+        with open(db_file, "w") as f:
+            json.dump(load, f)
+        print('Successfully updated!')
 
 
-def get_save_path(args):
-    #return path for preprocessed(and hashed) image
-
-    origin_path = args.data_path
-    removed_root = origin_path.strip('.')
-    #print(removed_root)
-    replaced_slash = removed_root.replace('/', '_')
-    replaced_slash = removed_root.replace('\\', '_')
-    #print(replaced_slash)
-    full = './preprocessed_data/' + replaced_slash + '/'
-
-    return full
+def get_output_dir(input_dir, data_dir):
+    """ return path for preprocessed(and hashed) image
+    :param input_dir: the name of the original image directory
+    :return: expanded output directory path
+    """
+    if not (os.path.exists(data_dir) and os.path.isdir(data_dir)):
+        os.mkdir(data_dir)
+    dir_name = input_dir.strip('.').replace('/', '_').replace('\\', '_')
+    return os.path.join(data_dir, dir_name)
 
 
-def preprocess_img(args,options):
+def preprocess_img(args, options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    save_path = get_save_path(args)
-    print(save_path)
 
-    # Extract metadata of JPG images
-    metadata = extract_metadata(args, options['exifmeta'])
-
-    # Preprocess images saving PNG
-    preprocess_images(args, save_path)
-
-    # Hashing the preprocessed images
-    hash_images(save_path)
-
-    # Upload metadata database in JSON form
-    updateDB(metadata, args.db_file)
+    output_dir = get_output_dir(args.input_dir, options["data_dir"])
+    metadata = extract_metadata(args.input_dir, options['exifmeta'])
+    preprocess_images(args.input_dir, output_dir)
+    update_database(metadata, args.db_file)
 
 
 def main():
-    options = loadyaml()
+    options = load_yaml()
     args = parse_args(options)
     preprocess_img(args, options)
 

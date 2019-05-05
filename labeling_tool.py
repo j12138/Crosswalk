@@ -61,7 +61,6 @@ class LabelingTool(QWidget):
         # Image show
         pixmap = QPixmap('qimage.png')
         self.imgsize = pixmap.size()
-        pixmap = pixmap.scaled(fixed_w, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
 
         # make metadata widgets
@@ -165,7 +164,7 @@ class LabelingTool(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             img_pos = self.abs2img_pos(event.pos(), self.gbox_image, self.imgsize)
-            print(img_pos)
+            #print(img_pos)
 
             if (img_pos[0] < 0) or (img_pos[0] >= self.imgsize.width()):
                 #print('w')
@@ -178,7 +177,9 @@ class LabelingTool(QWidget):
                 self.is_input_finished = True
                 return
 
-            cv2.circle(self.img_to_display, img_pos, 2, (255, 0, 0), -1)
+            ratio = float(self.imgsize.width()) / 300.0
+            dot_size = int(3 * ratio)
+            cv2.circle(self.img_to_display, img_pos, dot_size, (255, 0, 0), -1)
             self.update_img(self.img_to_display)
 
             self.all_points[self.current_point[0]] = img_pos
@@ -189,14 +190,17 @@ class LabelingTool(QWidget):
             self.update_img(self.img_to_display)
 
     def __draw_line_and_compute_label(self):
+        ratio = float(self.imgsize.width()) / 300.0
+        line_thickness = int(2 * ratio)
+
         if self.current_point[0] == 2 and not self.is_line_drawn[0]:
             cv2.line(self.img_to_display, self.all_points[0],
-                    self.all_points[1], (0, 0, 255), 2)
+                    self.all_points[1], (0, 0, 255), line_thickness)
             self.is_line_drawn[0] = True
 
         if self.current_point[0] == 4 and not self.is_line_drawn[1]:
             cv2.line(self.img_to_display, self.all_points[2],
-                    self.all_points[3], (0, 0, 255), 2)
+                    self.all_points[3], (0, 0, 255), line_thickness)
             self.is_line_drawn[1] = True
             self.is_input_finished = True
 
@@ -251,29 +255,36 @@ class LabelingTool(QWidget):
         return round(loc, 3), round(ang, 3)
             
     def __write_labels_on_screen(self, loc, ang):
+        ratio = float(self.imgsize.width()) / 300.0
+        font_size = 0.35 * ratio
+
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,255,255), 3)
+                cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,255,255), round(3 * ratio))
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,0,0), 1)
+                cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,0,0), round(ratio))
 
     def abs2img_pos(self, absPos, gbox, imgsize):
-        ratio = fixed_w / float(imgsize.width())
+        #ratio = fixed_w / float(imgsize.width())
 
         gw, gh = gbox.size().width(), gbox.size().height()
-        iw, ih = imgsize.width() * ratio, imgsize.height() * ratio
+        iw, ih = imgsize.width(), imgsize.height()
         hb = int((gh - 25 - ih) / 2)
         wb = int((gw - iw) / 2)
 
         ix = absPos.x() - gbox.pos().x() - wb
         iy = absPos.y() - gbox.pos().y() - 25 - hb
 
-        return int(ix / ratio), int(iy / ratio)
+        # Debug
+        #print(hb, wb)
+
+        return int(ix), int(iy)
 
     def update_img(self, img):
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         qimage = qimage =QImage(img, img.shape[1],img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
         pixmap = QPixmap(qimage)
         self.imgsize = pixmap.size()
-        pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
+        #pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
     
     def __initialize_screen(self):
@@ -350,6 +361,8 @@ class Annotator(object):
             self.current_point[1] = (x, y)
 
     def __draw_line_and_compute_label(self, data):
+
+
         if self.current_point[0] == 2 and not self.is_line_drawn[0]:
             cv2.line(self.img_to_display, self.all_points[0],
                     self.all_points[1], (0, 0, 255), 2)

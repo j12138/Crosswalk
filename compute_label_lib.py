@@ -14,6 +14,18 @@ def intersection(l1, l2):
 
     return x, y
 
+def mid_pt(p1, p2):
+    x = (p1[0] + p2[0]) / 2.0
+    y = (p1[1] + p2[1]) / 2.0
+
+    return x, y
+
+def compute_pit(mid, h):
+    return mid[1] / float(h)
+
+def compute_roll(slope):
+    return -math.atan(slope) * 2 / math.pi 
+
 def bottom_mid_point_and_width(H, l1, l2):
     # 횡단보도 밑변의 중점과 밑변 길이 구하기. H는 preprocessed img의 세로길이 (240?)
     b_line = [0, H]

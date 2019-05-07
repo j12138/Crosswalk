@@ -57,11 +57,6 @@ class CrosswalkData:
             mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
-        save_path = './labeling_done/'
-        os.rename(self.img_file, save_path + self.hashname)
-        print(self.img_file)
-        print(save_path + self.hashname)
-
         with open(self.db, 'r+') as db_json:
             db = json.load(db_json)
         
@@ -81,8 +76,7 @@ class CrosswalkData:
         self.meta['invalid'][2] = 1
 
     def __parse_img_name(self):
-        print(self.img_file)
-        #img_name = (self.img_file).split('\\')[-1]
+        # print(self.img_file)
         img_name = os.path.split(self.img_file)[-1]
-        print(img_name)
+        # print(img_name)
         return img_name

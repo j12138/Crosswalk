@@ -22,7 +22,9 @@ class CrosswalkData:
         self.meta = options['manualmeta']
         self.labels = {
             'loc': 0.0,
-            'ang': 0.0
+            'ang': 0.0,
+            'pit': 0.0,
+            'roll': 0.0
         }
         self.db = options['db_file']
 
@@ -43,9 +45,11 @@ class CrosswalkData:
         for name in self.meta:
             self.meta[name][2] = cv2.getTrackbarPos(name, winname)
 
-    def input_labels(self, loc, ang):
+    def input_labels(self, loc, ang, pit, roll):
         self.labels['loc'] = loc
         self.labels['ang'] = ang
+        self.labels['pit'] = pit
+        self.labels['roll'] = pit
 
     def write_on_csv(self):
         with open('annotation.csv', 'a', newline='') as csvfile:

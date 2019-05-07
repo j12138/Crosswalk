@@ -34,8 +34,8 @@ class LabelingTool(QWidget):
         self.img_idx = 0
         self.is_input_finished = False
         self.current_point = [0, (0,0)]
-        self.all_points = [(0, 0)]*4
-        self.is_line_drawn = [False, False]
+        self.all_points = [(0, 0)]*6
+        self.is_line_drawn = [False, False, False]
         self.img_to_display = None
         self.label_img = QLabel()
         self.data = None
@@ -77,7 +77,7 @@ class LabelingTool(QWidget):
         grid = QGridLayout()
         self.setLayout(grid)
 
-        self.gbox_image = QGroupBox("Image")
+        self.gbox_image = QGroupBox('Image' + ' ( 0 / ' + str(len(self.img_files)) + ' )')
         vbox_image = QVBoxLayout()
         vbox_image.addWidget(self.label_img)
         self.gbox_image.setLayout(vbox_image)
@@ -164,22 +164,18 @@ class LabelingTool(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             img_pos = self.abs2img_pos(event.pos(), self.gbox_image, self.imgsize)
-            #print(img_pos)
 
             if (img_pos[0] < 0) or (img_pos[0] >= self.imgsize.width()):
-                #print('w')
                 return
             if (img_pos[1] < 0) or (img_pos[1] >= self.imgsize.height()):
-                #print('w')
                 return
 
-            if self.is_line_drawn[1]:
+            if self.is_line_drawn[2]:
                 self.is_input_finished = True
                 return
 
-            ratio = float(self.imgsize.width()) / 300.0
-            dot_size = int(3 * ratio)
-            cv2.circle(self.img_to_display, img_pos, dot_size, (255, 0, 0), -1)
+            self.__draw_dot(img_pos)
+
             self.update_img(self.img_to_display)
 
             self.all_points[self.current_point[0]] = img_pos
@@ -189,24 +185,74 @@ class LabelingTool(QWidget):
             self.__draw_line_and_compute_label()
             self.update_img(self.img_to_display)
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_A:
+            print('KeyPress: A (←)')
+            if self.img_idx > 0:
+                self.img_idx = self.img_idx - 1
+                self.launch()
+                
+        if event.key() == Qt.Key_D:
+            print('KeyPress: D (→)')
+            if self.img_idx < len(self.img_files) - 1:
+                self.img_idx = self.img_idx + 1
+                self.launch()
+
+        if event.key() == Qt.Key_Backspace:
+            print('KeyPress: Backspace (Undo)')
+            self.__undo_labeling()
+        
+        if event.key() == Qt.Key_T:
+            print('하기싫다')
+            print('아닙니다')
+
+    def __draw_dot(self, pos):
+        ratio = float(self.imgsize.width()) / 300.0
+        dot_size = int(3 * ratio)
+        cv2.circle(self.img_to_display, pos, dot_size, (255, 0, 0), -1)
+
     def __draw_line_and_compute_label(self):
         ratio = float(self.imgsize.width()) / 300.0
         line_thickness = int(2 * ratio)
 
-        if self.current_point[0] == 2 and not self.is_line_drawn[0]:
+        if self.current_point[0] >= 2 and not self.is_line_drawn[0]:
             cv2.line(self.img_to_display, self.all_points[0],
                     self.all_points[1], (0, 0, 255), line_thickness)
             self.is_line_drawn[0] = True
 
-        if self.current_point[0] == 4 and not self.is_line_drawn[1]:
+        if self.current_point[0] >= 4 and not self.is_line_drawn[1]:
             cv2.line(self.img_to_display, self.all_points[2],
                     self.all_points[3], (0, 0, 255), line_thickness)
             self.is_line_drawn[1] = True
-            self.is_input_finished = True
 
-            loc, ang = self.__compute_label()
-            self.data.input_labels(loc, ang)
-            self.__write_labels_on_screen(str(loc), str(ang))
+        if self.current_point[0] >= 6 and not self.is_line_drawn[2]:
+            cv2.line(self.img_to_display, self.all_points[4],
+                    self.all_points[5], (0, 255, 255), line_thickness)
+            self.is_line_drawn[2] = True
+
+            loc, ang, pit, roll = self.__compute_label()
+            self.data.input_labels(loc, ang, pit, roll)
+            self.__write_labels_on_screen(str(loc), str(ang), str(pit), str(roll))
+
+    def __undo_labeling(self):
+        if self.current_point[0] == 0:
+            return
+
+        idx = self.current_point[0]
+
+        self.is_input_finished = False
+        self.current_point = [idx - 1, self.all_points[idx - 1]]
+        self.all_points[idx - 1] = (0, 0)
+        self.is_line_drawn = [False, False, False]
+        self.img_to_display = self.data.img.copy()
+
+        for i in range(idx - 1):
+            self.__draw_dot(self.all_points[i])
+
+        self.__draw_line_and_compute_label()
+        self.update_img(self.img_to_display)
+
+        return
 
     def __get_manual_meta(self):
         if not self.is_input_finished:
@@ -237,8 +283,8 @@ class LabelingTool(QWidget):
         self.img_idx = self.img_idx + 1
         self.launch()
         
-
     def __compute_label(self):
+        # loc, ang (primary labels)
         h, w = self.img_to_display.shape[:2]
         p1 = self.all_points[0]
         p2 = self.all_points[1]
@@ -252,15 +298,25 @@ class LabelingTool(QWidget):
         loc = cl.compute_loc(mid_pt, w, bottom_width)
         ang = cl.compute_ang(left_line, right_line, mid_pt, h)
 
-        return round(loc, 3), round(ang, 3)
+        # pit(ch), roll
+        p5 = self.all_points[4]
+        p6 = self.all_points[5]
+
+        mid = cl.mid_pt(p5, p6)
+        slope = cl.line(p5, p6)[0]
+
+        pit = cl.compute_pit(mid, h)
+        roll = cl.compute_roll(slope)
+
+        return round(loc, 3), round(ang, 3), round(pit, 3), round(roll, 3)
             
-    def __write_labels_on_screen(self, loc, ang):
+    def __write_labels_on_screen(self, loc, ang, pit, roll):
         ratio = float(self.imgsize.width()) / 300.0
         font_size = 0.35 * ratio
 
-        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
+        cv2.putText(self.img_to_display, loc + '  ' + ang + '  ' + pit + '  ' + roll, (15,15),
                 cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,255,255), round(3 * ratio))
-        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
+        cv2.putText(self.img_to_display, loc + '  ' + ang + '  ' + pit + '  ' + roll, (15,15),
                 cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,0,0), round(ratio))
 
     def abs2img_pos(self, absPos, gbox, imgsize):
@@ -274,9 +330,6 @@ class LabelingTool(QWidget):
         ix = absPos.x() - gbox.pos().x() - wb
         iy = absPos.y() - gbox.pos().y() - 25 - hb
 
-        # Debug
-        #print(hb, wb)
-
         return int(ix), int(iy)
 
     def update_img(self, img):
@@ -286,6 +339,7 @@ class LabelingTool(QWidget):
         self.imgsize = pixmap.size()
         #pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
+        self.gbox_image.setTitle('Image' + ' ( ' + str(self.img_idx + 1) + ' / ' + str(len(self.img_files)) + ' )')
     
     def __initialize_screen(self):
         self.current_point[0] = 0 
@@ -361,8 +415,6 @@ class Annotator(object):
             self.current_point[1] = (x, y)
 
     def __draw_line_and_compute_label(self, data):
-
-
         if self.current_point[0] == 2 and not self.is_line_drawn[0]:
             cv2.line(self.img_to_display, self.all_points[0],
                     self.all_points[1], (0, 0, 255), 2)
@@ -421,7 +473,6 @@ class Annotator(object):
         cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,0,0), 1)
 
-
 #==================#
 #       MAIN       # 
 #==================#
@@ -438,9 +489,11 @@ def launch_annotator(data_path):
     ex.launch()
     sys.exit(app.exec_())   
 
+    '''
     annotator = Annotator(data_path)
     annotator.launch()
     cv2.destroyAllWindows()
+    '''
 
 def main(args):
     launch_annotator(args.data_path)

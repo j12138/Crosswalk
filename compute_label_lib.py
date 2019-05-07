@@ -14,16 +14,19 @@ def intersection(l1, l2):
 
     return x, y
 
-def mid_pt(p1, p2):
+def mid_point(p1, p2):
+    # compute middel point of given two points
     x = (p1[0] + p2[0]) / 2.0
     y = (p1[1] + p2[1]) / 2.0
 
     return x, y
 
-def compute_pit(mid, h):
+def compute_pitch(mid, h):
+    # compute vertical pitch label from middle point and height of the image
     return mid[1] / float(h)
 
 def compute_roll(slope):
+    # compute horizontal roll label from slope
     return -math.atan(slope) * 2 / math.pi 
 
 def bottom_mid_point_and_width(H, l1, l2):

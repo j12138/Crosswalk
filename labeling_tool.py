@@ -5,25 +5,18 @@
 import argparse
 import glob
 import cv2
-import math
-import csv
 import crosswalk_data as cd
 import compute_label_lib as cl
-from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory
-from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, QPainter, QCursor, QPalette, QColor
+from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
+    QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
+    QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory
+from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
+    QPainter, QCursor, QPalette, QColor
 from PyQt5.QtCore import Qt
 import sys
 
 fixed_w = 400
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('data_path', help = 'Path of folder containing images', default = '', type = str)
-    return parser.parse_args()
-
-#===================#
-#       CLASS       # 
-#===================#
 
 class LabelingTool(QWidget):
 
@@ -33,8 +26,8 @@ class LabelingTool(QWidget):
         self.img_files = glob.glob(self.img_dir + '/*')
         self.img_idx = 0
         self.is_input_finished = False
-        self.current_point = [0, (0,0)]
-        self.all_points = [(0, 0)]*6
+        self.current_point = [0, (0, 0)]
+        self.all_points = [(0, 0)] * 6
         self.is_line_drawn = [False, False, False]
         self.img_to_display = None
         self.label_img = QLabel()
@@ -72,16 +65,17 @@ class LabelingTool(QWidget):
         self.widgets['slider_ratio'].setSingleStep(20)
         self.widgets['slider_ratio'].setTickInterval(10)
         self.widgets['slider_ratio'].setTickPosition(2)
-        
+
         # Layout setting
         grid = QGridLayout()
         self.setLayout(grid)
 
-        self.gbox_image = QGroupBox('Image' + ' ( 0 / ' + str(len(self.img_files)) + ' )')
+        self.gbox_image = QGroupBox(
+            'Image' + ' ( 0 / ' + str(len(self.img_files)) + ' )')
         vbox_image = QVBoxLayout()
         vbox_image.addWidget(self.label_img)
         self.gbox_image.setLayout(vbox_image)
-        
+
         gbox_meta = QGroupBox("Metadata")
         vbox_meta = QVBoxLayout()
 
@@ -99,7 +93,7 @@ class LabelingTool(QWidget):
         # slider tick labels
         hbox_tick = QHBoxLayout()
         label_ticks = [QLabel('0'), QLabel('20'), QLabel('40'),
-        QLabel('60'), QLabel('80'), QLabel('100')]
+                       QLabel('60'), QLabel('80'), QLabel('100')]
         tick_font = QFont("calibri", 8)
 
         for i in range(len(label_ticks)):
@@ -120,7 +114,7 @@ class LabelingTool(QWidget):
 
         vbox_meta.addLayout(hbox_button)
         gbox_meta.setLayout(vbox_meta)
-    
+
         grid.addWidget(self.gbox_image, 0, 0)
         grid.addWidget(gbox_meta, 0, 1)
 
@@ -129,17 +123,18 @@ class LabelingTool(QWidget):
         self.center()
         self.show()
 
-        #print('gbox_image_pos:', gbox_image.pos())
-        #print('gbox_image_size:', gbox_image.size())
-        #print('image_size:', pixmap.size())
-        #print(self.gbox_image.size().width())
+        # print('gbox_image_pos:', gbox_image.pos())
+        # print('gbox_image_size:', gbox_image.size())
+        # print('image_size:', pixmap.size())
+        # print(self.gbox_image.size().width())
 
     def launch(self):
         self.__initialize_screen()
         if self.img_idx >= len(self.img_files):
-            done_msg = QMessageBox.question(self, 'Message', 'Labeling all done!\nDo you want to quit the tool?',
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            
+            msg = 'Labeling all done!\nDo you want to quit the tool?'
+            done_msg = QMessageBox.question(self, 'Message', msg,
+                                            QMessageBox.Yes | QMessageBox.No,
+                                            QMessageBox.No)
             if done_msg == QMessageBox.Yes:
                 self.close()
                 return
@@ -163,7 +158,8 @@ class LabelingTool(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            img_pos = self.abs2img_pos(event.pos(), self.gbox_image, self.imgsize)
+            img_pos = self.abs2img_pos(event.pos(), self.gbox_image,
+                                       self.imgsize)
 
             if (img_pos[0] < 0) or (img_pos[0] >= self.imgsize.width()):
                 return
@@ -191,7 +187,7 @@ class LabelingTool(QWidget):
             if self.img_idx > 0:
                 self.img_idx = self.img_idx - 1
                 self.launch()
-                
+
         if event.key() == Qt.Key_D:
             print('KeyPress: D (→)')
             if self.img_idx < len(self.img_files) - 1:
@@ -201,7 +197,7 @@ class LabelingTool(QWidget):
         if event.key() == Qt.Key_Backspace:
             print('KeyPress: Backspace (Undo)')
             self.__undo_labeling()
-        
+
         if event.key() == Qt.Key_T:
             print('하기싫다')
             print('아닙니다')
@@ -217,22 +213,23 @@ class LabelingTool(QWidget):
 
         if self.current_point[0] >= 2 and not self.is_line_drawn[0]:
             cv2.line(self.img_to_display, self.all_points[0],
-                    self.all_points[1], (0, 0, 255), line_thickness)
+                     self.all_points[1], (0, 0, 255), line_thickness)
             self.is_line_drawn[0] = True
 
         if self.current_point[0] >= 4 and not self.is_line_drawn[1]:
             cv2.line(self.img_to_display, self.all_points[2],
-                    self.all_points[3], (0, 0, 255), line_thickness)
+                     self.all_points[3], (0, 0, 255), line_thickness)
             self.is_line_drawn[1] = True
 
         if self.current_point[0] >= 6 and not self.is_line_drawn[2]:
             cv2.line(self.img_to_display, self.all_points[4],
-                    self.all_points[5], (0, 255, 255), line_thickness)
+                     self.all_points[5], (0, 255, 255), line_thickness)
             self.is_line_drawn[2] = True
 
             loc, ang, pit, roll = self.__compute_label()
             self.data.input_labels(loc, ang, pit, roll)
-            self.__write_labels_on_screen(str(loc), str(ang), str(pit), str(roll))
+            self.__write_labels_on_screen(str(loc), str(ang), str(pit),
+                                          str(roll))
 
     def __undo_labeling(self):
         if self.current_point[0] == 0:
@@ -259,16 +256,20 @@ class LabelingTool(QWidget):
             print('Do labeling')
             return
 
-        self.data.meta['obs_car'][2] = int(self.widgets['cb_obscar'].isChecked())
-        self.data.meta['obs_human'][2] = int(self.widgets['cb_obshuman'].isChecked())
+        self.data.meta['obs_car'][2] = int(
+            self.widgets['cb_obscar'].isChecked())
+        self.data.meta['obs_human'][2] = int(
+            self.widgets['cb_obshuman'].isChecked())
         self.data.meta['shadow'][2] = int(self.widgets['cb_shadow'].isChecked())
-        self.data.meta['out_of_range'][2] = int(self.widgets['cb_outrange'].isChecked())
+        self.data.meta['out_of_range'][2] = int(
+            self.widgets['cb_outrange'].isChecked())
         self.data.meta['old'][2] = int(self.widgets['cb_old'].isChecked())
 
-        if self.widgets['rb_2col'].isChecked() :
+        if self.widgets['rb_2col'].isChecked():
             self.data.meta['column'][2] = 2
-        
-        self.data.meta['zebra_ratio'][2] = int(self.widgets['slider_ratio'].value() * 2)
+
+        self.data.meta['zebra_ratio'][2] = int(
+            self.widgets['slider_ratio'].value() * 2)
 
         self.data.write_on_db()
         self.img_idx = self.img_idx + 1
@@ -282,7 +283,7 @@ class LabelingTool(QWidget):
         self.data.write_on_db()
         self.img_idx = self.img_idx + 1
         self.launch()
-        
+
     def __compute_label(self):
         # loc, ang (primary labels)
         h, w = self.img_to_display.shape[:2]
@@ -293,7 +294,8 @@ class LabelingTool(QWidget):
 
         left_line = cl.line(p1, p2)
         right_line = cl.line(p3, p4)
-        mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line, right_line)
+        mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line,
+                                                             right_line)
 
         loc = cl.compute_loc(mid_pt, w, bottom_width)
         ang = cl.compute_ang(left_line, right_line, mid_pt, h)
@@ -309,18 +311,22 @@ class LabelingTool(QWidget):
         roll = cl.compute_roll(slope)
 
         return round(loc, 3), round(ang, 3), round(pit, 3), round(roll, 3)
-            
+
     def __write_labels_on_screen(self, loc, ang, pit, roll):
         ratio = float(self.imgsize.width()) / 300.0
         font_size = 0.35 * ratio
 
-        cv2.putText(self.img_to_display, loc + '  ' + ang + '  ' + pit + '  ' + roll, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,255,255), round(3 * ratio))
-        cv2.putText(self.img_to_display, loc + '  ' + ang + '  ' + pit + '  ' + roll, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, font_size, (255,0,0), round(ratio))
+        cv2.putText(self.img_to_display,
+                    loc + '  ' + ang + '  ' + pit + '  ' + roll, (15, 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 255, 255),
+                    round(3 * ratio))
+        cv2.putText(self.img_to_display,
+                    loc + '  ' + ang + '  ' + pit + '  ' + roll, (15, 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 0, 0),
+                    round(ratio))
 
     def abs2img_pos(self, absPos, gbox, imgsize):
-        #ratio = fixed_w / float(imgsize.width())
+        # ratio = fixed_w / float(imgsize.width())
 
         gw, gh = gbox.size().width(), gbox.size().height()
         iw, ih = imgsize.width(), imgsize.height()
@@ -334,15 +340,18 @@ class LabelingTool(QWidget):
 
     def update_img(self, img):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        qimage = qimage =QImage(img, img.shape[1],img.shape[0], img.shape[1] * 3, QImage.Format_RGB888)
+        qimage = QImage(img, img.shape[1], img.shape[0],
+                                 img.shape[1] * 3, QImage.Format_RGB888)
         pixmap = QPixmap(qimage)
         self.imgsize = pixmap.size()
-        #pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
+        # pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
-        self.gbox_image.setTitle('Image' + ' ( ' + str(self.img_idx + 1) + ' / ' + str(len(self.img_files)) + ' )')
-    
+        self.gbox_image.setTitle(
+            'Image' + ' ( ' + str(self.img_idx + 1) + ' / ' + str(
+                len(self.img_files)) + ' )')
+
     def __initialize_screen(self):
-        self.current_point[0] = 0 
+        self.current_point[0] = 0
         for i in range(4):
             self.all_points[i] = (0, 0)
         self.is_line_drawn[0] = False
@@ -366,8 +375,8 @@ class Annotator(object):
     def __init__(self, img_dir):
         self.img_dir = img_dir
         self.is_input_finished = False
-        self.current_point = [0, (0,0)]
-        self.all_points = [(0, 0)]*4
+        self.current_point = [0, (0, 0)]
+        self.all_points = [(0, 0)] * 4
         self.is_line_drawn = [False, False]
         self.img_to_display = None
 
@@ -379,36 +388,33 @@ class Annotator(object):
             self.__launch_window()
             data.make_trackbar('trackbar')
 
-
             while not self.is_input_finished:
                 cv2.imshow('image', self.img_to_display)
                 self.__draw_line_and_compute_label(data)
 
-                '''
-                if cv2.waitKey(1) == 32:
-                    break # press 'spacebar' -> turn to next image
-                '''
-                
-                if cv2.waitKey(1) == 120: # press 'x'
+                # if cv2.waitKey(1) == 32:
+                #     break # press 'spacebar' -> turn to next image
+
+                if cv2.waitKey(1) == 120:  # press 'x'
                     data.set_invalid()
                     data.write_on_db()
                     break
-            
+
             if self.is_input_finished:
                 data.input_manual_meta('trackbar')
                 data.write_on_db()
-                
+
     @staticmethod
     def mouse_callback(event, x, y, flags, annotator):
         annotator.draw_and_record_point(event, x, y, flags)
-                                                
+
     def draw_and_record_point(self, event, x, y, flags):
         if event == cv2.EVENT_LBUTTONDOWN:
             if self.is_line_drawn[1]:
                 self.is_input_finished = True
                 return
 
-            cv2.circle(self.img_to_display, (x,y), 2, (0, 0, 255), -1)
+            cv2.circle(self.img_to_display, (x, y), 2, (0, 0, 255), -1)
 
             self.all_points[self.current_point[0]] = (x, y)
             self.current_point[0] = self.current_point[0] + 1
@@ -417,12 +423,12 @@ class Annotator(object):
     def __draw_line_and_compute_label(self, data):
         if self.current_point[0] == 2 and not self.is_line_drawn[0]:
             cv2.line(self.img_to_display, self.all_points[0],
-                    self.all_points[1], (0, 0, 255), 2)
+                     self.all_points[1], (0, 0, 255), 2)
             self.is_line_drawn[0] = True
 
         if self.current_point[0] == 4 and not self.is_line_drawn[1]:
             cv2.line(self.img_to_display, self.all_points[2],
-                    self.all_points[3], (0, 0, 255), 2)
+                     self.all_points[3], (0, 0, 255), 2)
             self.is_line_drawn[1] = True
 
             loc, ang = self.__compute_label(data)
@@ -430,7 +436,7 @@ class Annotator(object):
             self.__write_labels_on_screen(str(loc), str(ang))
 
     def __initialize_screen(self):
-        self.current_point[0] = 0 
+        self.current_point[0] = 0
         for i in range(4):
             self.all_points[i] = (0, 0)
         self.is_line_drawn[0] = False
@@ -438,18 +444,13 @@ class Annotator(object):
         self.is_input_finished = False
 
     def __launch_window(self):
-    
         cv2.namedWindow('image', cv2.WINDOW_NORMAL)
         cv2.namedWindow('trackbar', cv2.WINDOW_NORMAL)
-        
-        cv2.resizeWindow('trackbar', 300,260)
-        cv2.resizeWindow('image', 300,240)
-
+        cv2.resizeWindow('trackbar', 300, 260)
+        cv2.resizeWindow('image', 300, 240)
         cv2.moveWindow('image', 100, 100)
         cv2.moveWindow('trackbar', 420, 100)
-
         cv2.setMouseCallback('image', Annotator.mouse_callback, self)
-        pass
 
     def __compute_label(self, data):
         h, w = data.img.shape[:2]
@@ -460,7 +461,8 @@ class Annotator(object):
 
         left_line = cl.line(p1, p2)
         right_line = cl.line(p3, p4)
-        mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line, right_line)
+        mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line,
+                                                             right_line)
 
         loc = cl.compute_loc(mid_pt, w, bottom_width)
         ang = cl.compute_ang(left_line, right_line, mid_pt, h)
@@ -468,14 +470,18 @@ class Annotator(object):
         return round(loc, 3), round(ang, 3)
 
     def __write_labels_on_screen(self, loc, ang):
-        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,255,255), 3)
-        cv2.putText(self.img_to_display, loc + '  ' + ang, (15,15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255,0,0), 1)
+        cv2.putText(self.img_to_display, loc + '  ' + ang, (15, 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 3)
+        cv2.putText(self.img_to_display, loc + '  ' + ang, (15, 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 0, 0), 1)
 
-#==================#
-#       MAIN       # 
-#==================#
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('data_path', help='Path of folder containing images',
+                        default='', type=str)
+    return parser.parse_args()
+
 
 def launch_annotator(data_path):
     """ the actual 'main' function. Other modules that import this module shall
@@ -487,17 +493,17 @@ def launch_annotator(data_path):
     app.setFont(QFont("Calibri", 10))
     ex = LabelingTool(data_path)
     ex.launch()
-    sys.exit(app.exec_())   
+    sys.exit(app.exec_())
 
-    '''
-    annotator = Annotator(data_path)
-    annotator.launch()
-    cv2.destroyAllWindows()
-    '''
+    # annotator = Annotator(data_path)
+    # annotator.launch()
+    # cv2.destroyAllWindows()
+
 
 def main(args):
     launch_annotator(args.data_path)
-        
+
+
 if __name__ == "__main__":
     args = parse_args()
     main(args)

@@ -18,7 +18,12 @@ import sys
 
 fixed_w = 400
 
-class LabelingStatus():
+
+class LabelingStatus(object):
+    """ An entity class that contains labeling state information for each
+    input image.
+    """
+
     def __init__(self):
         self.is_input_finished = False
         self.current_point = [0, (0, 0)]
@@ -46,7 +51,7 @@ class LabelingTool(QWidget):
 
         for i in range(len(self.img_files)):
             self.labeling_status.append(LabelingStatus())
-        
+
         self.status = self.labeling_status[self.img_idx]
 
         self.is_input_finished = False
@@ -97,7 +102,7 @@ class LabelingTool(QWidget):
         self.setLayout(grid)
 
         self.gbox_image = QGroupBox(
-        "Image ( 0 / {} )".format(len(self.img_files)))
+            "Image ( 0 / {} )".format(len(self.img_files)))
 
         vbox_image = QVBoxLayout()
         vbox_image.addWidget(self.label_img)
@@ -172,7 +177,6 @@ class LabelingTool(QWidget):
         self.__draw_labeling_status()
 
         self.update_img(img)
-        
 
     def center(self):
         qr = self.frameGeometry()
@@ -194,8 +198,8 @@ class LabelingTool(QWidget):
                 self.is_input_finished = True
                 return
 
-            #self.__draw_dot(img_pos)
-            #self.update_img(self.img_to_display)
+            # self.__draw_dot(img_pos)
+            # self.update_img(self.img_to_display)
 
             self.all_points[self.current_point[0]] = img_pos
             self.current_point[0] = self.current_point[0] + 1
@@ -203,10 +207,14 @@ class LabelingTool(QWidget):
 
             self.__draw_labeling_status()
 
-            #self.__draw_line_and_compute_label()
-            #self.update_img(self.img_to_display)
+            # self.__draw_line_and_compute_label()
+            # self.update_img(self.img_to_display)
 
     def keyPressEvent(self, event):
+        """ An overridden method from QWidget class to handle event per each
+        key press.
+        :param event: An event object tells which key is pressed
+        """
         if event.key() == Qt.Key_A:
             # move to previous image (use A instead of ←)
             print('KeyPress: A (←)')
@@ -228,6 +236,7 @@ class LabelingTool(QWidget):
             self.__undo_labeling()
 
         if event.key() == Qt.Key_T:
+            # !!
             print('하기싫다')
             print('아닙니다')
 
@@ -271,9 +280,7 @@ class LabelingTool(QWidget):
         self.all_points[idx - 1] = (0, 0)
         self.is_line_drawn = [False, False, False]
         self.img_to_display = self.data.img.copy()
-
         self.__draw_labeling_status()
-        return
 
     def __draw_labeling_status(self):
         for i in range(self.current_point[0]):
@@ -375,28 +382,36 @@ class LabelingTool(QWidget):
     def update_img(self, img):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         qimage = QImage(img, img.shape[1], img.shape[0],
-                                 img.shape[1] * 3, QImage.Format_RGB888)
+                        img.shape[1] * 3, QImage.Format_RGB888)
         pixmap = QPixmap(qimage)
         self.imgsize = pixmap.size()
         # pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
         self.label_img.setPixmap(pixmap)
         self.gbox_image.setTitle(
-            'Image ( {} / {} )'.format(self.img_idx + 1, 
-                len(self.img_files)))
+            'Image ( {} / {} )'.format(self.img_idx + 1,
+                                       len(self.img_files)))
 
     def save_labeling_status(self):
-        self.labeling_status[self.img_idx].is_input_finished = self.is_input_finished
+        self.labeling_status[
+            self.img_idx].is_input_finished = self.is_input_finished
         self.labeling_status[self.img_idx].is_line_drawn = self.is_line_drawn
         self.labeling_status[self.img_idx].current_point = self.current_point
         self.labeling_status[self.img_idx].all_points = self.all_points
 
-        self.labeling_status[self.img_idx].widgets_status['cb_obscar'] = self.widgets['cb_obscar'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_obshuman'] = self.widgets['cb_obshuman'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_shadow'] = self.widgets['cb_shadow'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_old'] = self.widgets['cb_old'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_outrange'] = self.widgets['cb_outrange'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['rb_1col'] = self.widgets['rb_1col'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['slider_ratio'] = self.widgets['slider_ratio'].value()
+        self.labeling_status[self.img_idx].widgets_status['cb_obscar'] = \
+            self.widgets['cb_obscar'].isChecked()
+        self.labeling_status[self.img_idx].widgets_status['cb_obshuman'] = \
+            self.widgets['cb_obshuman'].isChecked()
+        self.labeling_status[self.img_idx].widgets_status['cb_shadow'] = \
+            self.widgets['cb_shadow'].isChecked()
+        self.labeling_status[self.img_idx].widgets_status['cb_old'] = \
+            self.widgets['cb_old'].isChecked()
+        self.labeling_status[self.img_idx].widgets_status['cb_outrange'] = \
+            self.widgets['cb_outrange'].isChecked()
+        self.labeling_status[self.img_idx].widgets_status['rb_1col'] = \
+            self.widgets['rb_1col'].isChecked()
+        self.labeling_status[self.img_idx].widgets_status['slider_ratio'] = \
+            self.widgets['slider_ratio'].value()
 
     def __update_screen(self):
         self.status = self.labeling_status[self.img_idx]
@@ -404,15 +419,22 @@ class LabelingTool(QWidget):
         self.all_points = self.status.all_points
         self.is_line_drawn = [False, False, False]
         self.is_input_finished = self.status.is_input_finished
-        
+
         # Set check widgets default value
-        self.widgets['cb_obscar'].setChecked(self.labeling_status[self.img_idx].widgets_status['cb_obscar'])
-        self.widgets['cb_obshuman'].setChecked(self.labeling_status[self.img_idx].widgets_status['cb_obshuman'])
-        self.widgets['cb_shadow'].setChecked(self.labeling_status[self.img_idx].widgets_status['cb_shadow'])
-        self.widgets['cb_old'].setChecked(self.labeling_status[self.img_idx].widgets_status['cb_old'])
-        self.widgets['cb_outrange'].setChecked(self.labeling_status[self.img_idx].widgets_status['cb_outrange'])
-        self.widgets['rb_1col'].setChecked(self.labeling_status[self.img_idx].widgets_status['rb_1col'])
-        self.widgets['slider_ratio'].setValue(self.labeling_status[self.img_idx].widgets_status['slider_ratio'])
+        self.widgets['cb_obscar'].setChecked(
+            self.labeling_status[self.img_idx].widgets_status['cb_obscar'])
+        self.widgets['cb_obshuman'].setChecked(
+            self.labeling_status[self.img_idx].widgets_status['cb_obshuman'])
+        self.widgets['cb_shadow'].setChecked(
+            self.labeling_status[self.img_idx].widgets_status['cb_shadow'])
+        self.widgets['cb_old'].setChecked(
+            self.labeling_status[self.img_idx].widgets_status['cb_old'])
+        self.widgets['cb_outrange'].setChecked(
+            self.labeling_status[self.img_idx].widgets_status['cb_outrange'])
+        self.widgets['rb_1col'].setChecked(
+            self.labeling_status[self.img_idx].widgets_status['rb_1col'])
+        self.widgets['slider_ratio'].setValue(
+            self.labeling_status[self.img_idx].widgets_status['slider_ratio'])
 
     def closeEvent(self, event):
         save_path = './labeling_done/'

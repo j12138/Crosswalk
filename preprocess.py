@@ -74,20 +74,28 @@ def preprocess_images(input_dir, output_dir):
         for img in tqdm(files))
 
 
-def extract_metadata(input_dir, exifmeta):
-    metadata = {}
+def extract_metadata(input_dir: str, exifmeta_to_extract: list):
+    """ For each image in the given directory, extract image metadata of
+    interest.
+    :param input_dir: A directory where image are stored
+    :param exifmeta_to_extract: A list of exif metadata to extract
+    :return: A dictionary (indexed by hashed key) of dictionary (metadata
+             name: value)
+    """
+    metadata_all = {}
 
     for img_name in os.listdir(input_dir):
-        load_name = os.path.join(input_dir, img_name)
+        metadata_per_each = {}
+        img = Image.open(os.path.join(input_dir, img_name))
+        width, height = img.size
+        assert width != height, "The image (unexpectedly) square!"
+        metadata_per_each["is_horizontal"] = True if width > height else False
 
-        meta = {}
-        i = Image.open(load_name)
-        info = i._getexif()
-
-        for tag, value in info.items():
-            decoded = TAGS.get(tag, tag)
-            if decoded in exifmeta:
-                meta[decoded] = str(value)
+        for tag, value in img.getexif().items():
+            # e.g. 'ImageWidth'
+            exif_meta_name = TAGS.get(tag, tag)
+            if exif_meta_name in exifmeta_to_extract:
+                metadata_per_each[exif_meta_name] = str(value)
 
         # Hash the image name
         hashed = get_hash_name(img_name)
@@ -95,10 +103,10 @@ def extract_metadata(input_dir, exifmeta):
         #   name ? --TJ
         # img_name = img_name + '.png'
         # meta['originalname'] = str(img_name)
-        meta['filehash'] = hashed
-        metadata[hashed] = meta
+        metadata_per_each['filehash'] = hashed
+        metadata_all[hashed] = metadata_per_each
 
-    return metadata
+    return metadata_all
 
 
 def update_database(metadata, db_file):
@@ -135,7 +143,9 @@ def preprocess_img(args, options):
     call this as the entry point. """
 
     output_dir = get_output_dir(args.input_dir, options["data_dir"])
-    metadata = extract_metadata(args.input_dir, options['exifmeta'])
+    # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
+    #                 'DateTimeOriginal', 'BrightnessValue'}
+    metadata = extract_metadata(args.input_dir, list(options['exifmeta']))
     preprocess_images(args.input_dir, output_dir)
     update_database(metadata, args.db_file)
 

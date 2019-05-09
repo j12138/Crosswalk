@@ -59,12 +59,16 @@ class CrosswalkData:
     def write_on_db(self):
         with open(self.db, 'r+') as db_json:
             db = json.load(db_json)
-        
-        for name in self.meta:
-            db[self.hashname][name] = self.meta[name][2]
-        
-        for label in self.labels:
-            db[self.hashname][label] = self.labels[label]
+
+        try:
+            for name in self.meta:
+                db[self.hashname][name] = self.meta[name][2]
+            
+            for label in self.labels:
+                db[self.hashname][label] = self.labels[label]
+        except Exception as e:
+            print('{}: {}'.format(e, self.hashname))
+            return
 
         with open(self.db, "w") as db_json:
             json.dump(db, db_json)

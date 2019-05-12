@@ -292,7 +292,13 @@ class LabelingTool(QWidget):
     def __draw_labeling_status(self):
         for i in range(self.current_point[0]):
             self.__draw_dot(self.all_points[i])
-        self.__draw_line_and_compute_label()
+        
+        try:
+            self.__draw_line_and_compute_label()
+        except Exception as e:
+            print('Failed to compute labels :{}'.format(e))
+            self.close()
+
         self.update_img(self.img_to_display)
 
     def __get_manual_meta(self):
@@ -465,11 +471,12 @@ class LabelingTool(QWidget):
 
     def closeEvent(self, event):
         save_path = './labeling_done/'
+        self.__move_done_imgs(save_path)
 
+    def __move_done_imgs(self, save_path):
         for idx in self.done_img_idx:
             img_file = self.img_files[idx]
             os.rename(img_file, save_path + os.path.split(img_file)[-1])
-
 
 def parse_args():
     parser = argparse.ArgumentParser()

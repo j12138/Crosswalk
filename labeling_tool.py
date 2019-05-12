@@ -167,7 +167,6 @@ class LabelingTool(QWidget):
         self.show()
 
     def launch(self):
-        self.__update_screen()
         if self.img_idx >= len(self.img_files):
             msg = 'Labeling all done!\nDo you want to quit the tool?'
             done_msg = QMessageBox.question(self, 'Message', msg,
@@ -180,6 +179,7 @@ class LabelingTool(QWidget):
                 self.img_idx = self.img_idx - 1
                 return
 
+        self.__update_screen()
         img_file = self.img_files[self.img_idx]
 
         self.data = cd.CrosswalkData(img_file)
@@ -229,7 +229,7 @@ class LabelingTool(QWidget):
 
         """
         if event.key() == Qt.Key_A:
-            # move to previous image (use A instead of ��)
+            # move to previous image (use A instead of <-)
             if self.img_idx > 0:
                 self.save_labeling_status()
                 self.img_idx = self.img_idx - 1
@@ -237,14 +237,13 @@ class LabelingTool(QWidget):
 
         if event.key() == Qt.Key_D:
             # move to next image (use D instead of →)
-            print('KeyPress: D (→)')
             if self.img_idx < len(self.img_files) - 1:
                 self.save_labeling_status()
                 self.img_idx = self.img_idx + 1
                 self.launch()
 
         if event.key() == Qt.Key_Backspace:
-            print('KeyPress: Backspace (Undo)')
+            #print('KeyPress: Backspace (Undo)')
             self.__undo_labeling()
 
     def __draw_dot(self, pos):
@@ -292,7 +291,7 @@ class LabelingTool(QWidget):
     def __draw_labeling_status(self):
         for i in range(self.current_point[0]):
             self.__draw_dot(self.all_points[i])
-        
+
         try:
             self.__draw_line_and_compute_label()
         except Exception as e:
@@ -325,7 +324,7 @@ class LabelingTool(QWidget):
             self.widgets['slider_ratio'].value() * 2)
         '''
         self.data.meta['zebra_ratio'][2] = self.__get_ratio_value()
-        
+
         # self.data.display_manual_meta()
         self.data.write_on_db()
         self.save_labeling_status()
@@ -335,8 +334,8 @@ class LabelingTool(QWidget):
 
     def __set_invalid(self):
         self.data.set_invalid()
-        self.data.display_labels()
-        self.data.display_manual_meta()
+        # self.data.display_labels()
+        # self.data.display_manual_meta()
 
         self.data.write_on_db()
         self.done_img_idx.add(self.img_idx)

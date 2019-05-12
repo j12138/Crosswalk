@@ -20,8 +20,9 @@ fixed_w = 400
 
 
 class LabelingStatus(object):
-    """ An entity class that contains labeling state information for each
-    input image.
+    """
+    An entity class that contains labeling state information for each input
+    image.
     """
 
     def __init__(self):
@@ -36,12 +37,11 @@ class LabelingStatus(object):
             'cb_old': False,
             'cb_outrange': False,
             'rb_1col': True,
-            'slider_ratio': 30
+            'slider_ratio': 60
         }
 
 
 class LabelingTool(QWidget):
-
     def __init__(self, img_dir):
         super().__init__()
         self.img_dir = img_dir
@@ -71,7 +71,9 @@ class LabelingTool(QWidget):
             'cb_outrange': QCheckBox('out_of_range'),
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
-            'slider_ratio': QSlider(Qt.Horizontal)
+            'slider_ratio': QSlider(Qt.Horizontal),
+            'rb_ratio': [QRadioButton('20'), QRadioButton('40'),
+                         QRadioButton('60'), QRadioButton('80')]
         }
         self.initUI()
 
@@ -110,6 +112,8 @@ class LabelingTool(QWidget):
 
         gbox_meta = QGroupBox("Metadata")
         vbox_meta = QVBoxLayout()
+        gbox_ratio = QGroupBox("zebra_ratio (%)")
+        hbox_ratio = QHBoxLayout()
 
         vbox_meta.addWidget(self.widgets['cb_obscar'])
         vbox_meta.addWidget(self.widgets['cb_obshuman'])
@@ -119,8 +123,15 @@ class LabelingTool(QWidget):
         vbox_meta.addWidget(self.widgets['rb_1col'])
         vbox_meta.addWidget(self.widgets['rb_2col'])
         vbox_meta.addStretch(2)
-        vbox_meta.addWidget(label_ratio)
-        vbox_meta.addWidget(self.widgets['slider_ratio'])
+        # vbox_meta.addWidget(label_ratio)
+        # vbox_meta.addWidget(self.widgets['slider_ratio'])
+
+        for i in range(len(self.widgets['rb_ratio'])):
+            hbox_ratio.addWidget(self.widgets['rb_ratio'][i])
+
+        gbox_ratio.setLayout(hbox_ratio)
+        gbox_ratio.setFont(QFont("calibri", 9))
+        vbox_meta.addWidget(gbox_ratio)
 
         # slider tick labels
         hbox_tick = QHBoxLayout()
@@ -134,7 +145,7 @@ class LabelingTool(QWidget):
             label_ticks[i].setFont(tick_font)
             hbox_tick.addWidget(label_ticks[i])
 
-        vbox_meta.addLayout(hbox_tick)
+        # vbox_meta.addLayout(hbox_tick)
 
         vbox_meta.addStretch(2)
         vbox_meta.addWidget(self.widgets['cb_outrange'])
@@ -208,16 +219,17 @@ class LabelingTool(QWidget):
             self.__draw_labeling_status()
 
             # self.__draw_line_and_compute_label()
-            # self.update_img(self.img_to_display)
 
     def keyPressEvent(self, event):
-        """ An overridden method from QWidget class to handle event per each
-        key press.
-        :param event: An event object tells which key is pressed
+        """An overridden method from QWidget class to handle event per each key
+        press. press.
+
+        :param event: An event object tells which key is pressed :param
+        event: An event object tells which key is pressed
+
         """
         if event.key() == Qt.Key_A:
-            # move to previous image (use A instead of ←)
-            print('KeyPress: A (←)')
+            # move to previous image (use A instead of ��)
             if self.img_idx > 0:
                 self.save_labeling_status()
                 self.img_idx = self.img_idx - 1
@@ -234,11 +246,6 @@ class LabelingTool(QWidget):
         if event.key() == Qt.Key_Backspace:
             print('KeyPress: Backspace (Undo)')
             self.__undo_labeling()
-
-        if event.key() == Qt.Key_T:
-            # !!
-            print('하기싫다')
-            print('아닙니다')
 
     def __draw_dot(self, pos):
         ratio = float(self.imgsize.width()) / 300.0
@@ -297,17 +304,23 @@ class LabelingTool(QWidget):
             self.widgets['cb_obscar'].isChecked())
         self.data.meta['obs_human'][2] = int(
             self.widgets['cb_obshuman'].isChecked())
-        self.data.meta['shadow'][2] = int(self.widgets['cb_shadow'].isChecked())
+        self.data.meta['shadow'][2] = int(
+            self.widgets['cb_shadow'].isChecked())
         self.data.meta['out_of_range'][2] = int(
             self.widgets['cb_outrange'].isChecked())
-        self.data.meta['old'][2] = int(self.widgets['cb_old'].isChecked())
+        self.data.meta['old'][2] = int(
+            self.widgets['cb_old'].isChecked())
 
         if self.widgets['rb_2col'].isChecked():
             self.data.meta['column'][2] = 2
 
+        '''
         self.data.meta['zebra_ratio'][2] = int(
             self.widgets['slider_ratio'].value() * 2)
-
+        '''
+        self.data.meta['zebra_ratio'][2] = self.__get_ratio_value()
+        
+        self.data.display_manual_meta()
         self.data.write_on_db()
         self.save_labeling_status()
         self.done_img_idx.add(self.img_idx)
@@ -358,11 +371,14 @@ class LabelingTool(QWidget):
         font_size = 0.35 * ratio
 
         cv2.putText(self.img_to_display,
-                    loc + '  ' + ang + '  ' + pit + '  ' + roll, (15, 15),
-                    cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 255, 255),
+                    loc + '  ' + ang + '  ' +
+                    pit + '  ' + roll, (15, 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_size, (
+                        255, 255, 255),
                     round(3 * ratio))
         cv2.putText(self.img_to_display,
-                    loc + '  ' + ang + '  ' + pit + '  ' + roll, (15, 15),
+                    loc + '  ' + ang + '  ' +
+                    pit + '  ' + roll, (15, 15),
                     cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 0, 0),
                     round(ratio))
 
@@ -411,7 +427,7 @@ class LabelingTool(QWidget):
         self.labeling_status[self.img_idx].widgets_status['rb_1col'] = \
             self.widgets['rb_1col'].isChecked()
         self.labeling_status[self.img_idx].widgets_status['slider_ratio'] = \
-            self.widgets['slider_ratio'].value()
+            self.__get_ratio_value()
 
     def __update_screen(self):
         self.status = self.labeling_status[self.img_idx]
@@ -433,8 +449,19 @@ class LabelingTool(QWidget):
             self.labeling_status[self.img_idx].widgets_status['cb_outrange'])
         self.widgets['rb_1col'].setChecked(
             self.labeling_status[self.img_idx].widgets_status['rb_1col'])
-        self.widgets['slider_ratio'].setValue(
-            self.labeling_status[self.img_idx].widgets_status['slider_ratio'])
+        # self.widgets['slider_ratio'].setValue(
+        #    self.labeling_status[self.img_idx].widgets_status['slider_ratio'])
+        self.__set_ratio_buttons()
+
+    def __get_ratio_value(self):
+        for i in range(len(self.widgets['rb_ratio'])):
+            rb = self.widgets['rb_ratio'][i]
+            if rb.isChecked():
+                return (i + 1) * 20
+
+    def __set_ratio_buttons(self):
+        val = self.labeling_status[self.img_idx].widgets_status['slider_ratio']
+        self.widgets['rb_ratio'][int(val / 20) - 1].setChecked(True)
 
     def closeEvent(self, event):
         save_path = './labeling_done/'
@@ -452,8 +479,12 @@ def parse_args():
 
 
 def launch_annotator(data_path):
-    """ the actual 'main' function. Other modules that import this module shall
-    call this as the entry point. """
+    """the actual 'main' function.
+
+    Other modules that import this module shall call this as the entry
+    point.
+
+    """
 
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))

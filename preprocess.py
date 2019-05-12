@@ -88,7 +88,6 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list):
         metadata_per_each = {}
         img = Image.open(os.path.join(input_dir, img_name))
         height, width = img.size
-        print(height, width)
         assert width != height, "The image (unexpectedly) square!"
         metadata_per_each["is_horizontal"] = True if width > height else False
 

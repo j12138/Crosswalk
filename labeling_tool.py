@@ -320,7 +320,7 @@ class LabelingTool(QWidget):
         '''
         self.data.meta['zebra_ratio'][2] = self.__get_ratio_value()
         
-        self.data.display_manual_meta()
+        # self.data.display_manual_meta()
         self.data.write_on_db()
         self.save_labeling_status()
         self.done_img_idx.add(self.img_idx)

@@ -9,7 +9,7 @@ import os
 import crosswalk_data as cd
 import compute_label_lib as cl
 from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
-    QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
+    QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox,\
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory
 from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
     QPainter, QCursor, QPalette, QColor
@@ -19,40 +19,14 @@ import sys
 fixed_w = 400
 
 
-class LabelingStatus(object):
-    """
-    An entity class that contains labeling state information for each input
-    image.
-    """
-
-    def __init__(self):
-        self.is_input_finished = False
-        self.current_point = [0, (0, 0)]
-        self.all_points = [(0, 0)] * 6
-        self.is_line_drawn = [False, False, False]
-        self.widgets_status = {
-            'cb_obscar': False,
-            'cb_obshuman': False,
-            'cb_shadow': False,
-            'cb_old': False,
-            'cb_outrange': False,
-            'rb_1col': True,
-            'slider_ratio': 60
-        }
-
-
 class LabelingTool(QWidget):
     def __init__(self, img_dir):
         super().__init__()
         self.img_dir = img_dir
         self.img_files = glob.glob(self.img_dir + '/*')
         self.img_idx = 0
-        self.labeling_status = []
 
-        for i in range(len(self.img_files)):
-            self.labeling_status.append(LabelingStatus())
-
-        self.status = self.labeling_status[self.img_idx]
+        self.status = cd.LabelingStatus()
 
         self.is_input_finished = False
         self.current_point = [0, (0, 0)]
@@ -91,8 +65,6 @@ class LabelingTool(QWidget):
 
         # make metadata widgets
         self.widgets['rb_1col'].setChecked(True)
-
-        label_ratio = QLabel('zebra_ratio')
 
         self.widgets['slider_ratio'].setRange(0, 50)
         self.widgets['slider_ratio'].setSingleStep(20)
@@ -179,12 +151,13 @@ class LabelingTool(QWidget):
                 self.img_idx = self.img_idx - 1
                 return
 
-        self.__update_screen()
         img_file = self.img_files[self.img_idx]
-
         self.data = cd.CrosswalkData(img_file)
+        
         self.img_to_display = self.data.img.copy()
         img = self.img_to_display
+        self.update_img(img)
+        self.__update_screen()
         self.__draw_labeling_status()
 
         self.update_img(img)
@@ -243,7 +216,7 @@ class LabelingTool(QWidget):
                 self.launch()
 
         if event.key() == Qt.Key_Backspace:
-            #print('KeyPress: Backspace (Undo)')
+            # print('KeyPress: Backspace (Undo)')
             self.__undo_labeling()
 
     def __draw_dot(self, pos):
@@ -413,29 +386,30 @@ class LabelingTool(QWidget):
                                        len(self.img_files)))
 
     def save_labeling_status(self):
-        self.labeling_status[
-            self.img_idx].is_input_finished = self.is_input_finished
-        self.labeling_status[self.img_idx].is_line_drawn = self.is_line_drawn
-        self.labeling_status[self.img_idx].current_point = self.current_point
-        self.labeling_status[self.img_idx].all_points = self.all_points
+        self.status.is_input_finished = self.is_input_finished
+        self.status.is_line_drawn = self.is_line_drawn
+        self.status.current_point = self.current_point
+        self.status.all_points = self.all_points
 
-        self.labeling_status[self.img_idx].widgets_status['cb_obscar'] = \
+        self.status.widgets_status['cb_obscar'] = \
             self.widgets['cb_obscar'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_obshuman'] = \
+        self.status.widgets_status['cb_obshuman'] = \
             self.widgets['cb_obshuman'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_shadow'] = \
+        self.status.widgets_status['cb_shadow'] = \
             self.widgets['cb_shadow'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_old'] = \
+        self.status.widgets_status['cb_old'] = \
             self.widgets['cb_old'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['cb_outrange'] = \
+        self.status.widgets_status['cb_outrange'] = \
             self.widgets['cb_outrange'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['rb_1col'] = \
+        self.status.widgets_status['rb_1col'] = \
             self.widgets['rb_1col'].isChecked()
-        self.labeling_status[self.img_idx].widgets_status['slider_ratio'] = \
+        self.status.widgets_status['slider_ratio'] = \
             self.__get_ratio_value()
 
+        self.data.save_labeling_status(self.status)
+
     def __update_screen(self):
-        self.status = self.labeling_status[self.img_idx]
+        self.status = self.data.load_labeling_status()
         self.current_point = self.status.current_point
         self.all_points = self.status.all_points
         self.is_line_drawn = [False, False, False]
@@ -443,17 +417,17 @@ class LabelingTool(QWidget):
 
         # Set check widgets default value
         self.widgets['cb_obscar'].setChecked(
-            self.labeling_status[self.img_idx].widgets_status['cb_obscar'])
+            self.status.widgets_status['cb_obscar'])
         self.widgets['cb_obshuman'].setChecked(
-            self.labeling_status[self.img_idx].widgets_status['cb_obshuman'])
+            self.status.widgets_status['cb_obshuman'])
         self.widgets['cb_shadow'].setChecked(
-            self.labeling_status[self.img_idx].widgets_status['cb_shadow'])
+            self.status.widgets_status['cb_shadow'])
         self.widgets['cb_old'].setChecked(
-            self.labeling_status[self.img_idx].widgets_status['cb_old'])
+            self.status.widgets_status['cb_old'])
         self.widgets['cb_outrange'].setChecked(
-            self.labeling_status[self.img_idx].widgets_status['cb_outrange'])
+            self.status.widgets_status['cb_outrange'])
         self.widgets['rb_1col'].setChecked(
-            self.labeling_status[self.img_idx].widgets_status['rb_1col'])
+            self.status.widgets_status['rb_1col'])
         # self.widgets['slider_ratio'].setValue(
         #    self.labeling_status[self.img_idx].widgets_status['slider_ratio'])
         self.__set_ratio_buttons()
@@ -465,10 +439,11 @@ class LabelingTool(QWidget):
                 return (i + 1) * 20
 
     def __set_ratio_buttons(self):
-        val = self.labeling_status[self.img_idx].widgets_status['slider_ratio']
+        val = self.status.widgets_status['slider_ratio']
         self.widgets['rb_ratio'][int(val / 20) - 1].setChecked(True)
 
     def closeEvent(self, event):
+        self.data.save_labeling_status(self.status)
         save_path = './labeling_done/'
         self.__move_done_imgs(save_path)
 
@@ -476,6 +451,7 @@ class LabelingTool(QWidget):
         for idx in self.done_img_idx:
             img_file = self.img_files[idx]
             os.rename(img_file, save_path + os.path.split(img_file)[-1])
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -491,7 +467,6 @@ def launch_annotator(data_path):
     point.
 
     """
-
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))

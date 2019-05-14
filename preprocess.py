@@ -74,7 +74,7 @@ def preprocess_images(input_dir, output_dir):
         for img in tqdm(files))
 
 
-def extract_metadata(input_dir: str, exifmeta_to_extract: list):
+def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     """ For each image in the given directory, extract image metadata of
     interest.
     :param input_dir: A directory where image are stored
@@ -104,9 +104,21 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list):
         # img_name = img_name + '.png'
         # meta['originalname'] = str(img_name)
         metadata_per_each['filehash'] = hashed
+
+        init_labeling_status(metadata_per_each, widgets)
+
         metadata_all[hashed] = metadata_per_each
 
     return metadata_all
+
+
+def init_labeling_status(metadata_per_each, widgets):
+    metadata_per_each['is_input_finished'] = False
+    metadata_per_each['current_point'] = [0, [0, 0]]
+    metadata_per_each['all_points'] = [(0, 0)] * 6
+    metadata_per_each['is_line_drawn'] = [False, False, False]
+    for name in widgets:
+        metadata_per_each[name] = widgets[name]
 
 
 def update_database(metadata, db_file):
@@ -145,7 +157,8 @@ def preprocess_img(args, options):
     output_dir = get_output_dir(args.input_dir, options["data_dir"])
     # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
     #                 'DateTimeOriginal', 'BrightnessValue'}
-    metadata = extract_metadata(args.input_dir, list(options['exifmeta']))
+    metadata = extract_metadata(args.input_dir, list(options['exifmeta']),
+                                options['widgets'])
     preprocess_images(args.input_dir, output_dir)
     update_database(metadata, args.db_file)
 

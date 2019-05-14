@@ -14,6 +14,14 @@ manualmeta: { # [min, max, initial]
               'old' : [0, 1, 0],
               'invalid' : [0, 0, 0]
              }
+widgets: {
+          'cb_obscar': False,
+          'cb_obshuman': False,
+          'cb_shadow': False,
+          'cb_old': False,
+          'cb_outrange': False,
+          'rb_1col': True,
+          'slider_ratio': 60}
 experiment_name: 'Crosswalk_guide_150_120'
 train_imgs: './npy/2019-04-02__08-01-41_X.npy'
 train_labels: './npy/2019-04-02__08-01-41_Y.npy'

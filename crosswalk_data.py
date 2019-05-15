@@ -128,6 +128,7 @@ class CrosswalkData:
         return status
 
     def save_labeling_status(self, status):
+        # print(status.widgets_status['rb_1col'])
         with open(self.db, 'r+') as db_json:
             db = json.load(db_json)
 

@@ -9,10 +9,11 @@ import os
 import crosswalk_data as cd
 import compute_label_lib as cl
 from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
-    QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox,\
-    QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory
+     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox,\
+     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
+     QTableView
 from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
-    QPainter, QCursor, QPalette, QColor
+     QPainter, QCursor, QPalette, QColor
 from PyQt5.QtCore import Qt
 import sys
 
@@ -52,11 +53,17 @@ class LabelingTool(QWidget):
         self.initUI()
 
     def initUI(self):
-        but_done = QPushButton('Done')
+        but_done = QPushButton('Save')
+        but_done.setToolTip('Save labeling on DB')
+        but_done.setStyleSheet("background-color: skyblue")
         but_done.clicked.connect(self.__get_manual_meta)
         but_invalid = QPushButton('Invalid')
+        but_invalid.setToolTip('press if you cannot draw dots')
         but_invalid.setStyleSheet("background-color: red")
         but_invalid.clicked.connect(self.__set_invalid)
+        but_next = QPushButton('Next unlabeled')
+        but_next.setToolTip('Move to next img to annotate')
+        but_next.clicked.connect(self.__next_unlabeled_img)
 
         # Image show
         pixmap = QPixmap('qimage.png')
@@ -119,9 +126,11 @@ class LabelingTool(QWidget):
 
         # vbox_meta.addLayout(hbox_tick)
 
-        vbox_meta.addStretch(2)
+        vbox_meta.addStretch(1)
         vbox_meta.addWidget(self.widgets['cb_outrange'])
         vbox_meta.addStretch(5)
+        vbox_meta.addWidget(but_next)
+        # vbox_meta.addStretch(1)
 
         hbox_button = QHBoxLayout()
         hbox_button.addWidget(but_invalid)
@@ -140,16 +149,8 @@ class LabelingTool(QWidget):
 
     def launch(self):
         if self.img_idx >= len(self.img_files):
-            msg = 'Labeling all done!\nDo you want to quit the tool?'
-            done_msg = QMessageBox.question(self, 'Message', msg,
-                                            QMessageBox.Yes | QMessageBox.No,
-                                            QMessageBox.No)
-            if done_msg == QMessageBox.Yes:
-                self.close()
-                return
-            else:
-                self.img_idx = self.img_idx - 1
-                return
+            self.close()
+            return
 
         img_file = self.img_files[self.img_idx]
         self.data = cd.CrosswalkData(img_file)
@@ -218,6 +219,9 @@ class LabelingTool(QWidget):
         if event.key() == Qt.Key_Backspace:
             # print('KeyPress: Backspace (Undo)')
             self.__undo_labeling()
+
+        if event.key() == Qt.Key_Return:
+            self.__get_manual_meta()
 
     def __draw_dot(self, pos):
         ratio = float(self.imgsize.width()) / 300.0
@@ -426,10 +430,12 @@ class LabelingTool(QWidget):
             self.status.widgets_status['cb_old'])
         self.widgets['cb_outrange'].setChecked(
             self.status.widgets_status['cb_outrange'])
-        self.widgets['rb_1col'].setChecked(
-            self.status.widgets_status['rb_1col'])
-        # self.widgets['slider_ratio'].setValue(
-        #    self.labeling_status[self.img_idx].widgets_status['slider_ratio'])
+
+        if self.status.widgets_status['rb_1col']:
+            self.widgets['rb_1col'].setChecked(True)
+        else:
+            self.widgets['rb_2col'].setChecked(True)
+
         self.__set_ratio_buttons()
 
     def __get_ratio_value(self):
@@ -442,7 +448,22 @@ class LabelingTool(QWidget):
         val = self.status.widgets_status['slider_ratio']
         self.widgets['rb_ratio'][int(val / 20) - 1].setChecked(True)
 
+    def __next_unlabeled_img(self):
+        pass
+
     def closeEvent(self, event):
+        process = 'Labeled img: {} / {}\n\n'.format(len(self.done_img_idx),
+                                                    len(self.img_files))
+        msg = process + 'Do you want to quit the tool?'
+        done_msg = QMessageBox.question(self, 'Message', msg,
+                                        QMessageBox.Yes | QMessageBox.No,
+                                        QMessageBox.No)
+
+        if done_msg == QMessageBox.No:
+            self.img_idx = self.img_idx - 1
+            event.ignore()
+            return
+
         self.data.save_labeling_status(self.status)
         save_path = './labeling_done/'
         self.__move_done_imgs(save_path)
@@ -451,6 +472,25 @@ class LabelingTool(QWidget):
         for idx in self.done_img_idx:
             img_file = self.img_files[idx]
             os.rename(img_file, save_path + os.path.split(img_file)[-1])
+
+
+class DataSelector(QWidget):
+    def __init__(self, parent=None, flags=Qt.WindowFlags()):
+        super().__init__(parent=parent, flags=flags)
+
+        self.selected_path = ''
+        self.__initUI()
+
+    def __initUI(self):
+        folder_list = QTableView()
+        folder_list.show()
+        return
+
+    def launch(self):
+        return
+
+    def get_data_path(self):
+        return self.selected_path
 
 
 def parse_args():
@@ -467,11 +507,18 @@ def launch_annotator(data_path):
     point.
 
     """
+
+
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
-    ex = LabelingTool(data_path)
-    ex.launch()
+    
+    folder_selector = DataSelector()
+    data_path2 = folder_selector.get_data_path()
+    folder_selector.launch()
+
+    labeling_tool = LabelingTool(data_path)
+    labeling_tool.launch()
     sys.exit(app.exec_())
 
 

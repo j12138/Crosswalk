@@ -154,7 +154,7 @@ class LabelingTool(QWidget):
 
         img_file = self.img_files[self.img_idx]
         self.data = cd.CrosswalkData(img_file)
-        
+
         self.img_to_display = self.data.img.copy()
         img = self.img_to_display
         self.update_img(img)
@@ -449,7 +449,18 @@ class LabelingTool(QWidget):
         self.widgets['rb_ratio'][int(val / 20) - 1].setChecked(True)
 
     def __next_unlabeled_img(self):
-        pass
+        for i in range(len(self.img_files)):
+            if (i > self.img_idx) and (i not in self.done_img_idx):
+                self.img_idx = i
+                self.launch()
+                return
+        temp = 0
+        while(temp in self.done_img_idx):
+            temp = temp + 1
+
+        if (temp < len(self.img_files)):
+            self.img_idx = temp
+        self.launch()
 
     def closeEvent(self, event):
         process = 'Labeled img: {} / {}\n\n'.format(len(self.done_img_idx),
@@ -483,14 +494,23 @@ class DataSelector(QWidget):
 
     def __initUI(self):
         folder_list = QTableView()
-        folder_list.show()
-        return
+        # folder_list.show()
+
+        grid = QGridLayout()
+        self.setLayout(grid)
+
+        self.setWindowTitle('Crosswalk labeling tool')
+        self.resize(700, 500)
+        self.show()
 
     def launch(self):
         return
 
     def get_data_path(self):
         return self.selected_path
+
+    def closeEvent(self, event):
+        pass
 
 
 def parse_args():
@@ -508,14 +528,13 @@ def launch_annotator(data_path):
 
     """
 
-
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
-    
-    folder_selector = DataSelector()
-    data_path2 = folder_selector.get_data_path()
-    folder_selector.launch()
+
+    # folder_selector = DataSelector()
+    # data_path2 = folder_selector.get_data_path()
+    # folder_selector.launch()
 
     labeling_tool = LabelingTool(data_path)
     labeling_tool.launch()

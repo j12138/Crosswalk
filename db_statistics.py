@@ -3,15 +3,18 @@ import yaml
 from math import ceil
 import matplotlib.pyplot as plt
 
+
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
         options = yaml.load(stream)
     return options
 
+
 def load_DB(options):
     with open(options['db_file'], "r") as db_file:
         db = json.load(db_file).values()
     return db
+
 
 def show_proportion_bar(target, total):
     # 100% / 25 blocks -> 1% / 0.25 block
@@ -22,6 +25,7 @@ def show_proportion_bar(target, total):
     
     return bar
 
+
 def show_label_scatter_plot(db):
     loc = []
     ang = []
@@ -31,7 +35,7 @@ def show_label_scatter_plot(db):
         if item['invalid'] == 0:
             loc.append(item['loc'])
             ang.append(item['ang'])
-    
+
     plt.scatter(loc, ang)
     plt.xlim((-2.0, 2.0))
     plt.ylim((-90, 90))
@@ -47,6 +51,8 @@ def show_total_stat(db):
     cnt = 0
     invalid = 0
     for item in db:
+        if not item['is_input_finished']:
+            continue
         cnt = cnt + 1
 
         if item['invalid'] == 1:
@@ -57,6 +63,7 @@ def show_total_stat(db):
     print('*valid: ' + show_proportion_bar(cnt-invalid, cnt))
 
     return cnt
+
 
 def show_manualmeta_stat(db, total):
     obs_car = 0
@@ -72,6 +79,8 @@ def show_manualmeta_stat(db, total):
     old = 0
 
     for item in db:
+        if not item['is_input_finished']:
+            continue
         try:
             if item['obs_car'] == 1:
                 obs_car = obs_car + 1
@@ -96,7 +105,7 @@ def show_manualmeta_stat(db, total):
             if item['old'] == 1:
                 old = old + 1
 
-        except :
+        except:
             print('Fail: ' + item['filehash'])
             continue
 
@@ -118,11 +127,14 @@ def show_manualmeta_stat(db, total):
 
     pass
 
+
 def show_exifmeta_stat(db, total):
     Samsung = 0
     Apple = 0
 
     for item in db:
+        if not item['is_input_finished']:
+            continue
         try:
             if item['Make'] == 'samsung':
                 Samsung = Samsung + 1
@@ -139,6 +151,7 @@ def show_exifmeta_stat(db, total):
     print('\n')
 
     pass
+
 
 def main():
     options = loadyaml()

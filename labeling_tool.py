@@ -61,9 +61,11 @@ class LabelingTool(QWidget):
         but_invalid.setToolTip('press if you cannot draw dots')
         but_invalid.setStyleSheet("background-color: red")
         but_invalid.clicked.connect(self.__set_invalid)
-        but_next = QPushButton('Next unlabeled')
+        but_next = QPushButton('Next')
+        but_prev = QPushButton('Prev')
         but_next.setToolTip('Move to next img to annotate')
         but_next.clicked.connect(self.__next_unlabeled_img)
+        but_prev.clicked.connect(self.__prev_unlabeled_img)
 
         # Image show
         pixmap = QPixmap('qimage.png')
@@ -128,15 +130,18 @@ class LabelingTool(QWidget):
 
         vbox_meta.addStretch(1)
         vbox_meta.addWidget(self.widgets['cb_outrange'])
-        vbox_meta.addStretch(5)
-        vbox_meta.addWidget(but_next)
-        # vbox_meta.addStretch(1)
+        vbox_meta.addStretch(4)
 
-        hbox_button = QHBoxLayout()
-        hbox_button.addWidget(but_invalid)
-        hbox_button.addWidget(but_done)
+        hbox_button1 = QHBoxLayout()
+        hbox_button1.addWidget(but_prev)
+        hbox_button1.addWidget(but_next)
+        vbox_meta.addLayout(hbox_button1)
 
-        vbox_meta.addLayout(hbox_button)
+        hbox_button2 = QHBoxLayout()
+        hbox_button2.addWidget(but_invalid)
+        hbox_button2.addWidget(but_done)
+
+        vbox_meta.addLayout(hbox_button2)
         gbox_meta.setLayout(vbox_meta)
 
         grid.addWidget(self.gbox_image, 0, 0)
@@ -462,6 +467,23 @@ class LabelingTool(QWidget):
             self.img_idx = temp
         self.launch()
 
+    def __prev_unlabeled_img(self):
+        total = len(self.img_files)
+        for i in range(total):
+            j = total - i - 1
+            if (j < self.img_idx) and (j not in self.done_img_idx):
+                self.img_idx = j
+                self.launch()
+                return
+        temp = total - 1
+        while (temp in self.done_img_idx):
+            temp = temp - 1
+            print(total)
+
+        if (temp > 0):
+            self.img_idx = temp
+        self.launch()
+
     def closeEvent(self, event):
         process = 'Labeled img: {} / {}\n\n'.format(len(self.done_img_idx),
                                                     len(self.img_files))
@@ -515,6 +537,7 @@ class DataSelector(QWidget):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--validate', action="store_true")
     parser.add_argument('data_path', help='Path of folder containing images',
                         default='', type=str)
     return parser.parse_args()
@@ -542,7 +565,11 @@ def launch_annotator(data_path):
 
 
 def main(args):
-    launch_annotator(args.data_path)
+    if (args.validate):
+        data_path = './labeling_done/'
+    else:
+        data_path = args.data_path
+    launch_annotator(data_path)
 
 
 if __name__ == "__main__":

@@ -20,8 +20,6 @@ def parse_args(options):
     parser = argparse.ArgumentParser()
     parser.add_argument('input_dir', help='Path of folder containing images',
                         type=str)
-    parser.add_argument('db_file', default=options['db_file'], type=str,
-                        nargs='?', help="JSON database file")
 
     return parser.parse_args()
 
@@ -57,18 +55,20 @@ def resize_and_save(input_dir, output_dir, img_path):
     cv2.imwrite(save_path, resized)
     # remove the extension
     os.rename(save_path, save_path[:-4])
+    os.remove(os.path.join(input_dir, img_path))
 
 
-def preprocess_images(input_dir, output_dir):
+def preprocess_images(input_dir):
     """ Preprocess all the images
     :param input_dir: original image file directory
     :param output_dir: output directory to which the re-sized images are saved
     """
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
     files = os.listdir(input_dir)
     print("Resizing {} images".format(len(files)))
+
+    output_dir = os.path.join(input_dir, 'preprocessed')
+    os.mkdir(output_dir)
+
     Parallel(n_jobs=-1)(
         delayed(resize_and_save)(input_dir, output_dir, img)
         for img in tqdm(files))
@@ -121,14 +121,14 @@ def init_labeling_status(metadata_per_each, widgets):
         metadata_per_each[name] = widgets[name]
 
 
-def update_database(metadata, db_file):
-    if not os.path.exists(db_file):
-        # create an empty JSON file
-        with open(db_file, 'w') as f:
-            f.write("{}")
+def update_database(metadata, input_dir):
+    # create an empty JSON file
+    db_file = os.path.join(input_dir, 'db.json')
+    with open(db_file, 'w') as f:
+        f.write("{}")
+
     try:
-        # check if the db_file is a legitimate json file
-        with open(db_file, "r") as f:
+        with open(db_file, 'r') as f:
             loaded = json.load(f)
     except Exception as e:
         print('Failed to open database file {}: {}'.format(db_file, e))
@@ -139,28 +139,18 @@ def update_database(metadata, db_file):
         print('Successfully updated!')
 
 
-def get_output_dir(input_dir, data_dir):
-    """ return path for preprocessed(and hashed) image
-    :param input_dir: the name of the original image directory
-    :return: expanded output directory path
-    """
-    if not (os.path.exists(data_dir) and os.path.isdir(data_dir)):
-        os.mkdir(data_dir)
-    dir_name = input_dir.strip('.').replace('/', '_').replace('\\', '_')
-    return os.path.join(data_dir, dir_name)
-
-
 def preprocess_img(args, options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
 
-    output_dir = get_output_dir(args.input_dir, options["data_dir"])
     # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
     #                 'DateTimeOriginal', 'BrightnessValue'}
     metadata = extract_metadata(args.input_dir, list(options['exifmeta']),
                                 options['widgets'])
-    preprocess_images(args.input_dir, output_dir)
-    update_database(metadata, args.db_file)
+    preprocess_images(args.input_dir)
+    update_database(metadata, args.input_dir)
+
+    os.mkdir(os.path.join(args.input_dir, 'labeled'))
 
 
 def main():

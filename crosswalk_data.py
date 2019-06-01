@@ -7,6 +7,7 @@ import json
 import yaml
 import os
 
+
 def loadyaml():
     with open('./config.yaml', 'r') as stream: 
         options = yaml.load(stream)
@@ -49,7 +50,12 @@ class CrosswalkData:
             'pit': 0.0,
             'roll': 0.0
         }
-        self.db = options['db_file']
+        self.db = self.__get_db_file()
+
+    def __get_db_file(self):
+        data_path = os.path.abspath(self.img_file + "/../../")
+        db_path = os.path.join(data_path, 'db.json')
+        return db_path
 
     def display_manual_meta(self):
         for name in self.meta:

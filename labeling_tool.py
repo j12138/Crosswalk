@@ -566,9 +566,12 @@ def launch_annotator(data_path):
 
 def main(args):
     if (args.validate):
-        data_path = './labeling_done/'
+        data_path = os.path.join(args.data_path, 'labeled')
+        if len(glob.glob(data_path + '/*')) <= 0:
+            print('There are no labeled img')
+            return
     else:
-        data_path = args.data_path
+        data_path = os.path.join(args.data_path, 'preprocessed')
     launch_annotator(data_path)
 
 

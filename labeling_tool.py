@@ -497,8 +497,9 @@ class LabelingTool(QWidget):
             event.ignore()
             return
 
-        self.data.save_labeling_status(self.status)
-        save_path = './labeling_done/'
+        self.save_labeling_status()
+        save_path = os.path.join(os.path.abspath(self.img_dir + "/../"),
+                                 "labeled")
         self.__move_done_imgs(save_path)
 
     def __move_done_imgs(self, save_path):

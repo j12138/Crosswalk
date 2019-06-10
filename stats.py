@@ -47,7 +47,8 @@ def show_proportion_bar(target, total):
         proportion = 100 * float(target) / total
         blocks = ceil(proportion * 0.25)
 
-    bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) + ' / ' + str(total) + ' ]'
+    bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) +\
+          ' / ' + str(total) + ' ]'
 
     return bar
 
@@ -90,8 +91,6 @@ def show_label_scatter_plot(db):
 
     plt.show()
 
-    pass
-
 
 def show_total_stat(db):
     cnt = 0
@@ -112,7 +111,7 @@ def show_total_stat(db):
     return cnt, labeled
 
 
-def show_manualmeta_stat(db, total):
+def show_manual_meta_stat(db, total):
     obs_car = 0
     obs_human = 0
     shadow = 0
@@ -151,8 +150,7 @@ def show_manualmeta_stat(db, total):
                 over_80 = over_80 + 1
             if item['old'] == 1:
                 old = old + 1
-
-        except:
+        except Exception as e:
             print('Fail: ' + item['filehash'])
             continue
 
@@ -171,8 +169,6 @@ def show_manualmeta_stat(db, total):
     print(' └─ [~60] ', show_proportion_bar(under_60, total))
     print(' └─ [~80] ', show_proportion_bar(under_80, total))
     print(' └─ [80~] ', show_proportion_bar(over_80, total))
-
-    pass
 
 
 def show_exifmeta_stat(db, total):
@@ -198,8 +194,6 @@ def show_exifmeta_stat(db, total):
     print('└─Samsung:', show_proportion_bar(Samsung, total))
     print('└─Apple:  ', show_proportion_bar(Apple, total))
 
-    pass
-
 
 def show_db_stat(options):
     db = load_DB(options)
@@ -217,7 +211,7 @@ def show_db_stat(options):
         return
 
     print('\n--------- manual metadata (labeled) ---------\n')
-    show_manualmeta_stat(db, labeled)
+    show_manual_meta_stat(db, labeled)
 
     show_label_scatter_plot(db)
 

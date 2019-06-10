@@ -155,7 +155,7 @@ def preprocess_img(args, options):
     # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
     #                 'DateTimeOriginal', 'BrightnessValue'}
 
-    folder_name = os.path.basename(os.path.dirname(args.input_dir))
+    folder_name = os.path.basename(args.input_dir.strip('/\\'))
     save_dir = os.path.join(os.getcwd(), preprocessed_folder, folder_name)
     print('save_dir: ', save_dir)
 

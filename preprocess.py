@@ -9,6 +9,9 @@ import yaml
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
+preprocessed_folder = 'preprocessed_data'
+labeled_folder = 'labeled'
+
 
 def parse_args(options):
     """ Parse command-line arguments
@@ -55,18 +58,19 @@ def resize_and_save(input_dir, output_dir, img_path):
     cv2.imwrite(save_path, resized)
     # remove the extension
     os.rename(save_path, save_path[:-4])
-    os.remove(os.path.join(input_dir, img_path))
+    # os.remove(os.path.join(input_dir, img_path))
 
 
-def preprocess_images(input_dir):
+def preprocess_images(input_dir: str, save_dir: str):
     """ Preprocess all the images
     :param input_dir: original image file directory
-    :param output_dir: output directory to which the re-sized images are saved
+    :param save_dir: output directory to which the re-sized images are saved
     """
     files = os.listdir(input_dir)
     print("Resizing {} images".format(len(files)))
 
-    output_dir = os.path.join(input_dir, 'preprocessed')
+    os.mkdir(save_dir)
+    output_dir = os.path.join(save_dir, 'preprocessed')
     os.mkdir(output_dir)
 
     Parallel(n_jobs=-1)(
@@ -121,9 +125,14 @@ def init_labeling_status(metadata_per_each, widgets):
         metadata_per_each[name] = widgets[name]
 
 
-def update_database(metadata, input_dir):
+def update_database(metadata, save_dir):
+    # create an empty README.md file
+    readme_file = os.path.join(save_dir, 'README.txt')
+    with open(readme_file, 'w') as f:
+        f.write("#_data: " + str(len(metadata)))
+
     # create an empty JSON file
-    db_file = os.path.join(input_dir, 'db.json')
+    db_file = os.path.join(save_dir, 'db.json')
     with open(db_file, 'w') as f:
         f.write("{}")
 
@@ -145,12 +154,25 @@ def preprocess_img(args, options):
 
     # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
     #                 'DateTimeOriginal', 'BrightnessValue'}
+
+    folder_name = os.path.basename(os.path.dirname(args.input_dir))
+    save_dir = os.path.join(os.getcwd(), preprocessed_folder, folder_name)
+    print('save_dir: ', save_dir)
+
     metadata = extract_metadata(args.input_dir, list(options['exifmeta']),
                                 options['widgets'])
-    preprocess_images(args.input_dir)
-    update_database(metadata, args.input_dir)
+    preprocess_images(args.input_dir, save_dir)
+    update_database(metadata, save_dir)
 
-    os.mkdir(os.path.join(args.input_dir, 'labeled'))
+    os.mkdir(os.path.join(save_dir, labeled_folder))
+
+
+def make_readme_file(input_dir):
+    pass
+
+
+def get_folder_name(input_dir):
+    folder = os.path.dirname(input_dir)
 
 
 def main():

@@ -454,6 +454,8 @@ class LabelingTool(QWidget):
         self.widgets['rb_ratio'][int(val / 20) - 1].setChecked(True)
 
     def __next_unlabeled_img(self):
+        self.save_labeling_status()
+
         for i in range(len(self.img_files)):
             if (i > self.img_idx) and (i not in self.done_img_idx):
                 self.img_idx = i
@@ -468,6 +470,8 @@ class LabelingTool(QWidget):
         self.launch()
 
     def __prev_unlabeled_img(self):
+        self.save_labeling_status()
+
         total = len(self.img_files)
         for i in range(total):
             j = total - i - 1
@@ -498,14 +502,13 @@ class LabelingTool(QWidget):
             return
 
         self.save_labeling_status()
-        save_path = os.path.join(os.path.abspath(self.img_dir + "/../"),
-                                 "labeled")
+        save_path = os.path.join(self.img_dir, '..', 'labeled')
         self.__move_done_imgs(save_path)
 
     def __move_done_imgs(self, save_path):
         for idx in self.done_img_idx:
             img_file = self.img_files[idx]
-            os.rename(img_file, save_path + os.path.split(img_file)[-1])
+            os.rename(img_file, os.path.join(save_path, os.path.split(img_file)[-1]))
 
 
 class DataSelector(QWidget):

@@ -79,7 +79,7 @@ class CrosswalkData:
         self.labels['loc'] = loc
         self.labels['ang'] = ang
         self.labels['pit'] = pit
-        self.labels['roll'] = pit
+        self.labels['roll'] = roll
 
     def write_on_csv(self):
         with open('annotation.csv', 'a', newline='') as csvfile:

@@ -2,10 +2,33 @@ import json
 import yaml
 from math import ceil
 import matplotlib.pyplot as plt
+import glob
+import os
+
+
+def collect_all_db(data_dir):
+    total_db = {}
+    child_dirs = glob.glob(os.path.join(data_dir, '*'))
+
+    for dir in child_dirs:
+        db_file = os.path.join(dir, 'db.json')
+        try:
+            with open(db_file, 'r') as f:
+                loaded = json.load(f)
+        except Exception as e:
+            print('Failed to open database file {}: {}'.format(db_file, e))
+        else:
+            total_db = {**total_db, **loaded}
+
+    count = 0
+    for name in total_db:
+        count = count + 1
+
+    return total_db
 
 
 def loadyaml():
-    with open('./config.yaml', 'r') as stream: 
+    with open('./config.yaml', 'r') as stream:
         options = yaml.load(stream)
     return options
 
@@ -18,30 +41,53 @@ def load_DB(options):
 
 def show_proportion_bar(target, total):
     # 100% / 25 blocks -> 1% / 0.25 block
-    proportion = 100 * float(target) / total
-    blocks = ceil(proportion * 0.25)
-    
+    if total == 0:
+        blocks = 0
+    else:
+        proportion = 100 * float(target) / total
+        blocks = ceil(proportion * 0.25)
+
     bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) + ' / ' + str(total) + ' ]'
-    
+
     return bar
 
 
 def show_label_scatter_plot(db):
     loc = []
     ang = []
+    pit = []
+    roll = []
     cnt = 0
 
     for item in db:
-        if item['invalid'] == 0:
-            loc.append(item['loc'])
-            ang.append(item['ang'])
+        try:
+            if item['invalid'] == 0:
+                loc.append(item['loc'])
+                ang.append(item['ang'])
+                pit.append(item['pit'])
+                roll.append(item['roll'])
+        except:
+            continue
 
+    plt.figure(figsize=(10,4))
+    # loc, ang
+    plt.subplot(121)
     plt.scatter(loc, ang)
     plt.xlim((-2.0, 2.0))
     plt.ylim((-90, 90))
     plt.xlabel('loc')
     plt.ylabel('ang')
-    plt.title('Scatterplot of labels')
+    plt.title('location ─ angle')
+
+    # pit, roll
+    plt.subplot(122)
+    plt.scatter(pit, roll)
+    plt.xlim((0.0, 1.0))
+    plt.ylim((-90, 90))
+    plt.xlabel('pit')
+    plt.ylabel('roll')
+    plt.title('pitch ─ roll')
+
     plt.show()
 
     pass
@@ -49,20 +95,21 @@ def show_label_scatter_plot(db):
 
 def show_total_stat(db):
     cnt = 0
+    labeled = 0
     invalid = 0
     for item in db:
-        if not item['is_input_finished']:
-            continue
+        if item['is_input_finished']:
+            labeled = labeled + 1
+            if item['invalid'] == 1:
+                invalid = invalid + 1
         cnt = cnt + 1
 
-        if item['invalid'] == 1:
-                invalid = invalid + 1
-
     print('total_#: ', cnt)
+    print('labeled: ', labeled)
     print('invalid: ', invalid)
-    print('*valid: ' + show_proportion_bar(cnt-invalid, cnt))
+    print('*valid(labeled): ' + show_proportion_bar(labeled-invalid, labeled))
 
-    return cnt
+    return cnt, labeled
 
 
 def show_manualmeta_stat(db, total):
@@ -129,41 +176,108 @@ def show_manualmeta_stat(db, total):
 
 
 def show_exifmeta_stat(db, total):
+    horizontal = 0
     Samsung = 0
     Apple = 0
 
     for item in db:
-        if not item['is_input_finished']:
-            continue
         try:
+            if item['is_horizontal']:
+                horizontal = horizontal + 1
             if item['Make'] == 'samsung':
                 Samsung = Samsung + 1
             if item['Make'] == 'Apple':
                 Apple = Apple + 1
 
-        except :
+        except:
             print('Fail: ' + item['filehash'])
             continue
 
-    print('Make')
+    print('horizontal:', show_proportion_bar(horizontal, total))
+    print('\nMake')
     print('└─Samsung:', show_proportion_bar(Samsung, total))
     print('└─Apple:  ', show_proportion_bar(Apple, total))
-    print('\n')
 
     pass
 
 
-def main():
-    options = loadyaml()
+def show_db_stat(options):
     db = load_DB(options)
+    db2 = collect_all_db(options['data_dir'])
+    db = db2.values()
+
     print('\n--------- total ---------\n')
-    total = show_total_stat(db)
-    print('\n--------- manual metadata ---------\n')
-    show_manualmeta_stat(db, total)
+    total, labeled = show_total_stat(db)
+
     print('\n--------- exif metadata ---------\n')
     show_exifmeta_stat(db, total)
-    show_label_scatter_plot(db)
-    
 
+    if total == 0:
+        print('There are no data!')
+        return
+
+    print('\n--------- manual metadata (labeled) ---------\n')
+    show_manualmeta_stat(db, labeled)
+
+    show_label_scatter_plot(db)
+
+    print('')
+
+
+def labeling_progress_for_each_dir(db, dir):
+    total = 0
+    labeled = 0
+    for name in db.values():
+        total = total + 1
+        if name['is_input_finished']:
+            labeled = labeled + 1
+
+    dir_name = os.path.basename(dir)
+    print(dir_name, ':', show_proportion_bar(labeled, total))
+
+    return total, labeled
+
+
+def show_labeling_progress(options):
+    print('----------------------------------------------')
+    child_dirs = glob.glob(os.path.join(options['data_dir'], '*'))
+    total = 0
+    labeled = 0
+
+    for dir in child_dirs:
+        db_file = os.path.join(dir, 'db.json')
+        try:
+            with open(db_file, 'r') as f:
+                loaded = json.load(f)
+        except Exception as e:
+            print('Failed to open database file {}: {}'.format(db_file, e))
+        else:
+            tot, lab = labeling_progress_for_each_dir(loaded, dir)
+            total = total + tot
+            labeled = labeled + lab
+
+    print('')
+    print('* TOTAL *')
+    print(show_proportion_bar(labeled, total))
+    print('----------------------------------------------')
+
+    return
+
+
+def main():
+    options = loadyaml()
+
+    print('\n[1] Show total DB statistics')
+    print('[2] Show labeling progress\n')
+    mode = input('Choose mode: ')
+
+    if mode == '1':
+        show_db_stat(options)
+    elif mode == '2':
+        show_labeling_progress(options)
+    else:
+        print('Wrong input!\n')
+
+    
 if __name__ == '__main__':
     main()

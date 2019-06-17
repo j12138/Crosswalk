@@ -9,7 +9,7 @@ import os
 
 
 def loadyaml():
-    with open('./config.yaml', 'r') as stream: 
+    with open('./labeling/config.yaml', 'r') as stream: 
         options = yaml.load(stream)
     return options
 

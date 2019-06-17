@@ -274,6 +274,6 @@ def main():
     else:
         print('Wrong input!\n')
 
-    
+
 if __name__ == '__main__':
     main()

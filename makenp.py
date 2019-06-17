@@ -4,11 +4,13 @@ import yaml
 import cv2
 from scipy.misc import imread
 import datetime
+import glob
+import os
 
 # coding=utf-8
 
 filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
-              'Samsung': lambda x: x['Make'] == 'Samsung',
+              'Samsung': lambda x: x['Make'] == 'samsung',
               'shadow': lambda x: x['shadow'] == 1,
               'obstacle': lambda x: x['obs_car'] == 1 and x['obs_human'] == 1,
               'car': lambda x: x['obs_car'] == 1,
@@ -25,9 +27,30 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
 
 
 def load_yaml():
-    with open('./config.yaml', 'r') as stream:
+    with open('./labeling/config.yaml', 'r') as stream:
         options = yaml.load(stream)
     return options
+
+
+def collect_all_db(data_dir):
+    total_db = {}
+    child_dirs = glob.glob(os.path.join(data_dir, '*'))
+
+    for dir in child_dirs:
+        db_file = os.path.join(dir, 'db.json')
+        try:
+            with open(db_file, 'r') as f:
+                loaded = json.load(f)
+        except Exception as e:
+            print('Failed to open database file {}: {}'.format(db_file, e))
+        else:
+            total_db = {**total_db, **loaded}
+
+    count = 0
+    for name in total_db:
+        count = count + 1
+
+    return total_db
 
 
 def merge_list(list):
@@ -68,6 +91,7 @@ def show_and_pick_filters(filterlist):
 #   This function is copy-pasted from preprocess.py. Adapt it appropriately in
 #   the context of this feature so that additional resizing, contrasting,
 #   gray-scaling, etc. can be done in this step. -- TJ
+'''
 def process():
     # resizing
     img = scipy.misc.imresize(img, (int(out_width * 1.3333), out_width))
@@ -80,37 +104,48 @@ def process():
     else:
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         eq = cv2.equalizeHist(gray_img)
+'''
 
 
 class DBMS(object):
-
-    def __init__(self, json_file, picked_filters):
-        self.__load(json_file)
+    def __init__(self, data_dir, picked_filters):
+        self.child_dirs = glob.glob(os.path.join(data_dir, '*'))
         self.filters = picked_filters  # keys
-        self.query_list = []
+        self.query_list = {}
 
-    def __load(self, json_file):
-        with open(json_file, "r") as read_file:
-            # list of metadata dictionaries
-            self.db = json.load(read_file).values()
+    def __load(self, dir):
+        db_file = db_file = os.path.join(dir, 'db.json')
+        try:
+            with open(db_file, "r") as read_file:
+                # list of metadata dictionaries
+                return json.load(read_file).values()
+        except Exception as e:
+            print('Failed to open database file {}: {}'.format(db_file, e))
 
     def query(self):
-        for item in self.db:
-            # print(item['obs_car'], item['column'])
-            suc = True
-            try:
-                for filt in self.filters:
-                    suc = suc and filterlist[filt](item)
+        print(self.filters)
+        for dir in self.child_dirs:
+            for item in self.__load(dir):
+                if not item['is_input_finished']:
+                    continue
 
-                if suc:
-                    # print('Success: ' + item['filehash'])
-                    self.query_list.append(item)
-            except:
-                print('Fail: ' + item['filehash'])
-                continue
+                suc = True
+                try:
+                    for filt in self.filters:
+                        suc = suc and filterlist[filt](item)
 
-        # print(query_list)
-        print('Selected data: ', len(self.query_list))
+                    if suc:
+                        img_path = os.path.join(dir, 'labeled', item['filehash'])
+                        print('Success: ' + img_path)
+
+                        self.query_list[img_path] = (item['loc'], item['ang'])
+
+                except:
+                    print('Fail: ' + item['filehash'])
+                    continue
+
+            # print(query_list)
+            print('Selected data: ', len(self.query_list))
 
     def make_npy(self):
         train_hash = []
@@ -118,18 +153,17 @@ class DBMS(object):
         cv2.namedWindow('tool')
 
         for item in self.query_list:
-            hash_key = item['filehash']
+            img_path = item
 
             try:
-                img = imread('./labeling_done/' + hash_key, mode='RGB')
-                # print(img)
+                img = imread(img_path, mode='RGB')
                 cv2.imshow('tool', img)
             except Exception:
                 # print('Fail: ' + hash)
                 continue
 
             # print('Success: ' + hash)
-            label = [float(item['loc']), float(item['ang'])]
+            label = [float(self.query_list[item][0]), float(self.query_list[item][1])]
 
             train_hash.append(img)
             y_train.append(label)
@@ -155,7 +189,7 @@ class DBMS(object):
 def make_npy_file(options, picked_filters):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    db = DBMS(options['db_file'], picked_filters)
+    db = DBMS(options['data_dir'], picked_filters)
     db.query()
     db.make_npy()
 

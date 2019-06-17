@@ -18,6 +18,7 @@ def search(dirname):
 
     print('---------------------------------')
 
+
 def check_npy():
     X = np.load('./X.npy')
     cv2.namedWindow('np_test')
@@ -34,11 +35,12 @@ def check_npy():
             if cv2.waitKey(10) == 32:
                 break # press 'spacebar' -> turn to next image
 
+
 def main():
     search(os.getcwd())
     picked_num = int(input('pick npy # : '))
     print(picked_num)
-   
+
 
 if __name__ == '__main__':
     main()

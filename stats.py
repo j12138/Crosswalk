@@ -28,7 +28,7 @@ def collect_all_db(data_dir):
 
 
 def loadyaml():
-    with open('./config.yaml', 'r') as stream:
+    with open('./labeling/config.yaml', 'r') as stream:
         options = yaml.load(stream)
     return options
 
@@ -99,8 +99,11 @@ def show_total_stat(db):
     for item in db:
         if item['is_input_finished']:
             labeled = labeled + 1
-            if item['invalid'] == 1:
-                invalid = invalid + 1
+            try:
+                if item['invalid'] == 1:
+                    invalid = invalid + 1
+            except:
+                pass
         cnt = cnt + 1
 
     print('total_#: ', cnt)
@@ -196,7 +199,6 @@ def show_exifmeta_stat(db, total):
 
 
 def show_db_stat(options):
-    db = load_DB(options)
     db2 = collect_all_db(options['data_dir'])
     db = db2.values()
 

@@ -4,6 +4,7 @@
 *.JPG
 .idea/
 .DS_Store
+.vscode
 tags
 
 # TODO: store the dataset in Git LFS (large file storage)

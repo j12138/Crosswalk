@@ -28,7 +28,7 @@ def parse_args(options):
 
 
 def load_yaml():
-    with open('./config.yaml', 'r') as stream:
+    with open('./labeling/config.yaml', 'r') as stream:
         options = yaml.load(stream)
     return options
 

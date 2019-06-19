@@ -7,9 +7,11 @@ import json
 import yaml
 import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 def loadyaml():
-    with open('./labeling/config.yaml', 'r') as stream: 
+    with open(config_file, 'r') as stream: 
         options = yaml.load(stream)
     return options
 

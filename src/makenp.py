@@ -1,11 +1,17 @@
 import json
 import numpy as np
 import yaml
+import scipy
 import cv2
 from scipy.misc import imread
 import datetime
 import glob
 import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.join(BASE_DIR, "..")
+config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
+
 
 # coding=utf-8
 
@@ -27,7 +33,7 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
 
 
 def load_yaml():
-    with open('./labeling/config.yaml', 'r') as stream:
+    with open(config_file, 'r') as stream:
         options = yaml.load(stream)
     return options
 
@@ -60,6 +66,27 @@ def merge_list(list):
     return merged
 
 
+def choose_process():
+    print('\n------- additional process -------')
+    print('* Just Enter for skip each process')
+    print('[1] Resize with fixed ratio')
+    resize_width = input('  width: ')
+    print('[2] Cut off upper img')
+    cut_height = input('  lower height: ')
+    print('[3] Grayscale')
+    grayscale = input('  Yes = 1: ')
+
+    if len(resize_width) > 0:
+        resize_width = int(resize_width)
+    if len(cut_height) > 0:
+        cut_height = int(cut_height)
+    if grayscale == '1':
+        grayscale == 1
+
+    print(resize_width, cut_height, grayscale)
+    return resize_width, cut_height, grayscale
+
+
 def show_and_pick_filters(filterlist):
     picked = []
     cnt = 0
@@ -87,30 +114,32 @@ def show_and_pick_filters(filterlist):
     return picked
 
 
-# TODO: Adapt!
 #   This function is copy-pasted from preprocess.py. Adapt it appropriately in
 #   the context of this feature so that additional resizing, contrasting,
 #   gray-scaling, etc. can be done in this step. -- TJ
-'''
-def process():
+
+def process(img, processes):
+    width, height, gray = processes
     # resizing
-    img = scipy.misc.imresize(img, (int(out_width * 1.3333), out_width))
-    H, W = img.shape[:2]
+    if width > 0:
+        img = scipy.misc.imresize(img, (int(width * 1.3333), width))
+        H, W = img.shape[:2]
     # cut
-    img = img[int(H - out_height):, :]
+    if height > 0:
+        img = img[int(H - height):, :]
     # adjust
-    if args.color:
-        eq = img
-    else:
+    if gray == 1:
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        eq = cv2.equalizeHist(gray_img)
-'''
+        img = cv2.equalizeHist(gray_img)
+
+    return img
 
 
 class DBMS(object):
-    def __init__(self, data_dir, picked_filters):
+    def __init__(self, data_dir, picked_filters, picked_process):
         self.child_dirs = glob.glob(os.path.join(data_dir, '*'))
         self.filters = picked_filters  # keys
+        self.processes = picked_process
         self.query_list = {}
 
     def __load(self, dir):
@@ -165,6 +194,8 @@ class DBMS(object):
             # print('Success: ' + hash)
             label = [float(self.query_list[item][0]), float(self.query_list[item][1])]
 
+            # additional process (resize, cut, grayscale)
+            img = process(img, self.processes)
             train_hash.append(img)
             y_train.append(label)
 
@@ -172,8 +203,10 @@ class DBMS(object):
         print('Packed data: ', cnt)
 
         nowDatetime = self.__write_log(cnt)
-        np.save('./npy/' + nowDatetime + '_X.npy', train_hash)
-        np.save('./npy/' + nowDatetime + '_Y.npy', y_train)
+        save_prefix = os.path.join(ROOT_DIR, 'npy', nowDatetime)
+        print(save_prefix)
+        np.save(save_prefix + '_X.npy', train_hash)
+        np.save(save_prefix + '_Y.npy', y_train)
 
     def __write_log(self, num):
         now = datetime.datetime.now()
@@ -186,10 +219,11 @@ class DBMS(object):
         return nowDatetime
 
 
-def make_npy_file(options, picked_filters):
+def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    db = DBMS(options['data_dir'], picked_filters)
+    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
+    db = DBMS(data_dir, picked_filters, picked_process)
     db.query()
     db.make_npy()
 
@@ -197,7 +231,8 @@ def make_npy_file(options, picked_filters):
 def main():
     options = load_yaml()
     picked_filters = show_and_pick_filters(filterlist)  # key
-    make_npy_file(options, picked_filters)
+    picked_process = choose_process()
+    make_npy_file(options, picked_filters, picked_process)
 
 
 if __name__ == "__main__":

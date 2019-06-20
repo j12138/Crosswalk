@@ -8,6 +8,7 @@ import cv2
 import os
 import crosswalk_data as cd
 import compute_label_lib as cl
+import json
 from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
      QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox,\
      QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
@@ -16,6 +17,8 @@ from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
      QPainter, QCursor, QPalette, QColor
 from PyQt5.QtCore import Qt
 import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+import stats
 
 fixed_w = 400
 
@@ -579,6 +582,20 @@ def main(args):
     launch_annotator(data_path)
 
 
+def show_and_select_dir_to_label():
+    data_dirs = stats.show_labeling_progress('./preprocessed_data/')
+    dir_idx = input('# to label (or just Enter): ')
+    if len(dir_idx) == 0:
+        return
+    dir_idx = int(dir_idx)
+    print(data_dirs[dir_idx-1])
+    launch_annotator(os.path.join(data_dirs[dir_idx-1], 'preprocessed'))
+
+
 if __name__ == "__main__":
+    if (len(sys.argv) < 2):
+        show_and_select_dir_to_label()
+        sys.exit(0)
+
     args = parse_args()
     main(args)

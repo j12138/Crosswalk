@@ -220,7 +220,7 @@ def show_db_stat(options):
     print('')
 
 
-def labeling_progress_for_each_dir(db, dir):
+def labeling_progress_for_each_dir(db, dir, idx):
     total = 0
     labeled = 0
     for name in db.values():
@@ -229,18 +229,20 @@ def labeling_progress_for_each_dir(db, dir):
             labeled = labeled + 1
 
     dir_name = os.path.basename(dir)
-    print(dir_name, ':', show_proportion_bar(labeled, total))
+    print('[' + str(idx) + ']', dir_name, ':', show_proportion_bar(labeled, total))
 
     return total, labeled
 
 
-def show_labeling_progress(options):
+def show_labeling_progress(data_dir):
     print('----------------------------------------------')
-    child_dirs = glob.glob(os.path.join(options['data_dir'], '*'))
+    child_dirs = glob.glob(os.path.join(data_dir, '*'))
     total = 0
     labeled = 0
+    idx = 0
 
     for dir in child_dirs:
+        idx = idx + 1
         db_file = os.path.join(dir, 'db.json')
         try:
             with open(db_file, 'r') as f:
@@ -248,16 +250,16 @@ def show_labeling_progress(options):
         except Exception as e:
             print('Failed to open database file {}: {}'.format(db_file, e))
         else:
-            tot, lab = labeling_progress_for_each_dir(loaded, dir)
+            tot, lab = labeling_progress_for_each_dir(loaded, dir, idx)
             total = total + tot
             labeled = labeled + lab
 
     print('')
     print('* TOTAL *')
-    print(show_proportion_bar(labeled, total))
+    print(show_proportion_bar(labeled, total), '\n')
     print('----------------------------------------------')
 
-    return
+    return child_dirs
 
 
 def main():
@@ -270,7 +272,7 @@ def main():
     if mode == '1':
         show_db_stat(options)
     elif mode == '2':
-        show_labeling_progress(options)
+        show_labeling_progress(options['data_dir'])
     else:
         print('Wrong input!\n')
 

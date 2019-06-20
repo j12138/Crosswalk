@@ -18,7 +18,7 @@ Python 3.6
 ## 데이터셋 생성 방법
 횡단보도 촬영 이미지를 레이블링하기 전에, 전처리 가공 과정을 거칩니다.
 
-`python .labeling\preprocess.py (사진폴더)`를 실행합니다.
+`python .\src\labeling\preprocess.py (사진폴더)`를 실행합니다.
 
 가공된 이미지는 `.\preprocessed_data\(폴더명)\`에 저장됩니다.
 
@@ -41,14 +41,16 @@ Python 3.6
 ## 레이블링 방법
 머신 러닝을 위한 레이블링 방법 안내입니다. 전처리를 완료한 이미지를 사용합니다.
 
-`python .\labeling\labeling_tool.py .\preprocessed_data\(폴더명)\`으로 실행합니다.
+`python .\src\labeling\labeling_tool.py .\preprocessed_data\(폴더명)\`으로 실행합니다.
 
-![Alt text](/labeling/labeling_guide0.png)
+또는 `python .\src\labeling\labeling_tool.py` 와 같이 인자 없이 실행하면 폴더를 선택할 수 있습니다.
+
+![Alt text](/image/labeling_guide0.png)
 
 아래 이미지에 적힌 순서대로 사진에 점을 찍습니다. (총 6개)
 
 이미 찍은 점은 `ESC`키를 눌러 지울 수 있습니다. (실행 취소)
-![Alt text](/labeling/labeling_guide1.png)
+![Alt text](/image/labeling_guide1.png)
 
 레이블링 완료한 이미지는 `.\preprocessed_data\(폴더명)\labeled\`에 저장됩니다.
 
@@ -57,7 +59,7 @@ Python 3.6
 
 ## 시각화
 이미지 데이터 정보와 레이블링 통계를 볼 수 있습니다.
-`python .\stats.py`로 실행합니다.
+`python .\src\stats.py`로 실행합니다.
 
     [1] Show total DB statistics  #전체 데이터 통계를 봅니다
     [2] Show labeling progress   #레이블링 상태를 봅니다

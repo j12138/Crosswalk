@@ -11,13 +11,14 @@ from joblib import Parallel, delayed
 
 preprocessed_folder = 'preprocessed_data'
 labeled_folder = 'labeled'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
-def parse_args(options):
+def parse_args():
     """ Parse command-line arguments
     ex: $ python preprocess.py data --w 300 --h 240
-    :param options: default values for the arguments; comes from the
-        configuration file
     :return: parsed arguments
     """
     parser = argparse.ArgumentParser()
@@ -28,7 +29,7 @@ def parse_args(options):
 
 
 def load_yaml():
-    with open('./labeling/config.yaml', 'r') as stream:
+    with open(config_file, 'r') as stream:
         options = yaml.load(stream)
     return options
 
@@ -158,7 +159,7 @@ def preprocess_img(args, options):
     #                 'DateTimeOriginal', 'BrightnessValue'}
 
     folder_name = os.path.basename(args.input_dir.strip('/\\'))
-    save_dir = os.path.join(os.getcwd(), preprocessed_folder, folder_name)
+    save_dir = os.path.join(ROOT_DIR, preprocessed_folder, folder_name)
     print('save_dir: ', save_dir)
 
     metadata = extract_metadata(args.input_dir, list(options['exifmeta']),
@@ -169,19 +170,15 @@ def preprocess_img(args, options):
     os.mkdir(os.path.join(save_dir, labeled_folder))
 
 
-def make_readme_file(input_dir):
-    pass
-
-
 def get_folder_name(input_dir):
     folder = os.path.dirname(input_dir)
 
 
-def main():
+def main(args):
     options = load_yaml()
-    args = parse_args(options)
     preprocess_img(args, options)
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

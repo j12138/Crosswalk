@@ -20,7 +20,11 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import stats
 
+
 fixed_w = 400
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
 class LabelingTool(QWidget):
@@ -71,7 +75,7 @@ class LabelingTool(QWidget):
         but_prev.clicked.connect(self.__prev_unlabeled_img)
 
         # Image show
-        pixmap = QPixmap('qimage.png')
+        pixmap = QPixmap(os.path.join(BASE_DIR, 'qimage.png'))
         self.imgsize = pixmap.size()
         self.label_img.setPixmap(pixmap)
 
@@ -583,7 +587,8 @@ def main(args):
 
 
 def show_and_select_dir_to_label():
-    data_dirs = stats.show_labeling_progress('./preprocessed_data/')
+    data_dirs = stats.show_labeling_progress(os.path.join(ROOT_DIR,
+                                                          'preprocessed_data'))
     dir_idx = input('# to label (or just Enter): ')
     if len(dir_idx) == 0:
         return

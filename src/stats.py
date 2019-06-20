@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import glob
 import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.join(BASE_DIR, "..")
+config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
+
 
 def collect_all_db(data_dir):
     total_db = {}
@@ -28,7 +32,7 @@ def collect_all_db(data_dir):
 
 
 def loadyaml():
-    with open('./labeling/config.yaml', 'r') as stream:
+    with open(config_file, 'r') as stream:
         options = yaml.load(stream)
     return options
 
@@ -198,8 +202,8 @@ def show_exifmeta_stat(db, total):
     print('└─Apple:  ', show_proportion_bar(Apple, total))
 
 
-def show_db_stat(options):
-    db2 = collect_all_db(options['data_dir'])
+def show_db_stat(data_dir):
+    db2 = collect_all_db(data_dir)
     db = db2.values()
 
     print('\n--------- total ---------\n')
@@ -268,11 +272,12 @@ def main():
     print('\n[1] Show total DB statistics')
     print('[2] Show labeling progress\n')
     mode = input('Choose mode: ')
+    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
 
     if mode == '1':
-        show_db_stat(options)
+        show_db_stat(data_dir)
     elif mode == '2':
-        show_labeling_progress(options['data_dir'])
+        show_labeling_progress(data_dir)
     else:
         print('Wrong input!\n')
 

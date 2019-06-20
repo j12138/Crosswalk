@@ -90,6 +90,8 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     metadata_all = {}
 
     for img_name in os.listdir(input_dir):
+        if(img_name == ".DS_Store"):
+            continue
         metadata_per_each = {}
         img = Image.open(os.path.join(input_dir, img_name))
         height, width = img.size

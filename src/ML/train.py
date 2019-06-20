@@ -16,6 +16,11 @@ from Generator.augmentation import BatchGenerator
 import argparse
 from Models.loss import smoothL1
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+config_file = os.path.join(BASE_DIR, 'config.yaml')
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-yaml',default='config.yaml',

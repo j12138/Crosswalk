@@ -27,7 +27,7 @@ def compute_pitch(mid, h):
 
 def compute_roll(slope):
     # compute horizontal roll label from slope
-    return -math.atan(slope) * 2 / math.pi 
+    return -math.atan(slope) * 180 / math.pi 
 
 def bottom_mid_point_and_width(H, l1, l2):
     # 횡단보도 밑변의 중점과 밑변 길이 구하기. H는 preprocessed img의 세로길이 (240?)

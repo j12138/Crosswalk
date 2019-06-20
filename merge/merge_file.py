@@ -7,20 +7,12 @@ import shutil
 import os
 import json
 
-current_path = os.getcwd()
+current_path = os.getcwd() # merge/ : path
+data_dir_path = os.path.join(current_path, "data") # merge/data/ : path
 os.mkdir(os.path.join(current_path, "labeled_image"))  # make empty labeled_image directory
 labeled_folder_path = os.path.join(current_path, "labeled_image")   # set path to labeled_image directory
 with open(os.path.join(current_path, "db.json"), "w"):  # make empty db.json file
     pass
-
-
-def data_dir_path():
-    """find data file
-    :return data+path : /data/ path
-    """
-    data_path = os.path.join(current_path, "data")
-
-    return data_path
 
 
 def merge_data(data_path, imagepath):
@@ -47,7 +39,7 @@ def merge_data(data_path, imagepath):
 
 
 def main():
-    data_path = data_dir_path()
+    data_path = data_dir_path
     json1 = merge_data(data_path, labeled_folder_path)   # json1 = merge db file
     with open("db.json", "w") as dbfile:  # write json1 in db.json file
         dbfile.write(json1)

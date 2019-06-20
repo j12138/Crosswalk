@@ -74,23 +74,24 @@ def show_label_scatter_plot(db):
         except:
             continue
 
-    plt.figure(figsize=(10,4))
+    plt.figure(figsize=(10, 4))
     # loc, ang
     plt.subplot(121)
     plt.scatter(loc, ang)
     plt.xlim((-2.0, 2.0))
     plt.ylim((-90, 90))
     plt.xlabel('loc')
-    plt.ylabel('ang')
+    plt.ylabel('ang ($^{\circ}$)')
     plt.title('location ─ angle')
 
     # pit, roll
     plt.subplot(122)
     plt.scatter(pit, roll)
     plt.xlim((0.0, 1.0))
-    plt.ylim((-90, 90))
+    plt.ylim((-20, 20))
+    # plt.axis(option='auto')
     plt.xlabel('pit')
-    plt.ylabel('roll')
+    plt.ylabel('roll ($^{\circ}$)')
     plt.title('pitch ─ roll')
 
     plt.show()
@@ -182,15 +183,19 @@ def show_exifmeta_stat(db, total):
     horizontal = 0
     Samsung = 0
     Apple = 0
+    make_other = 0
 
     for item in db:
         try:
             if item['is_horizontal']:
                 horizontal = horizontal + 1
+
             if item['Make'] == 'samsung':
                 Samsung = Samsung + 1
-            if item['Make'] == 'Apple':
+            elif item['Make'] == 'Apple':
                 Apple = Apple + 1
+            else:
+                make_other = make_other + 1
 
         except:
             print('Fail: ' + item['filehash'])
@@ -200,6 +205,7 @@ def show_exifmeta_stat(db, total):
     print('\nMake')
     print('└─Samsung:', show_proportion_bar(Samsung, total))
     print('└─Apple:  ', show_proportion_bar(Apple, total))
+    print('└─Others: ', show_proportion_bar(make_other, total))
 
 
 def show_db_stat(data_dir):

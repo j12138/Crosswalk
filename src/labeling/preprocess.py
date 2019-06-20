@@ -16,11 +16,9 @@ ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
-def parse_args(options):
+def parse_args():
     """ Parse command-line arguments
     ex: $ python preprocess.py data --w 300 --h 240
-    :param options: default values for the arguments; comes from the
-        configuration file
     :return: parsed arguments
     """
     parser = argparse.ArgumentParser()
@@ -174,11 +172,11 @@ def get_folder_name(input_dir):
     folder = os.path.dirname(input_dir)
 
 
-def main():
+def main(args):
     options = load_yaml()
-    args = parse_args(options)
     preprocess_img(args, options)
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

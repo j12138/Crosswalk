@@ -45,12 +45,12 @@ Python 3.6
 
 또는 `python .\src\labeling\labeling_tool.py` 와 같이 인자 없이 실행하면 폴더를 선택할 수 있습니다.
 
-![Alt text](/image/labeling_guide0.png)
+![Alt text](/images/labeling_guide0.png)
 
 아래 이미지에 적힌 순서대로 사진에 점을 찍습니다. (총 6개)
 
 이미 찍은 점은 `ESC`키를 눌러 지울 수 있습니다. (실행 취소)
-![Alt text](/image/labeling_guide1.png)
+![Alt text](/images/labeling_guide1.png)
 
 레이블링 완료한 이미지는 `.\preprocessed_data\(폴더명)\labeled\`에 저장됩니다.
 

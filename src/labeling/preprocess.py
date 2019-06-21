@@ -17,7 +17,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 
-
 def parse_args():
     """ Parse command-line arguments
     ex: $ python preprocess.py data --w 300 --h 240
@@ -67,8 +66,8 @@ def resize_and_save(input_dir, output_dir, img_path):
         ratio = 1
     else:
         ratio = math.sqrt(total_pixels/(height*width))
-    resized = cv2.resize(img, None, fx=ratio, fy=ratio,
-                         interpolation=cv2.INTER_AREA)
+    img = cv2.imread(os.path.join(input_dir, img_path))
+    # compress the image size by .15 for saving the storage by 1/4
     # cv2.imwrite determines the format by the extension in the path
     save_path = os.path.join(output_dir, get_hash_name(img_path) + ".png")
     cv2.imwrite(save_path, resized)
@@ -83,7 +82,7 @@ def preprocess_images(input_dir: str, save_dir: str):
     :param save_dir: output directory to which the re-sized images are saved
     """
     files = os.listdir(input_dir)
-    
+
     print("Resizing {} images".format(len(files)))
 
     os.mkdir(save_dir)
@@ -110,7 +109,7 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
         #Exception for MacOS added
         if img_name == ".DS_Store":
             continue
-        
+            
         metadata_per_each = {}
         img = Image.open(os.path.join(input_dir, img_name))
         height, width = img.size

@@ -12,14 +12,11 @@ from joblib import Parallel, delayed
 
 preprocessed_folder = 'preprocessed_data'
 labeled_folder = 'labeled'
-<<<<<<< HEAD:labeling/preprocess.py
 total_pixels = 250000 #total pixels of a resized image
-=======
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 
->>>>>>> master:src/labeling/preprocess.py
 
 def parse_args():
     """ Parse command-line arguments

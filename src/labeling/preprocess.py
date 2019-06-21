@@ -67,7 +67,10 @@ def resize_and_save(input_dir, output_dir, img_path):
     else:
         ratio = math.sqrt(total_pixels/(height*width))
     img = cv2.imread(os.path.join(input_dir, img_path))
-    # compress the image size by .15 for saving the storage by 1/4
+
+    resized = cv2.resize(img, None, fx=ratio, fy=ratio,
+                         interpolation=cv2.INTER_AREA)
+
     # cv2.imwrite determines the format by the extension in the path
     save_path = os.path.join(output_dir, get_hash_name(img_path) + ".png")
     cv2.imwrite(save_path, resized)

@@ -12,7 +12,7 @@ from joblib import Parallel, delayed
 
 preprocessed_folder = 'preprocessed_data'
 labeled_folder = 'labeled'
-
+total_pixels = 250000 #total pixels of a resized image
 
 def parse_args(options):
     """ Parse command-line arguments
@@ -52,7 +52,7 @@ def resize_and_save(input_dir, output_dir, img_path):
     """
 
     #Bypass DS_Store for MacOS
-    if(".DS_Store" in img_path):
+    if ".DS_Store" in img_path:
         return
 
     img = cv2.imread(os.path.join(input_dir, img_path))
@@ -61,10 +61,10 @@ def resize_and_save(input_dir, output_dir, img_path):
     # the resizing process skips if the image size does not exceed the limit.
     # the number 250000 was implemented by trial and error: can be changed if needed
     height, width = img.shape[:2]
-    if((height*width) < 250000):
+    if (height*width) < total_pixels:
         ratio = 1
     else:
-        ratio = (math.sqrt(250000/(height*width)))
+        ratio = math.sqrt(total_pixels/(height*width))
     resized = cv2.resize(img, None, fx=ratio, fy=ratio,
                          interpolation=cv2.INTER_AREA)
     # cv2.imwrite determines the format by the extension in the path
@@ -106,7 +106,7 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     for img_name in os.listdir(input_dir):
         
         #Exception for MacOS added
-        if(img_name == ".DS_Store"):
+        if img_name == ".DS_Store":
             continue
         
         metadata_per_each = {}

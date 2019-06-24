@@ -11,6 +11,11 @@ config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
 
 
 def collect_all_db(data_dir):
+    """ collect and combine all existing DBs in preprocessed_data folder.
+    :param data_dir: directory path of preprocessed data
+    :return: combined DB
+    """
+
     total_db = {}
     child_dirs = glob.glob(os.path.join(data_dir, '*'))
 
@@ -58,6 +63,9 @@ def show_proportion_bar(target, total):
 
 
 def show_label_scatter_plot(db):
+    """ show scatter plots for computed labels.
+        2 plots: loc - ang / pit - roll
+    """
     loc = []
     ang = []
     pit = []
@@ -98,6 +106,12 @@ def show_label_scatter_plot(db):
 
 
 def show_total_stat(db):
+    """ show overall statistics. (irrelevant to metadata, labels)
+    :param db: combined DB
+    :return cnt: total number of data
+    :return labeled: number of labeled data
+    """
+
     cnt = 0
     labeled = 0
     invalid = 0
@@ -120,6 +134,12 @@ def show_total_stat(db):
 
 
 def show_manual_meta_stat(db, total):
+    """ show proportions of all manual metadata
+    :param db: combined DB
+    :param total: total number of data
+    :return: None
+    """
+
     obs_car = 0
     obs_human = 0
     shadow = 0
@@ -180,6 +200,12 @@ def show_manual_meta_stat(db, total):
 
 
 def show_exifmeta_stat(db, total):
+    """ show exif metadata (internal info from imgs)
+    :param db: combined DB
+    :param total: total number of data
+    :return: None
+    """
+
     horizontal = 0
     Samsung = 0
     Apple = 0
@@ -245,6 +271,12 @@ def labeling_progress_for_each_dir(db, dir, idx):
 
 
 def show_labeling_progress(data_dir):
+    """ show labeling progress of all preprocessed datasets.
+        = for each dataset, show how many imgs are labeled.
+    :param data_dir: directory path for preprocessed data
+    :return: children directories of data_dir
+    """
+
     print('----------------------------------------------')
     child_dirs = glob.glob(os.path.join(data_dir, '*'))
     total = 0

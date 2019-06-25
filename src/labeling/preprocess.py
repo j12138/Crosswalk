@@ -5,17 +5,18 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 import hashlib
 import json
-import math
 import yaml
 from tqdm import tqdm
 from joblib import Parallel, delayed
+import shutil
+import datetime
 
 preprocessed_folder = 'preprocessed_data'
 labeled_folder = 'labeled'
-total_pixels = 250000 #total pixels of a resized image
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
+
 
 def parse_args():
     """ Parse command-line arguments
@@ -52,25 +53,14 @@ def resize_and_save(input_dir, output_dir, img_path):
     :return: None
     """
 
-    #Bypass DS_Store for MacOS
+    # Bypass DS_Store for MacOS
     if ".DS_Store" in img_path:
         return
 
     img = cv2.imread(os.path.join(input_dir, img_path))
     # compress the image size by .15 for saving the storage by 1/4
-    # EDITED: compress image so that the width*height is no greater than 250000.
-    # the resizing process skips if the image size does not exceed the limit.
-    # the number 250000 was implemented by trial and error: can be changed if needed
-    height, width = img.shape[:2]
-    if (height*width) < total_pixels:
-        ratio = 1
-    else:
-        ratio = math.sqrt(total_pixels/(height*width))
-    img = cv2.imread(os.path.join(input_dir, img_path))
-
-    resized = cv2.resize(img, None, fx=ratio, fy=ratio,
+    resized = cv2.resize(img, None, fx=0.15, fy=0.15,
                          interpolation=cv2.INTER_AREA)
-
     # cv2.imwrite determines the format by the extension in the path
     save_path = os.path.join(output_dir, get_hash_name(img_path) + ".png")
     cv2.imwrite(save_path, resized)
@@ -85,7 +75,6 @@ def preprocess_images(input_dir: str, save_dir: str):
     :param save_dir: output directory to which the re-sized images are saved
     """
     files = os.listdir(input_dir)
-
     print("Resizing {} images".format(len(files)))
 
     os.mkdir(save_dir)
@@ -108,11 +97,8 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     metadata_all = {}
 
     for img_name in os.listdir(input_dir):
-        
-        #Exception for MacOS added
-        if img_name == ".DS_Store":
+        if(img_name == ".DS_Store"):
             continue
-            
         metadata_per_each = {}
         img = Image.open(os.path.join(input_dir, img_name))
         height, width = img.size
@@ -141,6 +127,12 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
 
 
 def init_labeling_status(metadata_per_each, widgets):
+    """ initialize labeling status items for DB
+    :param metadata_per_each: dictionary item for each data
+    :param widgets: set of metadata widgets from labeling tool 
+    :return:
+    """
+
     metadata_per_each['is_input_finished'] = False
     metadata_per_each['current_point'] = [0, [0, 0]]
     metadata_per_each['all_points'] = [(0, 0)] * 6
@@ -172,6 +164,35 @@ def update_database(metadata, save_dir):
         print('Successfully updated!')
 
 
+def get_save_dir_path(original, prefix):
+    """ return name of save directory follows convention.
+    [current date] _ [user id] _ [original name] _ [index]
+
+    :param original: original data directory name
+    :param prefix: path to save preprocessed data
+    :return: save path follows the convention
+    """
+
+    now = datetime.datetime.now()
+    nowDatetime = now.strftime('%Y-%m-%d')
+
+    userid = input('Your ID: ')
+    save_dir_name = nowDatetime + '_' + userid + '_' + original
+    save_path = os.path.join(prefix, save_dir_name)
+
+    idx = 0
+    save_path
+
+    while os.path.exists(save_path):
+        idx = idx + 1
+        if idx == 1:
+            save_path = save_path + '_1'
+            continue
+        save_path = save_path[:-2] + '_' + str(idx)
+
+    return save_path
+
+
 def preprocess_img(args, options):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
@@ -180,8 +201,25 @@ def preprocess_img(args, options):
     #                 'DateTimeOriginal', 'BrightnessValue'}
 
     folder_name = os.path.basename(args.input_dir.strip('/\\'))
-    save_dir = os.path.join(ROOT_DIR, preprocessed_folder, folder_name)
+    save_dir_prefix = os.path.join(ROOT_DIR, preprocessed_folder)
+    save_dir = get_save_dir_path(folder_name, save_dir_prefix)
     print('save_dir: ', save_dir)
+
+    # check whether save_dir already exists
+    if os.path.exists(save_dir):
+        print('Already preprocessed data. Want to overlap?')
+        print('Y: overlap, initialize current DB')
+        print('N: quit preprocsessing')
+        ans = input('Select: ')
+
+        if ans == 'Y':
+            # remove existing dir
+            shutil.rmtree(save_dir)
+        elif ans == 'N':
+            return
+        else:
+            print('Wrong input!')
+            return
 
     metadata = extract_metadata(args.input_dir, list(options['exifmeta']),
                                 options['widgets'])

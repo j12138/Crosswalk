@@ -39,6 +39,11 @@ def load_yaml():
 
 
 def collect_all_db(data_dir):
+    """ collect and combine all existing DBs in preprocessed_data folder.
+    :param data_dir: directory path of preprocessed data
+    :return: combined DB
+    """
+
     total_db = {}
     child_dirs = glob.glob(os.path.join(data_dir, '*'))
 
@@ -67,6 +72,10 @@ def merge_list(list):
 
 
 def choose_process():
+    """ converational function for get user's choice of additional process.
+    :return: parameters for each process
+    """
+
     print('\n------- additional process -------')
     print('* Just Enter for skip each process')
     print('[1] Resize with fixed ratio')
@@ -83,11 +92,15 @@ def choose_process():
     if grayscale == '1':
         grayscale == 1
 
-    print(resize_width, cut_height, grayscale)
     return resize_width, cut_height, grayscale
 
 
 def show_and_pick_filters(filterlist):
+    """ show pre-declared(AT TOP) filter lists and get user's choice.
+    :param filterlist: contains all filter for make npy file
+    :return: list of picked filters
+    """
+
     picked = []
     cnt = 0
     print('\n------- filter lists -------')
@@ -136,13 +149,28 @@ def process(img, processes):
 
 
 class DBMS(object):
+    """
+    DB Management System class.
+    """
+
     def __init__(self, data_dir, picked_filters, picked_process):
+        """
+        :param data_dir: path for preprocessed data
+        :param picked_filters: filters choosen by user
+        :param pricked_process: additional processes choosen by user
+        """
+
         self.child_dirs = glob.glob(os.path.join(data_dir, '*'))
         self.filters = picked_filters  # keys
         self.processes = picked_process
         self.query_list = {}
 
     def __load(self, dir):
+        """ load DB file of current dataset.
+        :param dir: current preprocessed dataset directory
+        :return: loaded DB file
+        """
+
         db_file = db_file = os.path.join(dir, 'db.json')
         try:
             with open(db_file, "r") as read_file:
@@ -152,9 +180,13 @@ class DBMS(object):
             print('Failed to open database file {}: {}'.format(db_file, e))
 
     def query(self):
+        """ Collect filtered data at self.query_list. """
+
         print(self.filters)
+
         for dir in self.child_dirs:
             for item in self.__load(dir):
+                # for unlabeled image, just skip
                 if not item['is_input_finished']:
                     continue
 
@@ -165,26 +197,28 @@ class DBMS(object):
 
                     if suc:
                         img_path = os.path.join(dir, 'labeled', item['filehash'])
-                        print('Success: ' + img_path)
+                        # print('Success: ' + img_path)
 
                         self.query_list[img_path] = (item['loc'], item['ang'])
 
                 except:
-                    print('Fail: ' + item['filehash'])
+                    # print('Fail: ' + item['filehash'])
                     continue
 
             # print(query_list)
-            print('Selected data: ', len(self.query_list))
+        print('Selected data: ', len(self.query_list))
 
     def make_npy(self):
-        train_hash = []
-        y_train = []
+        """ Make npy files for training, from query_list """
+
+        x_train = []  # image array
+        y_train = []  # labels
         cv2.namedWindow('tool')
 
         for item in self.query_list:
             img_path = item
 
-            try:
+            try:  # is it valid img?
                 img = imread(img_path, mode='RGB')
                 cv2.imshow('tool', img)
             except Exception:
@@ -192,29 +226,40 @@ class DBMS(object):
                 continue
 
             # print('Success: ' + hash)
-            label = [float(self.query_list[item][0]), float(self.query_list[item][1])]
+            label = [float(self.query_list[item][0]),
+                     float(self.query_list[item][1])]
 
             # additional process (resize, cut, grayscale)
             img = process(img, self.processes)
-            train_hash.append(img)
+            x_train.append(img)
             y_train.append(label)
 
-        cnt = len(train_hash)
+        cnt = len(x_train)
         print('Packed data: ', cnt)
 
+        # npy file name convention
         nowDatetime = self.__write_log(cnt)
         save_prefix = os.path.join(ROOT_DIR, 'npy', nowDatetime)
         print(save_prefix)
-        np.save(save_prefix + '_X.npy', train_hash)
+        np.save(save_prefix + '_X.npy', x_train)
         np.save(save_prefix + '_Y.npy', y_train)
 
     def __write_log(self, num):
+        """ write information of current npy packaging.
+        :param num: number of packed data
+        """
+
         now = datetime.datetime.now()
         nowDatetime = now.strftime('%Y-%m-%d__%H-%M-%S')
+        process_line = ''
+        for i in range(len(self.processes)):
+            process_line = process_line + '\t' + str(self.processes[i])
+        print(process_line)
 
         with open('./makenp_log.txt', "a") as f:
             f.write(
-                nowDatetime + '\t' + str(num) + '\t' + str(self.filters) + '\n')
+                nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
+                + '\t' + str(self.processes) + '\n')
 
         return nowDatetime
 

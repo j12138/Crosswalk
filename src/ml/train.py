@@ -28,7 +28,7 @@ def parse_args():
     return args
 
 
-#Load the training config file
+# Load the training config file
 def loadyaml(filename):
     with open(filename, 'r') as stream: 
         options = yaml.load(stream)
@@ -36,6 +36,12 @@ def loadyaml(filename):
 
 
 def select_npy_data(npy_log_file):
+    """ show existing npy files, allows user to pick 1 pair
+    :param npy_log_file: .txt log file containing npy file info
+    :return x_npy, y_npy: paths of X, Y npy files
+    :return img_spec: img specification parameter (width, height, grayscale)
+    """
+
     with open(npy_log_file, "r") as f:
         lines = f.readlines()
         cnt = 0
@@ -46,32 +52,43 @@ def select_npy_data(npy_log_file):
             print('['+str(cnt)+']', line.strip())
             pass
         print('------------------------------')
-        
+
         picked_num = input('select npy: ')
-        picked_npy_file = (lines[int(picked_num) - 1].split('\t'))[0]
+        picked_line = (lines[int(picked_num) - 1].rstrip()).split('\t')
+        picked_npy_file = picked_line[0]
         print(picked_npy_file)
+        img_spec = picked_line[-1].strip('(').strip(')').split(', ')
 
-        x_npy = './npy/' + picked_npy_file + '_X.npy'
-        y_npy = './npy/' + picked_npy_file + '_Y.npy'
+        path_prefix = os.path.join(ROOT_DIR, 'npy', picked_npy_file)
+        x_npy = path_prefix + '_X.npy'
+        y_npy = path_prefix + '_Y.npy'
 
-    return x_npy, y_npy
+    return x_npy, y_npy, img_spec
 
 
-options = loadyaml(config_file)    
+options = loadyaml(config_file)
 
 print('Training Configuration')
 print(yaml.dump(options, default_flow_style=False, default_style=''))
 
-npy_log_file = os.path.join(ROOT_DIR, 'src', options['npy_log_file'])
-x_npy, y_npy = select_npy_data(npy_log_file)
+npy_log_file = os.path.join(ROOT_DIR, options['npy_log_file'])
+# choose your training data
+x_npy, y_npy, img_spec = select_npy_data(npy_log_file)
 
 x_train = np.load(x_npy)
 y_train = np.load(y_npy)
 x_val = np.load(os.path.join(ROOT_DIR, options['val_imgs']))
 y_val = np.load(os.path.join(ROOT_DIR, options['val_labels']))
+
+width, height = int(img_spec[0]), int(img_spec[1])
+if width <= 0:
+    width = options['width']
+if height <= 0:
+    height = options['height']
+print(width, height)
+
 experiment_name = options['experiment_name']
 num_gpus = options['num_gpus']
-height, width = options['height'],options['width']
 network = options['network']
 nb_epoch = options['epochs']
 batch_size = options['batch_size']
@@ -111,11 +128,11 @@ model = SimpleModel(input_shape=(height,width,3), momentum=batch_momentum,
         weight_penalty=weight_decay)
 model.summary() 
 
-if optimizer=='SGD':
-    optim= SGD(lr=learning_rate, momentum=sgd_momentum, nesterov=True)
-    #, clipnorm=1.)
-if optimizer=='Adam':
-    optim= Adam(lr=learning_rate)
+if optimizer == 'SGD':
+    optim = SGD(lr=learning_rate, momentum=sgd_momentum, nesterov=True)
+    # , clipnorm=1.)
+if optimizer == 'Adam':
+    optim = Adam(lr=learning_rate)
 model.compile(loss=smoothL1, optimizer=optim, metrics=['mae'])
 
 tensorboard = TensorBoard(log_dir='./trainings/'+experiment_name,
@@ -127,7 +144,8 @@ csv_logger = CSVLogger('./trainings/'+experiment_name+'/training_log.csv')
 callbacks = [tensorboard, checkpoint, csv_logger]
 
 if step_decay:
-    #Decay function for the learning rate
+    # Decay function for the learning rate
+
     def step_decay(epoch):
         initial_lrate = learning_rate
         drop = drop_factor
@@ -135,13 +153,14 @@ if step_decay:
         lrate = initial_lrate * np.power(drop, np.floor((1+epoch)/epochs_drop))
         print('Current Learning Rate is '+str(lrate))
         return lrate
+
     lrate = LearningRateScheduler(step_decay)
     callbacks.append(lrate)
 
 model.fit_generator(train_gen,
-        steps_per_epoch=int(np.floor(len(x_train)/batch_size)),
-        validation_data=val_gen,
-        validation_steps=5,
-        epochs=nb_epoch,
-        callbacks=callbacks)
+                    steps_per_epoch=int(np.floor(len(x_train)/batch_size)),
+                    validation_data=val_gen,
+                    validation_steps=5,
+                    epochs=nb_epoch,
+                    callbacks=callbacks)
 

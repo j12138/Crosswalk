@@ -1,4 +1,2 @@
-2019-04-02__07-57-59	68	['Apple', 'no_obs_not_old_over_60', 'onecol']
-2019-04-02__07-58-08	646	['Apple']
-2019-04-02__08-01-41	225	['no_obs_not_old_over_60']
-2019-04-03__23-10-17	225	['no_obs_not_old_over_60']
+//date		#_of_imgs		applied_filters	img_spec(width, height, grayscale)
+2019-06-26__08-08-16	185	['not_out_of_range']	(400, 400, '1')

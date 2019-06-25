@@ -28,7 +28,14 @@ config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
 class LabelingTool(QWidget):
+    """
+    PyQt UI tool for labeling
+    """
+
     def __init__(self, img_dir):
+        """
+        :param img_dir: preprocessed img directory to label.
+        """
         super().__init__()
         self.img_dir = img_dir
         self.img_files = glob.glob(self.img_dir + '/*')
@@ -36,6 +43,7 @@ class LabelingTool(QWidget):
 
         self.status = cd.LabelingStatus()
 
+        # labeling status members
         self.is_input_finished = False
         self.current_point = [0, (0, 0)]
         self.all_points = [(0, 0)] * 6
@@ -60,6 +68,9 @@ class LabelingTool(QWidget):
         self.initUI()
 
     def initUI(self):
+        """ Initialize UI components. """
+
+        # button setting
         but_done = QPushButton('Save')
         but_done.setToolTip('Save labeling on DB')
         but_done.setStyleSheet("background-color: skyblue")
@@ -160,6 +171,9 @@ class LabelingTool(QWidget):
         self.show()
 
     def launch(self):
+        """ Renew the UI by current img to label. """
+
+        # finished expoloring all imgs
         if self.img_idx >= len(self.img_files):
             self.close()
             return
@@ -390,6 +404,8 @@ class LabelingTool(QWidget):
         return int(ix), int(iy)
 
     def update_img(self, img):
+        """ Update img component of UI to current img to display.
+        """
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         qimage = QImage(img, img.shape[1], img.shape[0],
                         img.shape[1] * 3, QImage.Format_RGB888)
@@ -402,6 +418,8 @@ class LabelingTool(QWidget):
                                        len(self.img_files)))
 
     def save_labeling_status(self):
+        """ save current labeling status at DB file.
+        """
         self.status.is_input_finished = self.is_input_finished
         self.status.is_line_drawn = self.is_line_drawn
         self.status.current_point = self.current_point
@@ -461,6 +479,8 @@ class LabelingTool(QWidget):
         self.widgets['rb_ratio'][int(val / 20) - 1].setChecked(True)
 
     def __next_unlabeled_img(self):
+        """ Go to next unlabeled img. """
+
         self.save_labeling_status()
 
         for i in range(len(self.img_files)):
@@ -477,6 +497,8 @@ class LabelingTool(QWidget):
         self.launch()
 
     def __prev_unlabeled_img(self):
+        """ Go to previous unlabeled img. """
+
         self.save_labeling_status()
 
         total = len(self.img_files)
@@ -496,6 +518,8 @@ class LabelingTool(QWidget):
         self.launch()
 
     def closeEvent(self, event):
+        """ This method is called when the window gets 'close()' signal """
+
         process = 'Labeled img: {} / {}\n\n'.format(len(self.done_img_idx),
                                                     len(self.img_files))
         msg = process + 'Do you want to quit the tool?'
@@ -513,37 +537,13 @@ class LabelingTool(QWidget):
         self.__move_done_imgs(save_path)
 
     def __move_done_imgs(self, save_path):
+        """ move labeling done imgs from ./preprocess/ to ./labeled/
+        :param save_path: labeled folder of current dataset directory
+        """
+
         for idx in self.done_img_idx:
             img_file = self.img_files[idx]
             os.rename(img_file, os.path.join(save_path, os.path.split(img_file)[-1]))
-
-
-class DataSelector(QWidget):
-    def __init__(self, parent=None, flags=Qt.WindowFlags()):
-        super().__init__(parent=parent, flags=flags)
-
-        self.selected_path = ''
-        self.__initUI()
-
-    def __initUI(self):
-        folder_list = QTableView()
-        # folder_list.show()
-
-        grid = QGridLayout()
-        self.setLayout(grid)
-
-        self.setWindowTitle('Crosswalk labeling tool')
-        self.resize(700, 500)
-        self.show()
-
-    def launch(self):
-        return
-
-    def get_data_path(self):
-        return self.selected_path
-
-    def closeEvent(self, event):
-        pass
 
 
 def parse_args():
@@ -555,20 +555,14 @@ def parse_args():
 
 
 def launch_annotator(data_path):
-    """the actual 'main' function.
-
+    """ the actual 'main' function.
     Other modules that import this module shall call this as the entry
     point.
-
     """
 
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
-
-    # folder_selector = DataSelector()
-    # data_path2 = folder_selector.get_data_path()
-    # folder_selector.launch()
 
     labeling_tool = LabelingTool(data_path)
     labeling_tool.launch()
@@ -587,6 +581,10 @@ def main(args):
 
 
 def show_and_select_dir_to_label():
+    """ show all preprocessed datasets and let user to choose data to label.
+        called when user execute the code without any arguments.
+    """
+
     data_dirs = stats.show_labeling_progress(os.path.join(ROOT_DIR,
                                                           'preprocessed_data'))
     dir_idx = input('# to label (or just Enter): ')

@@ -6,15 +6,15 @@ import argparse
 import glob
 import cv2
 import os
-import crosswalk_data as cd
-import compute_label_lib as cl
+from labeling import crosswalk_data as cd
+from labeling import compute_label_lib as cl
 import json
 from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
-     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox,\
-     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
-     QTableView
+    QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
+    QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
+    QTableView
 from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
-     QPainter, QCursor, QPalette, QColor
+    QPainter, QCursor, QPalette, QColor
 from PyQt5.QtCore import Qt
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))

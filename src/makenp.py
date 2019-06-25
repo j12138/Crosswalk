@@ -92,7 +92,6 @@ def choose_process():
     if grayscale == '1':
         grayscale == 1
 
-    print(resize_width, cut_height, grayscale)
     return resize_width, cut_height, grayscale
 
 
@@ -198,16 +197,16 @@ class DBMS(object):
 
                     if suc:
                         img_path = os.path.join(dir, 'labeled', item['filehash'])
-                        print('Success: ' + img_path)
+                        # print('Success: ' + img_path)
 
                         self.query_list[img_path] = (item['loc'], item['ang'])
 
                 except:
-                    print('Fail: ' + item['filehash'])
+                    # print('Fail: ' + item['filehash'])
                     continue
 
             # print(query_list)
-            print('Selected data: ', len(self.query_list))
+        print('Selected data: ', len(self.query_list))
 
     def make_npy(self):
         """ Make npy files for training, from query_list """
@@ -252,10 +251,15 @@ class DBMS(object):
 
         now = datetime.datetime.now()
         nowDatetime = now.strftime('%Y-%m-%d__%H-%M-%S')
+        process_line = ''
+        for i in range(len(self.processes)):
+            process_line = process_line + '\t' + str(self.processes[i])
+        print(process_line)
 
         with open('./makenp_log.txt', "a") as f:
             f.write(
-                nowDatetime + '\t' + str(num) + '\t' + str(self.filters) + '\n')
+                nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
+                + '\t' + str(self.processes) + '\n')
 
         return nowDatetime
 

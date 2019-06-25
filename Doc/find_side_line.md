@@ -4,7 +4,8 @@
 코드는 `/src/labeling/compute_label_lib.py` 안에 find_side_point, find_otherside_line function 으로 구현되어 있습니다.
 
 ##1.  find_side_point
-![Alt text](/images/sideline_explain0.jpg)
+
+![Alt text](/images/sideline_explain0.png)
 
 ### 1.1. input
 
@@ -41,7 +42,7 @@ image의 특징으로는 image안에 있는 대상의 높이에 따라 이미지
 
 이는 변수 x에 대하여 -1 차수를 갖는 함수가 된다. 
 
-![Alt text](/images/sideline_explain2.jpg)
+![Alt text](/images/sideline_explain2.png)
 
 new_p1, new_p3는 p1, p3의 x 좌표를 갖는 new_end_line위의 point이다.
 
@@ -67,3 +68,4 @@ line1과 line2의 intersection point와 1에서 구한 endline_point를 이어�
 (이는 사진에서 위로 갈수록 거리가 멀어져 초점이 정해진다는 원리로 인해 가정하였다.)
 
 ![Alt text](/images/sideline_explain3.png)
+

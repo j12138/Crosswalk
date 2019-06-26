@@ -10,13 +10,14 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 import shutil
 import datetime
+import math
 
 preprocessed_folder = 'preprocessed_data'
 labeled_folder = 'labeled'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
-
+total_pixels = 250000 #total pixels of a resized image
 
 def parse_args():
     """ Parse command-line arguments
@@ -59,7 +60,17 @@ def resize_and_save(input_dir, output_dir, img_path):
 
     img = cv2.imread(os.path.join(input_dir, img_path))
     # compress the image size by .15 for saving the storage by 1/4
-    resized = cv2.resize(img, None, fx=0.15, fy=0.15,
+    # EDITED: compress image so that the width*height is no greater than 250000.
+    # the resizing process skips if the image size does not exceed the limit.
+    # the number 250000 was implemented by trial and error: can be changed if needed
+    height, width = img.shape[:2]
+    if (height*width) < total_pixels:
+        ratio = 1
+    else:
+        ratio = math.sqrt(total_pixels/(height*width))
+    img = cv2.imread(os.path.join(input_dir, img_path))
+
+    resized = cv2.resize(img, None, fx=ratio, fy=ratio,
                          interpolation=cv2.INTER_AREA)
     # cv2.imwrite determines the format by the extension in the path
     save_path = os.path.join(output_dir, get_hash_name(img_path) + ".png")
@@ -97,8 +108,11 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     metadata_all = {}
 
     for img_name in os.listdir(input_dir):
-        if(img_name == ".DS_Store"):
+        
+        #Exception for MacOS
+        if img_name == ".DS_Store":
             continue
+        
         metadata_per_each = {}
         img = Image.open(os.path.join(input_dir, img_name))
         height, width = img.size

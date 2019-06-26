@@ -6,8 +6,8 @@ import argparse
 import glob
 import cv2
 import os
-from labeling import crosswalk_data as cd
-from labeling import compute_label_lib as cl
+import crosswalk_data as cd
+import compute_label_lib as cl
 import json
 from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
@@ -61,6 +61,7 @@ class LabelingTool(QWidget):
             'cb_outrange': QCheckBox('out_of_range'),
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
+            'rb_odd2col': QRadioButton('Odd 2 Columns'),
             'slider_ratio': QSlider(Qt.Horizontal),
             'rb_ratio': [QRadioButton('20'), QRadioButton('40'),
                          QRadioButton('60'), QRadioButton('80')]
@@ -121,6 +122,7 @@ class LabelingTool(QWidget):
         vbox_meta.addStretch(2)
         vbox_meta.addWidget(self.widgets['rb_1col'])
         vbox_meta.addWidget(self.widgets['rb_2col'])
+        vbox_meta.addWidget(self.widgets['rb_odd2col'])
         vbox_meta.addStretch(2)
         # vbox_meta.addWidget(label_ratio)
         # vbox_meta.addWidget(self.widgets['slider_ratio'])
@@ -199,6 +201,8 @@ class LabelingTool(QWidget):
         if event.button() == Qt.LeftButton:
             img_pos = self.abs2img_pos(event.pos(), self.gbox_image,
                                        self.imgsize)
+
+            print(img_pos)
 
             if (img_pos[0] < 0) or (img_pos[0] >= self.imgsize.width()):
                 return
@@ -321,6 +325,8 @@ class LabelingTool(QWidget):
 
         if self.widgets['rb_2col'].isChecked():
             self.data.meta['column'][2] = 2
+        if self.widgets['rb_odd2col'].isChecked():
+            self.data.meta['column'][2] = 2.5
 
         '''
         self.data.meta['zebra_ratio'][2] = int(
@@ -354,8 +360,24 @@ class LabelingTool(QWidget):
         p3 = self.all_points[2]
         p4 = self.all_points[3]
 
-        left_line = cl.line(p1, p2)
-        right_line = cl.line(p3, p4)
+        if self.widgets['rb_odd2col'].isChecked():
+            # 한쪽 side만 보이는 2 column인 경우
+            oneside_line = cl.line(p1, p2)
+            desired_line = cl.find_otherside_line(p1, p2, p3, p4, w, h)
+
+            if p1 > p3:  # 드러난 선이 오른쪽에 있음
+                left_line = desired_line
+                right_line = oneside_line
+            else:
+                left_line = oneside_line
+                right_line = desired_line
+        else:
+            # 양 side가 모두 보이는 경우 (일반)
+            left_line = cl.line(p1, p2)
+            right_line = cl.line(p3, p4)
+
+        print(left_line, right_line)
+
         mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line,
                                                              right_line)
 
@@ -435,8 +457,14 @@ class LabelingTool(QWidget):
             self.widgets['cb_old'].isChecked()
         self.status.widgets_status['cb_outrange'] = \
             self.widgets['cb_outrange'].isChecked()
-        self.status.widgets_status['rb_1col'] = \
-            self.widgets['rb_1col'].isChecked()
+
+        if self.widgets['rb_1col'].isChecked():
+            self.status.widgets_status['rb_1col'] = 1
+        elif self.widgets['rb_2col'].isChecked():
+            self.status.widgets_status['rb_1col'] = 2
+        else:
+            self.status.widgets_status['rb_1col'] = 2.5
+
         self.status.widgets_status['slider_ratio'] = \
             self.__get_ratio_value()
 
@@ -461,10 +489,12 @@ class LabelingTool(QWidget):
         self.widgets['cb_outrange'].setChecked(
             self.status.widgets_status['cb_outrange'])
 
-        if self.status.widgets_status['rb_1col']:
+        if self.status.widgets_status['rb_1col'] == 1:
             self.widgets['rb_1col'].setChecked(True)
-        else:
+        elif self.status.widgets_status['rb_1col'] == 2:
             self.widgets['rb_2col'].setChecked(True)
+        else:
+            self.widgets['rb_odd2col'].setChecked(True)
 
         self.__set_ratio_buttons()
 

@@ -123,7 +123,13 @@ def find_otherside_line(p1, p2, p3, p4, image_width, image_height):
     """
     sideline1 = line(p1, p2)
     midline = line(p3, p4)
+    print('sideline1:', sideline1)
+    print('midline:', midline)
     view_point = intersection(sideline1, midline)
+    print('viewpoint:', view_point)
     one_point = find_side_point(p1, p2, p3, p4, image_width, image_height)
-    sideline2 = line(view_point,one_point)
+    print('one_point:', one_point)
+    
+    sideline2 = line(view_point, one_point)
+
     return sideline2

@@ -96,17 +96,24 @@ def find_side_point(p1, p2, p3, p4, image_width, image_height):
     :param image_height : image_height
     :return: other side line point (crosswalk end_line point)
     """
-    end_line = line(p1, p2)
+    end_line = line(p1, p3)
+    print("endline : ", end_line)
+    print("h :", image_height)
     new_p1y = (image_height - p1[1]) * 24 / 38 * image_height / (p1[1])
+    print("new_p1y :", new_p1y)
     new_p3y = (image_height - p3[1]) * 24 / 38 * image_height / p3[1]
+    print("new_p3y :", new_p3y)
     a = end_line[0]
     b = end_line[1]
     H = image_height
     line1 = [12 * a * math.pow(H, 2) / (-19 * math.pow(a * p3[0] + b, 2)),
-             (12 * a * math.pow(H, 2) / (19 * math.pow(a * p3[0] + b, 2))) * p1[0] + new_p1y]
+            (12 * a * math.pow(H, 2) / (19 * math.pow(a * p3[0] + b, 2))) * p1[0] + new_p1y]
+    print("line1 :", line1)
     line2 = [(19 * math.pow(a * p3[0] + b, 2)) / (12 * a * math.pow(H, 2)),
-             -p3[0] * (19 * math.pow(a * p3[0] + b, 2)) / (12 * a * math.pow(H, 2)) + new_p3y]
+            -p3[0] * (19 * math.pow(a * p3[0] + b, 2)) / (12 * a * math.pow(H, 2)) + new_p3y]
+    print("line2 :", line2)
     c, d = intersection(line1, line2)
+    print("C :", c)
     return [2 * c - p1[0], a * (2 * c - p1[0]) + b]
 
 

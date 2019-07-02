@@ -140,3 +140,39 @@ def find_otherside_line(p1, p2, p3, p4, image_width, image_height):
     sideline2 = line(view_point, one_point)
 
     return sideline2
+
+
+def compute_all_labels(imgW, imgH, all_points, is_odd2col):
+    p1, p2, p3, p4, p5, p6 = tuple(all_points)
+
+    if is_odd2col:
+        # 한쪽 side만 보이는 2 column인 경우
+        oneside_line = line(p1, p2)
+        desired_line = find_otherside_line(p1, p2, p3, p4, imgW, imgH)
+
+        if p1 > p3:  # 드러난 선이 오른쪽에 있음
+            left_line = desired_line
+            right_line = oneside_line
+        else:
+            left_line = oneside_line
+            right_line = desired_line
+    else:
+        # 양 side가 모두 보이는 경우 (일반)
+        left_line = line(p1, p2)
+        right_line = line(p3, p4)
+
+    print(left_line, right_line)
+
+    mid_pt, bottom_width = bottom_mid_point_and_width(imgH, left_line,
+                                                      right_line)
+
+    loc = compute_loc(mid_pt, imgW, bottom_width)
+    ang = compute_ang(left_line, right_line, mid_pt, imgH)
+
+    mid = mid_point(p5, p6)
+    slope = line(p5, p6)[0]
+
+    pit = compute_pitch(mid, imgH)
+    roll = compute_roll(slope)
+
+    return loc, ang, pit, roll

@@ -83,14 +83,16 @@ def choose_process():
     print('[2] Cut off upper img')
     cut_height = input('  lower height: ')
     print('[3] Grayscale')
-    grayscale = input('  Yes = 1: ')
+    grayscale = int(input('  Yes = 1: '))
 
     if len(resize_width) > 0:
         resize_width = int(resize_width)
     if len(cut_height) > 0:
         cut_height = int(cut_height)
-    if grayscale == '1':
-        grayscale == 1
+    try:
+        grayscale = int(grayscale)
+    except:
+        print('wrong input')
 
     return resize_width, cut_height, grayscale
 
@@ -133,6 +135,7 @@ def show_and_pick_filters(filterlist):
 
 def process(img, processes):
     width, height, gray = processes
+
     # resizing
     if width > 0:
         img = scipy.misc.imresize(img, (int(width * 1.3333), width))
@@ -144,6 +147,7 @@ def process(img, processes):
     if gray == 1:
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img = cv2.equalizeHist(gray_img)
+        img = img[..., None]
 
     return img
 
@@ -256,7 +260,7 @@ class DBMS(object):
             process_line = process_line + '\t' + str(self.processes[i])
         print(process_line)
 
-        with open('./makenp_log.txt', "a") as f:
+        with open(os.path.join(ROOT_DIR, './makenp_log.txt'), "a") as f:
             f.write(
                 nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
                 + '\t' + str(self.processes) + '\n')

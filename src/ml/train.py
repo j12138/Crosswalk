@@ -20,6 +20,7 @@ from Generator.augmentation import BatchGenerator
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
+train_npy_idx = -1
 
 
 def parse_args():
@@ -35,7 +36,7 @@ def loadyaml(filename):
     return options
 
 
-def select_npy_data(npy_log_file):
+def select_npy_data(npy_log_file, picked_train_npy):
     """ show existing npy files, allows user to pick 1 pair
     :param npy_log_file: .txt log file containing npy file info
     :return x_npy, y_npy: paths of X, Y npy files
@@ -46,15 +47,20 @@ def select_npy_data(npy_log_file):
         lines = f.readlines()
         cnt = 0
 
-        print('\n---------- npy list ----------')
+        print('---------- npy list ----------')
         for line in lines:
+            if line[:2] == '//':
+                continue
             cnt = cnt + 1
-            print('['+str(cnt)+']', line.strip())
+            if cnt == picked_train_npy:
+                print('[*]', line.strip())
+            else:
+                print('['+str(cnt)+']', line.strip())
             pass
         print('------------------------------')
 
         picked_num = input('select npy: ')
-        picked_line = (lines[int(picked_num) - 1].rstrip()).split('\t')
+        picked_line = (lines[int(picked_num)].rstrip()).split('\t')
         picked_npy_file = picked_line[0]
         print(picked_npy_file)
         img_spec = picked_line[-1].strip('(').strip(')').split(', ')
@@ -63,7 +69,7 @@ def select_npy_data(npy_log_file):
         x_npy = path_prefix + '_X.npy'
         y_npy = path_prefix + '_Y.npy'
 
-    return x_npy, y_npy, img_spec
+    return x_npy, y_npy, img_spec, int(picked_num)
 
 
 options = loadyaml(config_file)
@@ -73,18 +79,25 @@ print(yaml.dump(options, default_flow_style=False, default_style=''))
 
 npy_log_file = os.path.join(ROOT_DIR, options['npy_log_file'])
 # choose your training data
-x_npy, y_npy, img_spec = select_npy_data(npy_log_file)
+print('Choose train npy:')
+x_npy, y_npy, img_spec, idx = select_npy_data(npy_log_file, -1)
+print('\nChoose validation npy:')
+val_x_npy, val_y_npy, img_spec, idx = select_npy_data(npy_log_file, idx)
 
 x_train = np.load(x_npy)
 y_train = np.load(y_npy)
-x_val = np.load(os.path.join(ROOT_DIR, options['val_imgs']))
-y_val = np.load(os.path.join(ROOT_DIR, options['val_labels']))
+x_val = np.load(val_x_npy)
+y_val = np.load(val_y_npy)
 
-width, height = int(img_spec[0]), int(img_spec[1])
+width, height, grayscale = int(img_spec[0]), int(img_spec[1]), int(img_spec[2])
 if width <= 0:
     width = options['width']
 if height <= 0:
     height = options['height']
+if grayscale == 1:
+    channel = 1
+else:
+    channel = 3
 print(width, height)
 
 experiment_name = options['experiment_name']
@@ -111,7 +124,7 @@ if not os.path.exists('./trainings/'):
 if not os.path.exists('./trainings/'+experiment_name):
     os.makedirs('./trainings/'+experiment_name)
 
-copyfile(config_file,'./trainings/'+experiment_name+'/'+os.path.basename(config_file))
+copyfile(config_file, './trainings/'+experiment_name+'/'+os.path.basename(config_file))
 
 
 # Build data generators if applying augmentation
@@ -124,7 +137,7 @@ else:
 val_gen = BatchGenerator(x_val, y_val, batch_size, noaugs=True, height=height,
         width=width)
 
-model = SimpleModel(input_shape=(height,width,3), momentum=batch_momentum,
+model = SimpleModel(input_shape=(height,width,channel), momentum=batch_momentum,
         weight_penalty=weight_decay)
 model.summary() 
 

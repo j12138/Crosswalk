@@ -355,44 +355,9 @@ class LabelingTool(QWidget):
     def __compute_label(self):
         # loc, ang (primary labels)
         h, w = self.img_to_display.shape[:2]
-        p1 = self.all_points[0]
-        p2 = self.all_points[1]
-        p3 = self.all_points[2]
-        p4 = self.all_points[3]
 
-        if self.widgets['rb_odd2col'].isChecked():
-            # 한쪽 side만 보이는 2 column인 경우
-            oneside_line = cl.line(p1, p2)
-            desired_line = cl.find_otherside_line(p1, p2, p3, p4, w, h)
-
-            if p1 > p3:  # 드러난 선이 오른쪽에 있음
-                left_line = desired_line
-                right_line = oneside_line
-            else:
-                left_line = oneside_line
-                right_line = desired_line
-        else:
-            # 양 side가 모두 보이는 경우 (일반)
-            left_line = cl.line(p1, p2)
-            right_line = cl.line(p3, p4)
-
-        print(left_line, right_line)
-
-        mid_pt, bottom_width = cl.bottom_mid_point_and_width(h, left_line,
-                                                             right_line)
-
-        loc = cl.compute_loc(mid_pt, w, bottom_width)
-        ang = cl.compute_ang(left_line, right_line, mid_pt, h)
-
-        # pit(ch), roll
-        p5 = self.all_points[4]
-        p6 = self.all_points[5]
-
-        mid = cl.mid_point(p5, p6)
-        slope = cl.line(p5, p6)[0]
-
-        pit = cl.compute_pitch(mid, h)
-        roll = cl.compute_roll(slope)
+        loc, ang, pit, roll = cl.compute_all_labels(w, h, self.all_points,
+                                        self.widgets['rb_odd2col'].isChecked())
 
         return round(loc, 3), round(ang, 3), round(pit, 3), round(roll, 3)
 

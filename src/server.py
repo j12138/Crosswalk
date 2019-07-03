@@ -14,7 +14,7 @@ private_key = os.path.join(ROOT_DIR, '..', '.ssh', 'id_rsa')
 
 
 def load_yaml():
-    with open(config_file, 'r') as stream:
+    with open(os.path.join(BASE_DIR, config_file), 'r') as stream:
         options = yaml.load(stream)
     return options
 
@@ -179,8 +179,9 @@ def main():
     local_npy_log = os.path.join(ROOT_DIR, options['local_npy_log'])
 
     with pysftp.Connection(host=options['host'],
-                           username=options['username'],
-                           password=options['password'],
+                           username='alal',
+                           private_key=private_key,
+                           private_key_pass='p@$phr4se',
                            cnopts=cnopts) as sftp:
         sftp.chdir('..')
         sftp.chdir('..')

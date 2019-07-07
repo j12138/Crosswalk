@@ -6,31 +6,35 @@ import argparse
 import glob
 import cv2
 import os
-import crosswalk_data as cd
-import compute_label_lib as cl
+import sys
 import json
+import time
 from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
-    QTableView
+    QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
     QPainter, QCursor, QPalette, QColor
-from PyQt5.QtCore import Qt
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-import stats
+from PyQt5.QtCore import Qt, pyqtSignal
 
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+import compute_label_lib as cl
+import crosswalk_data as cd
+import stats
 
 fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
+startTime = 0
 
 
 class LabelingTool(QWidget):
     """
     PyQt UI tool for labeling
     """
+    switch_window = pyqtSignal()
 
     def __init__(self, img_dir):
         """
@@ -62,9 +66,9 @@ class LabelingTool(QWidget):
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
             'rb_odd2col': QRadioButton('Odd 2 Columns'),
-            'slider_ratio': QSlider(Qt.Horizontal),
-            'rb_ratio': [QRadioButton('20'), QRadioButton('40'),
-                         QRadioButton('60'), QRadioButton('80')]
+            # 'slider_ratio': QSlider(Qt.Horizontal),
+            # 'rb_ratio': [QRadioButton('20'), QRadioButton('40'),
+            #              QRadioButton('60'), QRadioButton('80')]
         }
         self.initUI()
 
@@ -94,10 +98,12 @@ class LabelingTool(QWidget):
         # make metadata widgets
         self.widgets['rb_1col'].setChecked(True)
 
+        '''
         self.widgets['slider_ratio'].setRange(0, 50)
         self.widgets['slider_ratio'].setSingleStep(20)
         self.widgets['slider_ratio'].setTickInterval(10)
         self.widgets['slider_ratio'].setTickPosition(2)
+        '''
 
         # Layout setting
         grid = QGridLayout()
@@ -127,12 +133,12 @@ class LabelingTool(QWidget):
         # vbox_meta.addWidget(label_ratio)
         # vbox_meta.addWidget(self.widgets['slider_ratio'])
 
-        for i in range(len(self.widgets['rb_ratio'])):
-            hbox_ratio.addWidget(self.widgets['rb_ratio'][i])
+        # for i in range(len(self.widgets['rb_ratio'])):
+        #     hbox_ratio.addWidget(self.widgets['rb_ratio'][i])
 
-        gbox_ratio.setLayout(hbox_ratio)
-        gbox_ratio.setFont(QFont("calibri", 9))
-        vbox_meta.addWidget(gbox_ratio)
+        # gbox_ratio.setLayout(hbox_ratio)
+        # gbox_ratio.setFont(QFont("calibri", 9))
+        # vbox_meta.addWidget(gbox_ratio)
 
         # slider tick labels
         hbox_tick = QHBoxLayout()
@@ -246,6 +252,18 @@ class LabelingTool(QWidget):
                 self.img_idx = self.img_idx + 1
                 self.launch()
 
+        if event.key() == Qt.Key_1:
+            if not self.widgets['rb_1col'].isChecked():
+                self.widgets['rb_1col'].setChecked(True)
+
+        if event.key() == Qt.Key_2:
+            if not self.widgets['rb_2col'].isChecked():
+                self.widgets['rb_2col'].setChecked(True)
+
+        if event.key() == Qt.Key_3:
+            if not self.widgets['rb_odd2col'].isChecked():
+                self.widgets['rb_odd2col'].setChecked(True)
+
         if event.key() == Qt.Key_Backspace:
             # print('KeyPress: Backspace (Undo)')
             self.__undo_labeling()
@@ -332,7 +350,7 @@ class LabelingTool(QWidget):
         self.data.meta['zebra_ratio'][2] = int(
             self.widgets['slider_ratio'].value() * 2)
         '''
-        self.data.meta['zebra_ratio'][2] = self.__get_ratio_value()
+        # self.data.meta['zebra_ratio'][2] = self.__get_ratio_value()
 
         # self.data.display_manual_meta()
         self.data.write_on_db()
@@ -357,7 +375,7 @@ class LabelingTool(QWidget):
         h, w = self.img_to_display.shape[:2]
 
         loc, ang, pit, roll = cl.compute_all_labels(w, h, self.all_points,
-                                        self.widgets['rb_odd2col'].isChecked())
+                                                    self.widgets['rb_odd2col'].isChecked())
 
         return round(loc, 3), round(ang, 3), round(pit, 3), round(roll, 3)
 
@@ -430,8 +448,8 @@ class LabelingTool(QWidget):
         else:
             self.status.widgets_status['rb_1col'] = 2.5
 
-        self.status.widgets_status['slider_ratio'] = \
-            self.__get_ratio_value()
+        # self.status.widgets_status['slider_ratio'] = \
+        #     self.__get_ratio_value()
 
         self.data.save_labeling_status(self.status)
 
@@ -461,7 +479,7 @@ class LabelingTool(QWidget):
         else:
             self.widgets['rb_odd2col'].setChecked(True)
 
-        self.__set_ratio_buttons()
+        # self.__set_ratio_buttons()
 
     def __get_ratio_value(self):
         for i in range(len(self.widgets['rb_ratio'])):
@@ -531,6 +549,10 @@ class LabelingTool(QWidget):
         save_path = os.path.join(self.img_dir, '..', 'labeled')
         self.__move_done_imgs(save_path)
 
+        global startTime
+        print('{} images: {} m'.format(len(self.img_files),
+                                       round((time.time() - startTime) / 60, 2)))
+
     def __move_done_imgs(self, save_path):
         """ move labeling done imgs from ./preprocess/ to ./labeled/
         :param save_path: labeled folder of current dataset directory
@@ -538,7 +560,121 @@ class LabelingTool(QWidget):
 
         for idx in self.done_img_idx:
             img_file = self.img_files[idx]
-            os.rename(img_file, os.path.join(save_path, os.path.split(img_file)[-1]))
+            os.rename(img_file, os.path.join(save_path,
+                                             os.path.split(img_file)[-1]))
+
+
+class DataSelector(QWidget):
+    """
+    PyQt UI widget for data selector
+    """
+    switch_window = pyqtSignal(str)
+
+    def __init__(self, data_dir):
+        QWidget.__init__(self)
+        self.data_dir = data_dir
+        self.child_dirs = glob.glob(os.path.join(data_dir, '*'))
+        self.setWindowTitle('Data selector')
+        self.initUI()
+
+    def initUI(self):
+        self.tableWidget = QTableWidget(self)
+        self.tableWidget.resize(415, 400)
+        self.tableWidget.setRowCount(len(self.child_dirs))
+        self.tableWidget.setColumnCount(2)
+        self.setTableWidgetData()
+
+        self.startbutton = QPushButton('Select')
+        self.startbutton.clicked.connect(self.start_labeling)
+        self.toplabel = QLabel('Select dataset to label: ')
+
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
+        main_layout.addWidget(self.toplabel)
+        main_layout.addWidget(self.tableWidget)
+        main_layout.addWidget(self.startbutton)
+
+        self.resize(500, 500)
+        self.center()
+
+    def start_labeling(self):
+        current_row = self.tableWidget.currentItem().row()
+        self.select_done(current_row)
+
+    def setTableWidgetData(self):
+        self.tableWidget.setHorizontalHeaderLabels(['dirname',
+                                                    'progress'])
+        idx = 0
+        total = 0
+        labeled = 0
+
+        for dir in self.child_dirs:
+            db_file = os.path.join(dir, 'db.json')
+            try:
+                with open(db_file, 'r') as f:
+                    loaded = json.load(f)
+            except Exception as e:
+                print('Failed to open database file {}: {}'.format(db_file, e))
+            else:
+                idx = idx + 1
+                tot, lab, dir_name = self.labeling_progress_for_each_dir(
+                    loaded, dir, idx)
+                total = total + tot
+                labeled = labeled + lab
+
+                item = QTableWidgetItem(dir_name)
+                item.setFlags(Qt.ItemIsEnabled)
+                item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+                self.tableWidget.setItem(idx - 1, 0, item)
+
+                item = QTableWidgetItem('[ {} / {} ]'.format(str(lab),
+                                                             str(tot)))
+                item.setFlags(Qt.ItemIsEnabled)
+                item.setTextAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+                self.tableWidget.setItem(idx - 1, 1, item)
+
+                self.tableWidget.setRowHeight(idx - 1, 30)
+
+        self.tableWidget.setColumnWidth(0, 300)
+        self.tableWidget.setColumnWidth(1, 100)
+
+    def labeling_progress_for_each_dir(self, db, dir, idx):
+        total = 0
+        for name in db.values():
+            total = total + 1
+
+        labeled = len(os.listdir(os.path.join(dir, 'labeled')))
+        dir_name = os.path.basename(dir)
+
+        return total, labeled, dir_name
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def select_done(self, picked_idx):
+        self.switch_window.emit(self.child_dirs[picked_idx])
+
+
+class Controller:
+
+    def __init__(self):
+        pass
+
+    def show_selector(self):
+        self.selector = DataSelector(os.path.join(ROOT_DIR,
+                                                  'preprocessed_data'))
+        self.selector.switch_window.connect(self.show_tool)
+        self.selector.show()
+
+    def show_tool(self, dir_path):
+        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
+        self.selector.close()
+        global startTime
+        startTime = time.time()
+        self.tool.launch()
 
 
 def parse_args():
@@ -549,7 +685,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def launch_annotator(data_path):
+def launch_annotator():
     """ the actual 'main' function.
     Other modules that import this module shall call this as the entry
     point.
@@ -559,8 +695,11 @@ def launch_annotator(data_path):
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
 
-    labeling_tool = LabelingTool(data_path)
-    labeling_tool.launch()
+    # labeling_tool = LabelingTool(data_path)
+    controller = Controller()
+    controller.show_selector()
+
+    # labeling_tool.launch()
     sys.exit(app.exec_())
 
 
@@ -572,14 +711,14 @@ def main(args):
             return
     else:
         data_path = os.path.join(args.data_path, 'preprocessed')
-    launch_annotator(data_path)
+    launch_annotator()
 
 
 def show_and_select_dir_to_label():
     """ show all preprocessed datasets and let user to choose data to label.
         called when user execute the code without any arguments.
     """
-
+    '''
     data_dirs = stats.show_labeling_progress(os.path.join(ROOT_DIR,
                                                           'preprocessed_data'))
     dir_idx = input('# to label (or just Enter): ')
@@ -587,7 +726,9 @@ def show_and_select_dir_to_label():
         return
     dir_idx = int(dir_idx)
     print(data_dirs[dir_idx-1])
-    launch_annotator(os.path.join(data_dirs[dir_idx-1], 'preprocessed'))
+    '''
+    # launch_annotator(os.path.join(data_dirs[dir_idx - 1], 'preprocessed'))
+    launch_annotator()
 
 
 if __name__ == "__main__":

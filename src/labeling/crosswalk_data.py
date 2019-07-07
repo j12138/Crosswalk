@@ -33,8 +33,8 @@ class LabelingStatus(object):
             'cb_shadow': False,
             'cb_old': False,
             'cb_outrange': False,
-            'rb_1col': 1,
-            'slider_ratio': 60
+            'rb_1col': 1
+            # 'slider_ratio': 60
         }
 
 

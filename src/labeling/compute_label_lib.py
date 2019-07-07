@@ -84,6 +84,40 @@ def compute_ang(l1, l2, mid, H):
     return ang
 
 
+def new_compute_ang(l1, l2, W, H):
+    vanishing_pt = intersection(l1, l2)
+    user_pos = int(W/2), H-1
+    user2van = line(user_pos, vanishing_pt)
+    horizontal_line = [0, H]
+
+    ang = compute_included_ang(user2van, horizontal_line)
+    ang = 90 - ang
+    if user2van[0] < 0:
+        ang = ang * (-1.0)
+
+    return ang
+
+
+def new2_compute_ang(p1, p3, loc, W, H):
+    end_line = line(p1, p3)
+    end_mid_pt = mid_point(p1, p3)
+    x_diff = abs(p1[0] - p3[0])
+    x = ((x_diff / 2) * loc) + end_mid_pt[0]
+    right_goal = int(x), int(end_line[0] * x + end_line[1])
+    print(right_goal)
+
+    user_pos = int(W/2), H-1
+    right_dir = line(user_pos, right_goal)
+    horizontal_line = [0, H]
+
+    ang = compute_included_ang(right_dir, horizontal_line)
+    ang = 90 - ang
+    if right_dir[0] < 0:
+        ang = ang * (-1.0)
+
+    return ang
+
+
 def find_side_point(p1, p2, p3, p4, image_width, image_height):
     """
     To solve 2 column exception
@@ -97,23 +131,23 @@ def find_side_point(p1, p2, p3, p4, image_width, image_height):
     :return: other side line point (crosswalk end_line point)
     """
     end_line = line(p1, p3)
-    print("endline : ", end_line)
-    print("h :", image_height)
+    # print("endline : ", end_line)
+    # print("h :", image_height)
     new_p1y = (image_height - p1[1]) * 24 / 38 * image_height / (p1[1])
-    print("new_p1y :", new_p1y)
+    # print("new_p1y :", new_p1y)
     new_p3y = (image_height - p3[1]) * 24 / 38 * image_height / p3[1]
-    print("new_p3y :", new_p3y)
+    # print("new_p3y :", new_p3y)
     a = end_line[0]
     b = end_line[1]
     H = image_height
     line1 = [12 * a * math.pow(H, 2) / (-19 * math.pow(a * p3[0] + b, 2)),
             (12 * a * math.pow(H, 2) / (19 * math.pow(a * p3[0] + b, 2))) * p1[0] + new_p1y]
-    print("line1 :", line1)
+    # print("line1 :", line1)
     line2 = [(19 * math.pow(a * p3[0] + b, 2)) / (12 * a * math.pow(H, 2)),
             -p3[0] * (19 * math.pow(a * p3[0] + b, 2)) / (12 * a * math.pow(H, 2)) + new_p3y]
-    print("line2 :", line2)
+    # print("line2 :", line2)
     c, d = intersection(line1, line2)
-    print("C :", c)
+    # print("C :", c)
     return [2 * c - p1[0], a * (2 * c - p1[0]) + b]
 
 
@@ -130,13 +164,13 @@ def find_otherside_line(p1, p2, p3, p4, image_width, image_height):
     """
     sideline1 = line(p1, p2)
     midline = line(p3, p4)
-    print('sideline1:', sideline1)
-    print('midline:', midline)
+    # print('sideline1:', sideline1)
+    # print('midline:', midline)
     view_point = intersection(sideline1, midline)
-    print('viewpoint:', view_point)
+    # print('viewpoint:', view_point)
     one_point = find_side_point(p1, p2, p3, p4, image_width, image_height)
-    print('one_point:', one_point)
-    
+    # print('one_point:', one_point)
+
     sideline2 = line(view_point, one_point)
 
     return sideline2
@@ -161,13 +195,19 @@ def compute_all_labels(imgW, imgH, all_points, is_odd2col):
         left_line = line(p1, p2)
         right_line = line(p3, p4)
 
-    print(left_line, right_line)
+    # print(left_line, right_line)
 
     mid_pt, bottom_width = bottom_mid_point_and_width(imgH, left_line,
                                                       right_line)
 
     loc = compute_loc(mid_pt, imgW, bottom_width)
-    ang = compute_ang(left_line, right_line, mid_pt, imgH)
+    ang = new_compute_ang(left_line, right_line, imgW, imgH)
+    
+
+    print(imgW, imgH, all_points, is_odd2col)
+    print('prev:', compute_ang(left_line, right_line, mid_pt, imgH))
+    print('new:', ang)
+    print('new2:', new2_compute_ang(p1, p3, loc, imgW, imgH))
 
     mid = mid_point(p5, p6)
     slope = line(p5, p6)[0]

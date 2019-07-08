@@ -166,6 +166,7 @@ def show_manual_meta_stat(db, total):
                 one_column = one_column + 1
             if item['column'] == 2:
                 two_column = two_column + 1
+            '''
             if 0 <= item['zebra_ratio'] <= 20:
                 under_20 = under_20 + 1
             if 20 < item['zebra_ratio'] <= 40:
@@ -176,6 +177,7 @@ def show_manual_meta_stat(db, total):
                 under_80 = under_80 + 1
             if 80 < item['zebra_ratio']:
                 over_80 = over_80 + 1
+            '''
             if item['old'] == 1:
                 old = old + 1
         except Exception as e:
@@ -191,12 +193,14 @@ def show_manual_meta_stat(db, total):
     print('  └─ [1]  ', show_proportion_bar(one_column, total))
     print('  └─ [2]  ', show_proportion_bar(two_column, total), '\n')
 
+    '''
     print('zebra_ratio:')
     print(' └─ [~20] ', show_proportion_bar(under_20, total))
     print(' └─ [~40] ', show_proportion_bar(under_40, total))
     print(' └─ [~60] ', show_proportion_bar(under_60, total))
     print(' └─ [~80] ', show_proportion_bar(under_80, total))
     print(' └─ [80~] ', show_proportion_bar(over_80, total))
+    '''
 
 
 def show_exifmeta_stat(db, total):

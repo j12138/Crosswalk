@@ -9,8 +9,10 @@ def test_trivial():
 
 
 def test_compute_ang():
+    # width, height of images
     imgW = [433, 433, 433, 433]
     imgH = [577, 577, 577, 577]
+    # expected labeling points (6 pts per img)
     all_points = [[(204, 327), (3, 384), (375, 337),
                    (385, 487), (24, 291), (416, 270)],
                   [(171, 289), (6, 436), (384, 285),
@@ -19,6 +21,7 @@ def test_compute_ang():
                    (431, 329), (2, 241), (426, 231)],
                   [(97, 338), (1, 366), (345, 385),
                    (173, 570), (6, 227), (420, 223)]]
+    # whether img has only 1 side of 2 column crosswalk or not
     is_odd2col = [False, False, False, True]
 
     ang = []

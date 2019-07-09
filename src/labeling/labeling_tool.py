@@ -3,18 +3,15 @@
 # input both side of crosswalk --> location / direction(angle)
 
 import argparse
-import glob
 import cv2
-import os
-import sys
+import os, sys, glob
 import json
 import time
-from PyQt5.QtWidgets import QMessageBox, QSlider, QDialog, QApplication, \
+from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
     QTableWidget, QTableWidgetItem
-from PyQt5.QtGui import QImage, QKeyEvent, QMouseEvent, QPixmap, QFont, \
-    QPainter, QCursor, QPalette, QColor
+from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -66,7 +63,6 @@ class LabelingTool(QWidget):
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
             'rb_odd2col': QRadioButton('Odd 2 Columns'),
-            # 'slider_ratio': QSlider(Qt.Horizontal),
             # 'rb_ratio': [QRadioButton('20'), QRadioButton('40'),
             #              QRadioButton('60'), QRadioButton('80')]
         }
@@ -175,7 +171,7 @@ class LabelingTool(QWidget):
 
         self.setWindowTitle('Crosswalk labeling tool')
         self.resize(700, 500)
-        self.center()
+        self.put_window_on_center_of_screen()
         self.show()
 
     def launch(self):
@@ -617,7 +613,7 @@ class DataSelector(QWidget):
                 print('Failed to open database file {}: {}'.format(db_file, e))
             else:
                 idx = idx + 1
-                tot, lab, dir_name = self.labeling_progress_for_each_dir(
+                tot, lab, dir_name = self.show_labeling_progress_for_each_dir(
                     loaded, dir, idx)
                 total = total + tot
                 labeled = labeled + lab
@@ -638,7 +634,7 @@ class DataSelector(QWidget):
         self.tableWidget.setColumnWidth(0, 300)
         self.tableWidget.setColumnWidth(1, 100)
 
-    def labeling_progress_for_each_dir(self, db, dir, idx):
+    def show_labeling_progress_for_each_dir(self, db, dir, idx):
         total = 0
         for name in db.values():
             total = total + 1
@@ -648,7 +644,7 @@ class DataSelector(QWidget):
 
         return total, labeled, dir_name
 
-    def center(self):
+    def put_window_on_center_of_screen(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)

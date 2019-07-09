@@ -70,7 +70,10 @@ def compute_included_ang(l1, l2):
     return ang
 
 
-def compute_ang(l1, l2, mid, H):
+def compute_angle(l1, l2, mid, H):
+    """
+    compute included angle between vertical line and crosswalk direction
+    """
     vanishing_pt = intersection(l1, l2)
     right_direction = line(mid, vanishing_pt)
     horizontal_line = [0, H]
@@ -84,9 +87,13 @@ def compute_ang(l1, l2, mid, H):
     return ang
 
 
-def new_compute_ang(l1, l2, W, H):
+def compute_angle2(l1, l2, W, H):
+    """
+    compute included angle between vertical line and other line which pass
+    through vanishing point and user position. (mid-bottom point)
+    """
     vanishing_pt = intersection(l1, l2)
-    user_pos = int(W/2), H-1
+    user_pos = int(W / 2), H - 1
     user2van = line(user_pos, vanishing_pt)
     horizontal_line = [0, H]
 
@@ -98,7 +105,12 @@ def new_compute_ang(l1, l2, W, H):
     return ang
 
 
-def new2_compute_ang(p1, p3, loc, W, H):
+def compute_angle3(p1, p3, loc, W, H):
+    """
+    compute included angle between vertical line and other line, which pass
+    through user position and upper point expected as end point of crosswalk 
+    when user go along crosswalk direction.
+    """
     end_line = line(p1, p3)
     end_mid_pt = mid_point(p1, p3)
     x_diff = abs(p1[0] - p3[0])
@@ -201,13 +213,12 @@ def compute_all_labels(imgW, imgH, all_points, is_odd2col):
                                                       right_line)
 
     loc = compute_loc(mid_pt, imgW, bottom_width)
-    ang = new_compute_ang(left_line, right_line, imgW, imgH)
-    
+    ang = compute_angle2(left_line, right_line, imgW, imgH)
 
     print(imgW, imgH, all_points, is_odd2col)
-    print('prev:', compute_ang(left_line, right_line, mid_pt, imgH))
+    print('prev:', compute_angle(left_line, right_line, mid_pt, imgH))
     print('new:', ang)
-    print('new2:', new2_compute_ang(p1, p3, loc, imgW, imgH))
+    print('new2:', compute_angle3(p1, p3, loc, imgW, imgH))
 
     mid = mid_point(p5, p6)
     slope = line(p5, p6)[0]

@@ -659,7 +659,9 @@ class DataSelector(QWidget):
 
 
 class Controller:
-
+    """
+    Controller class for switching windows
+    """
     def __init__(self):
         pass
 
@@ -714,26 +716,9 @@ def main(args):
     launch_annotator()
 
 
-def show_and_select_dir_to_label():
-    """ show all preprocessed datasets and let user to choose data to label.
-        called when user execute the code without any arguments.
-    """
-    '''
-    data_dirs = stats.show_labeling_progress(os.path.join(ROOT_DIR,
-                                                          'preprocessed_data'))
-    dir_idx = input('# to label (or just Enter): ')
-    if len(dir_idx) == 0:
-        return
-    dir_idx = int(dir_idx)
-    print(data_dirs[dir_idx-1])
-    '''
-    # launch_annotator(os.path.join(data_dirs[dir_idx - 1], 'preprocessed'))
-    launch_annotator()
-
-
 if __name__ == "__main__":
     if (len(sys.argv) < 2):
-        show_and_select_dir_to_label()
+        launch_annotator()
         sys.exit(0)
 
     args = parse_args()

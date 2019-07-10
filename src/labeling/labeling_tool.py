@@ -10,7 +10,7 @@ import time
 from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
-    QTableWidget, QTableWidgetItem
+    QTableWidget, QTableWidgetItem, QFileDialog
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -59,7 +59,7 @@ class LabelingTool(QWidget):
             'cb_obshuman': QCheckBox('obs_human'),
             'cb_shadow': QCheckBox('shadow'),
             'cb_old': QCheckBox('old'),
-            'cb_outrange': QCheckBox('out_of_range'),
+            # 'cb_outrange': QCheckBox('out_of_range'),
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
             'rb_odd2col': QRadioButton('Odd 2 Columns'),
@@ -80,8 +80,8 @@ class LabelingTool(QWidget):
         but_invalid.setToolTip('press if you cannot draw dots')
         but_invalid.setStyleSheet("background-color: red")
         but_invalid.clicked.connect(self.__set_invalid)
-        but_next = QPushButton('Next')
-        but_prev = QPushButton('Prev')
+        but_next = QPushButton('Next unlabeled')
+        but_prev = QPushButton('Prev unlabeled')
         but_next.setToolTip('Move to next img to annotate')
         but_next.clicked.connect(self.__next_unlabeled_img)
         but_prev.clicked.connect(self.__prev_unlabeled_img)
@@ -93,13 +93,6 @@ class LabelingTool(QWidget):
 
         # make metadata widgets
         self.widgets['rb_1col'].setChecked(True)
-
-        '''
-        self.widgets['slider_ratio'].setRange(0, 50)
-        self.widgets['slider_ratio'].setSingleStep(20)
-        self.widgets['slider_ratio'].setTickInterval(10)
-        self.widgets['slider_ratio'].setTickPosition(2)
-        '''
 
         # Layout setting
         grid = QGridLayout()
@@ -151,13 +144,14 @@ class LabelingTool(QWidget):
         # vbox_meta.addLayout(hbox_tick)
 
         vbox_meta.addStretch(1)
-        vbox_meta.addWidget(self.widgets['cb_outrange'])
+        # vbox_meta.addWidget(self.widgets['cb_outrange'])
         vbox_meta.addStretch(4)
 
         hbox_button1 = QHBoxLayout()
         hbox_button1.addWidget(but_prev)
         hbox_button1.addWidget(but_next)
         vbox_meta.addLayout(hbox_button1)
+        vbox_meta.addStretch(1)
 
         hbox_button2 = QHBoxLayout()
         hbox_button2.addWidget(but_invalid)
@@ -193,7 +187,7 @@ class LabelingTool(QWidget):
 
         self.update_img(img)
 
-    def center(self):
+    def put_window_on_center_of_screen(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
@@ -332,8 +326,8 @@ class LabelingTool(QWidget):
             self.widgets['cb_obshuman'].isChecked())
         self.data.meta['shadow'][2] = int(
             self.widgets['cb_shadow'].isChecked())
-        self.data.meta['out_of_range'][2] = int(
-            self.widgets['cb_outrange'].isChecked())
+        # self.data.meta['out_of_range'][2] = int(
+        #     self.widgets['cb_outrange'].isChecked())
         self.data.meta['old'][2] = int(
             self.widgets['cb_old'].isChecked())
 
@@ -434,8 +428,8 @@ class LabelingTool(QWidget):
             self.widgets['cb_shadow'].isChecked()
         self.status.widgets_status['cb_old'] = \
             self.widgets['cb_old'].isChecked()
-        self.status.widgets_status['cb_outrange'] = \
-            self.widgets['cb_outrange'].isChecked()
+        # self.status.widgets_status['cb_outrange'] = \
+        #     self.widgets['cb_outrange'].isChecked()
 
         if self.widgets['rb_1col'].isChecked():
             self.status.widgets_status['rb_1col'] = 1
@@ -465,8 +459,8 @@ class LabelingTool(QWidget):
             self.status.widgets_status['cb_shadow'])
         self.widgets['cb_old'].setChecked(
             self.status.widgets_status['cb_old'])
-        self.widgets['cb_outrange'].setChecked(
-            self.status.widgets_status['cb_outrange'])
+        # self.widgets['cb_outrange'].setChecked(
+        #     self.status.widgets_status['cb_outrange'])
 
         if self.status.widgets_status['rb_1col'] == 1:
             self.widgets['rb_1col'].setChecked(True)
@@ -566,12 +560,17 @@ class DataSelector(QWidget):
     """
     switch_window = pyqtSignal(str)
 
-    def __init__(self, data_dir):
+    def __init__(self):
         QWidget.__init__(self)
-        self.data_dir = data_dir
-        self.child_dirs = glob.glob(os.path.join(data_dir, '*'))
+        self.data_dir = self.__get_preprocessed_data_dir()
+        self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
         self.setWindowTitle('Data selector')
         self.initUI()
+
+    def __get_preprocessed_data_dir(self):
+        picked_dir = str(QFileDialog.getExistingDirectory(self,
+                                                          "Select Directory"))
+        return picked_dir
 
     def initUI(self):
         self.tableWidget = QTableWidget(self)
@@ -591,7 +590,7 @@ class DataSelector(QWidget):
         main_layout.addWidget(self.startbutton)
 
         self.resize(500, 500)
-        self.center()
+        self.put_window_on_center_of_screen()
 
     def start_labeling(self):
         current_row = self.tableWidget.currentItem().row()
@@ -662,8 +661,7 @@ class Controller:
         pass
 
     def show_selector(self):
-        self.selector = DataSelector(os.path.join(ROOT_DIR,
-                                                  'preprocessed_data'))
+        self.selector = DataSelector()
         self.selector.switch_window.connect(self.show_tool)
         self.selector.show()
 
@@ -693,11 +691,9 @@ def launch_annotator():
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
 
-    # labeling_tool = LabelingTool(data_path)
     controller = Controller()
     controller.show_selector()
 
-    # labeling_tool.launch()
     sys.exit(app.exec_())
 
 

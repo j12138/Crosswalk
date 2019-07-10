@@ -10,6 +10,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 
+
 def loadyaml():
     with open(config_file, 'r') as stream: 
         options = yaml.load(stream)
@@ -32,7 +33,7 @@ class LabelingStatus(object):
             'cb_obshuman': False,
             'cb_shadow': False,
             'cb_old': False,
-            'cb_outrange': False,
+            # 'cb_outrange': False,
             'rb_1col': 1
             # 'slider_ratio': 60
         }

@@ -1,5 +1,10 @@
+from PyQt5.QtWidgets import QListView, QTreeView, QFileSystemModel, QAbstractItemView, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
+from PyQt5 import QtWidgets
+from PyQt5.QtGui import QIcon, QColor
+from PyQt5.QtCore import QCoreApplication, QBasicTimer
 import cv2
 import os
+import sys
 import argparse
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -12,24 +17,14 @@ import shutil
 import datetime
 import math
 
-preprocessed_folder = 'preprocessed_data'
+preprocessed_folder = 'dataset'
 labeled_folder = 'labeled'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 total_pixels = 250000 #total pixels of a resized image
-
-def parse_args():
-    """ Parse command-line arguments
-    ex: $ python preprocess.py data --w 300 --h 240
-    :return: parsed arguments
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input_dir', help='Path of folder containing images',
-                        type=str)
-
-    return parser.parse_args()
-
+NUM_FILES = 1 # Number of pictures that are being preprocessed
+SUPPORTED_TYPES = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
 
 def load_yaml():
     with open(config_file, 'r') as stream:
@@ -53,6 +48,11 @@ def resize_and_save(input_dir, output_dir, img_path):
     :param img_path: Path to an image to process
     :return: None
     """
+
+    # Check if the extension is supported by cv2. If not, return.
+    ext = os.path.splitext(img_path)[-1].lower()
+    if ext not in SUPPORTED_TYPES:
+        return
 
     # Bypass DS_Store for MacOS
     if ".DS_Store" in img_path:
@@ -86,8 +86,18 @@ def preprocess_images(input_dir: str, save_dir: str):
     :param save_dir: output directory to which the re-sized images are saved
     """
     files = os.listdir(input_dir)
-    print("Resizing {} images".format(len(files)))
+    #TODO exception for anything not supported
+    print(files)
 
+    for each in files:
+        print(each+"'s ext: "+os.path.splitext(each)[-1].lower())
+        if (os.path.splitext(each)[-1].lower() not in SUPPORTED_TYPES) or (os.path.isdir(os.path.join(input_dir, each))):
+            files.remove(each)
+
+
+    print("Resizing {} images".format(len(files)))
+    NUM_FILES = len(files)
+    print(files)
     os.mkdir(save_dir)
     output_dir = os.path.join(save_dir, 'preprocessed')
     os.mkdir(output_dir)
@@ -108,11 +118,16 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     metadata_all = {}
 
     for img_name in os.listdir(input_dir):
-        
-        #Exception for MacOS
+
+        # Check the extension of the file and if it's not image file, skip the process
+        ext = os.path.splitext(img_name)[-1].lower()
+        if ext not in SUPPORTED_TYPES:
+            continue
+
+        # Exception for MacOS
         if img_name == ".DS_Store":
             continue
-        
+
         metadata_per_each = {}
         img = Image.open(os.path.join(input_dir, img_name))
         height, width = img.size
@@ -143,7 +158,7 @@ def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
 def init_labeling_status(metadata_per_each, widgets):
     """ initialize labeling status items for DB
     :param metadata_per_each: dictionary item for each data
-    :param widgets: set of metadata widgets from labeling tool 
+    :param widgets: set of metadata widgets from labeling tool
     :return:
     """
 
@@ -178,7 +193,7 @@ def update_database(metadata, save_dir):
         print('Successfully updated!')
 
 
-def get_save_dir_path(original, prefix):
+def get_save_dir_path(original, prefix, userid):
     """ return name of save directory follows convention.
     [current date] _ [user id] _ [original name] _ [index]
 
@@ -190,10 +205,11 @@ def get_save_dir_path(original, prefix):
     now = datetime.datetime.now()
     nowDatetime = now.strftime('%Y-%m-%d')
 
-    userid = input('Your ID: ')
+    #userid = input('Your ID: ')
     save_dir_name = nowDatetime + '_' + userid + '_' + original
     save_path = os.path.join(prefix, save_dir_name)
 
+    '''
     idx = 0
     save_path
 
@@ -203,21 +219,25 @@ def get_save_dir_path(original, prefix):
             save_path = save_path + '_1'
             continue
         save_path = save_path[:-2] + '_' + str(idx)
+    '''
 
     return save_path
 
 
-def preprocess_img(args, options):
+def preprocess_img(args, options, userid):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
 
     # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
     #                 'DateTimeOriginal', 'BrightnessValue'}
 
-    folder_name = os.path.basename(args.input_dir.strip('/\\'))
-    save_dir_prefix = os.path.join(ROOT_DIR, preprocessed_folder)
-    save_dir = get_save_dir_path(folder_name, save_dir_prefix)
+    folder_name = os.path.basename(args.strip('/\\'))
+    save_dir_prefix = os.path.join(BASE_DIR, preprocessed_folder)
+    save_dir = get_save_dir_path(folder_name, save_dir_prefix, userid)
     print('save_dir: ', save_dir)
+    # create dataset directory if not in existence
+    if not os.path.exists(save_dir_prefix):
+        os.mkdir(save_dir_prefix)
 
     # check whether save_dir already exists
     if os.path.exists(save_dir):
@@ -234,10 +254,9 @@ def preprocess_img(args, options):
         else:
             print('Wrong input!')
             return
-
-    metadata = extract_metadata(args.input_dir, list(options['exifmeta']),
+    metadata = extract_metadata(args, list(options['exifmeta']),
                                 options['widgets'])
-    preprocess_images(args.input_dir, save_dir)
+    preprocess_images(args, save_dir)
     update_database(metadata, save_dir)
 
     os.mkdir(os.path.join(save_dir, labeled_folder))
@@ -247,11 +266,114 @@ def get_folder_name(input_dir):
     folder = os.path.dirname(input_dir)
 
 
-def main(args):
+def preprocess_main(args, userid):
     options = load_yaml()
-    preprocess_img(args, options)
+    preprocess_img(args, options, userid)
+
+class App(QWidget):
+
+    '''
+    This class generates the GUI for preprocess.py
+    '''
+
+    def __init__(self):
+        super().__init__()
+        self.title = "Preprocess.py Test PyQt"
+        self.left = 100
+        self.top = 100
+        self.width = 640
+        self.height = 480
+        self.initUI()
+
+    def initUI(self):
+
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+
+        '''
+        self.model = QFileSystemModel()
+        self.model.setRootPath(cwd)
+        #self.model.setRootIndex(model.index(cwd))
+        #self.model.setRootPath(self, self.model.rootDirectory())
+        self.tree = QTreeView()
+        self.tree.setModel(self.model)
+        #self.tree.setRootIndex(self.model.index(cwd))
+        self.tree.setAnimated(False)
+        self.tree.setIndentation(20)
+        self.tree.setSortingEnabled(True)
+
+        self.tree.setWindowTitle(self.title)
+        self.tree.resize(self.width, self.height)
+
+        windowLayout = QVBoxLayout()
+        windowLayout.addWidget(self.tree)
+        self.setLayout(windowLayout)
+        '''
+
+        file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        #self.label = QLabel("Your current directory is "+file)
+        #self.label.show()
+        print(file)
+        userid = ""
+        preprocess_main(file, userid)
+
+class FileDialog(QtWidgets.QFileDialog):
+    def __init__(self, *args):
+        QtWidgets.QFileDialog.__init__(self, *args)
+        self.setOption(self.DontUseNativeDialog, True)
+        self.setFileMode(self.DirectoryOnly)
+
+        for view in self.findChildren((QtWidgets.QListView, QtWidgets.QTreeView)):
+            if isinstance(view.model(), QtWidgets.QFileSystemModel):
+                view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+
+class ProgressBar_tutorial(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setGeometry(30,40,200,25)
+
+        self.btnStart = QPushButton("Start",self)
+        self.btnStart.move(40,80)
+        self.btnStart.clicked.connect(self.startProgress)
+
+        self.timer = QBasicTimer()
+        self.step = 0
+
+    def startProgress(self):
+        if self.timer.isActive():
+            self.timer.stop()
+            self.btnStart.setText("Start")
+        else:
+            self.timer.start(100, self)
+            self.btnStart.setText("Stop")
+
+    def timerEvent(self, event):
+        if self.step >= 100:
+            self.progressBar.setValue(100)
+            self.timer.stop()
+            self.btnStart.setText("Finished")
+            return
+        self.step += 1*NUM_FILES
+        self.progressBar.setValue(self.step)
+
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    main(args)
+    app = QApplication(sys.argv)
+    ex = App()
+
+    sys.exit(app.exec())
+    #tutorial = ProgressBar_tutorial()
+    #tutorial.show()
+
+
+    '''
+    # multiple directory selector
+
+    ex = FileDialog()
+    ex.show()
+    ex.exec_()
+    print(ex.selectedFiles())
+    '''
+

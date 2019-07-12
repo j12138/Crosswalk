@@ -86,18 +86,28 @@ def preprocess_images(input_dir: str, save_dir: str):
     :param save_dir: output directory to which the re-sized images are saved
     """
     files = os.listdir(input_dir)
-    #TODO exception for anything not supported
+    #TODO implement exception for unsupported types
+    '''
+    print(str(len(files))+" and ")
     print(files)
 
+    #for i in range(0, len(files)-1):
+    #    print(files[i])
+    #    ext = os.path.splitext(files[i])[-1].lower()
+        #if (ext == "") or (ext not in SUPPORTED_TYPES) or (os.path.isdir(os.path.join(input_dir, files[i]))):
+        #    files.remove(files[i])
+
+    '''
+    '''
     for each in files:
         print(each+"'s ext: "+os.path.splitext(each)[-1].lower())
         if (os.path.splitext(each)[-1].lower() not in SUPPORTED_TYPES) or (os.path.isdir(os.path.join(input_dir, each))):
             files.remove(each)
-
+    '''
 
     print("Resizing {} images".format(len(files)))
     NUM_FILES = len(files)
-    print(files)
+    #print(files)
     os.mkdir(save_dir)
     output_dir = os.path.join(save_dir, 'preprocessed')
     os.mkdir(output_dir)
@@ -209,6 +219,7 @@ def get_save_dir_path(original, prefix, userid):
     save_dir_name = nowDatetime + '_' + userid + '_' + original
     save_path = os.path.join(prefix, save_dir_name)
 
+    #Already implemented in another part for checking redundency
     '''
     idx = 0
     save_path
@@ -262,13 +273,13 @@ def preprocess_img(args, options, userid):
     os.mkdir(os.path.join(save_dir, labeled_folder))
 
 
-def get_folder_name(input_dir):
-    folder = os.path.dirname(input_dir)
-
-
 def preprocess_main(args, userid):
     options = load_yaml()
     preprocess_img(args, options, userid)
+
+def choose_dir(QWidget):
+    file = str(QFileDialog.getExistingDirectory(QWidget, "Select Directory"))
+    return file
 
 class App(QWidget):
 
@@ -310,13 +321,19 @@ class App(QWidget):
         self.setLayout(windowLayout)
         '''
 
-        file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        #file = choose_dir(self)
+        #file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         #self.label = QLabel("Your current directory is "+file)
         #self.label.show()
-        print(file)
-        userid = ""
-        preprocess_main(file, userid)
+        #print(file)
+        #userid = ""
+        #preprocess_main(file, userid)
 
+        #tutorial = ProgressBar_tutorial(num_files)
+        #tutorial.show()
+
+
+# Class that allows to choose multiple directories
 class FileDialog(QtWidgets.QFileDialog):
     def __init__(self, *args):
         QtWidgets.QFileDialog.__init__(self, *args)
@@ -327,7 +344,7 @@ class FileDialog(QtWidgets.QFileDialog):
             if isinstance(view.model(), QtWidgets.QFileSystemModel):
                 view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
-class ProgressBar_tutorial(QWidget):
+class ProgressBar(QWidget):
     def __init__(self):
         super().__init__()
         self.progressBar = QProgressBar(self)
@@ -354,19 +371,17 @@ class ProgressBar_tutorial(QWidget):
             self.timer.stop()
             self.btnStart.setText("Finished")
             return
-        self.step += 1*NUM_FILES
+        self.step += 1
         self.progressBar.setValue(self.step)
 
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = App()
-
+    ex = ProgressBar()
+    ex.show()
+    preprocess_main(choose_dir(ex),"kris")
     sys.exit(app.exec())
-    #tutorial = ProgressBar_tutorial()
-    #tutorial.show()
-
 
     '''
     # multiple directory selector

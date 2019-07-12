@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import QListView, QTreeView, QFileSystemModel, QAbstractItemView, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
+from PyQt5.QtWidgets import QDesktopWidget, QListView, QTreeView, QFileSystemModel, QAbstractItemView, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtCore import QCoreApplication, QBasicTimer
+from PyQt5.QtCore import QCoreApplication, QBasicTimer, pyqtSignal
 from PIL import Image
 from PIL.ExifTags import TAGS
 from tqdm import tqdm
@@ -22,8 +22,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 total_pixels = 250000 #total pixels of a resized image
-NUM_FILES = 1 # Number of pictures that are being preprocessed
+NUM_FILES = 0 # Number of pictures that are being preprocessed
 SUPPORTED_TYPES = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
+userid = "kris"
 
 def load_yaml():
     with open(config_file, 'r') as stream:
@@ -105,11 +106,10 @@ def preprocess_images(input_dir: str, save_dir: str):
     '''
 
     print("Resizing {} images".format(len(files)))
-    NUM_FILES = len(files)
-    #print(files)
-    os.mkdir(save_dir)
     output_dir = os.path.join(save_dir, 'preprocessed')
-    os.mkdir(output_dir)
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
     Parallel(n_jobs=-1)(
         delayed(resize_and_save)(input_dir, output_dir, img)
@@ -233,18 +233,18 @@ def get_save_dir_path(original, prefix, userid):
 
     return save_path
 
+def process_dir(args, options, userid):
+    # This function deals with directory related process such as
+    # processing names and creating directories
 
-def preprocess_img(args, options, userid):
-    """ the actual 'main' function. Other modules that import this module shall
-    call this as the entry point. """
-
-    # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
-    #                 'DateTimeOriginal', 'BrightnessValue'}
+    ow_flag = 0 # flag for overwriting dataset already in existence
 
     folder_name = os.path.basename(args.strip('/\\'))
     save_dir_prefix = os.path.join(BASE_DIR, preprocessed_folder)
     save_dir = get_save_dir_path(folder_name, save_dir_prefix, userid)
-    print('save_dir: ', save_dir)
+
+    print(save_dir_prefix)
+
     # create dataset directory if not in existence
     if not os.path.exists(save_dir_prefix):
         os.mkdir(save_dir_prefix)
@@ -254,7 +254,46 @@ def preprocess_img(args, options, userid):
         print('Already preprocessed data. Want to overlap?')
         print('Y: overlap, initialize current DB')
         print('N: quit preprocsessing')
-        ans = input('Select: ')
+
+        # Temporarily, ow_flag will always be 1. Exceptions to be implemented
+        ow_flag = 1
+        if(ow_flag):
+            # remove existing dir
+            shutil.rmtree(save_dir)
+    else:
+        os.mkdir(save_dir)
+
+
+    return save_dir_prefix, save_dir, ow_flag
+
+
+def preprocess_img(args, options, save_dir):
+    """ the actual 'main' function. Other modules that import this module shall
+    call this as the entry point. """
+
+    # e.g. exifmeta: {'ImageWidth', 'ImageLength', 'Make', 'Model', 'GPSInfo',
+    #                 'DateTimeOriginal', 'BrightnessValue'}
+    #
+    # folder_name = os.path.basename(args.strip('/\\'))
+    # save_dir_prefix = os.path.join(BASE_DIR, preprocessed_folder)
+    # save_dir = get_save_dir_path(folder_name, save_dir_prefix, userid)
+    # print('save_dir: ', save_dir)
+    #
+    # # create dataset directory if not in existence
+    # if not os.path.exists(save_dir_prefix):
+    #     os.mkdir(save_dir_prefix)
+
+    # 20190712: For the beta version, dataset will always be overwritten in case of overlap
+    # check whether save_dir already exists
+    '''
+    if os.path.exists(save_dir):
+        print('Already preprocessed data. Want to overlap?')
+        print('Y: overlap, initialize current DB')
+        print('N: quit preprocsessing')
+        #ans = input('Select: ')
+
+        # overlap flag set temporarily
+        ans = 'Y'
 
         if ans == 'Y':
             # remove existing dir
@@ -264,14 +303,15 @@ def preprocess_img(args, options, userid):
         else:
             print('Wrong input!')
             return
+    '''
+
     metadata = extract_metadata(args, list(options['exifmeta']),
                                 options['widgets'])
-    #preprocess_images(args, save_dir)
-    #update_database(metadata, save_dir)
 
-    #os.mkdir(os.path.join(save_dir, labeled_folder))
+    preprocess_images(args, save_dir)
+    update_database(metadata, save_dir)
 
-    return metadata, save_dir
+    os.mkdir(os.path.join(save_dir, labeled_folder))
 
 def preprocess_main(args, userid):
     options = load_yaml()
@@ -282,56 +322,8 @@ def choose_dir(QWidget):
     return file
 
 class App(QWidget):
-
-    '''
-    This class generates the GUI for preprocess.py
-    '''
-
     def __init__(self):
         super().__init__()
-        self.title = "Preprocess.py Test PyQt"
-        self.left = 100
-        self.top = 100
-        self.width = 640
-        self.height = 480
-        self.initUI()
-
-    def initUI(self):
-
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-
-        '''
-        self.model = QFileSystemModel()
-        self.model.setRootPath(cwd)
-        #self.model.setRootIndex(model.index(cwd))
-        #self.model.setRootPath(self, self.model.rootDirectory())
-        self.tree = QTreeView()
-        self.tree.setModel(self.model)
-        #self.tree.setRootIndex(self.model.index(cwd))
-        self.tree.setAnimated(False)
-        self.tree.setIndentation(20)
-        self.tree.setSortingEnabled(True)
-
-        self.tree.setWindowTitle(self.title)
-        self.tree.resize(self.width, self.height)
-
-        windowLayout = QVBoxLayout()
-        windowLayout.addWidget(self.tree)
-        self.setLayout(windowLayout)
-        '''
-
-        #file = choose_dir(self)
-        #file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        #self.label = QLabel("Your current directory is "+file)
-        #self.label.show()
-        #print(file)
-        #userid = ""
-        #preprocess_main(file, userid)
-
-        #tutorial = ProgressBar_tutorial(num_files)
-        #tutorial.show()
-
 
 # Class that allows to choose multiple directories
 class FileDialog(QtWidgets.QFileDialog):
@@ -345,23 +337,39 @@ class FileDialog(QtWidgets.QFileDialog):
                 view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
 class ProgressBar(QWidget):
-    def __init__(self, num_files):
+
+    switch_window = pyqtSignal()
+
+    def __init__(self):
         super().__init__()
+
+        self.chosen_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        self.options = load_yaml()
+
+        self.metadata = extract_metadata(self.chosen_dir, list(options['exifmeta']),
+                                    options['widgets'])
+        self.save_dir_prefix, self.save_dir, self.ex_flag = process_dir(self.chosen_dir, self.options, userid)
+        # print(self.save_dir_prefix, self.save_dir, self.ex_flag)
+        self.num_files = len(self.metadata)
         self.progressBar = QProgressBar(self)
         self.progressBar.setGeometry(30,40,200,25)
-        self.num_files = num_files
         self.btnStart = QPushButton("Start",self)
         self.btnStart.move(40,80)
         self.btnStart.clicked.connect(self.startProgress)
-
         self.timer = QBasicTimer()
         self.step = 0
+        self.put_window_on_center_of_screen()
 
     def startProgress(self):
         if self.timer.isActive():
             self.timer.stop()
             self.btnStart.setText("Start")
         else:
+            # process_dir(self.chosen_dir, self.options, userid)
+            # print("test point")
+            # print(os.listdir(self.save_dir))
+            update_database(self.metadata, self.save_dir)
+            preprocess_images(self.chosen_dir, self.save_dir)
             self.timer.start(100, self)
             self.btnStart.setText("Stop")
 
@@ -370,29 +378,73 @@ class ProgressBar(QWidget):
             self.progressBar.setValue(100)
             self.timer.stop()
             self.btnStart.setText("Finished")
+            self.switch_window.emit()
             return
-        self.step += (1*self.num_files)
+        self.step += (1*math.ceil(100/self.num_files))
         self.progressBar.setValue(self.step)
 
+    def put_window_on_center_of_screen(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
 class Complete_Screen(QWidget):
+
+    switch_window = pyqtSignal()
+
     def __init__(self):
         super().__init__()
-        self.test = 0
+        self.title = "Image Preprocess"
+        self.left = 100
+        self.top = 100
+        self.width = 640
+        self.height = 480
         print("test point reached")
-        return
+        self.initUI()
+        self.put_window_on_center_of_screen()
 
+    def put_window_on_center_of_screen(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+
+class Controller:
+    """
+    Controller class for switching windows
+    """
+    def __init__(self):
+        pass
+
+    def show_progrees(self):
+        self.selector = ProgressBar()
+        self.selector.switch_window.connect(self.show_complete)
+        self.selector.show()
+
+    def show_complete(self):
+        #self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
+        self.tool = Complete_Screen()
+        self.selector.close()
+        #global startTime
+        #startTime = time.time()
+        self.tool.show()
 
 if __name__ == '__main__':
     options = load_yaml()
-
+    # pr = Preprocess()
     app = QApplication(sys.argv)
-    test = App()
-    chosen_dir = choose_dir(test)
-    options = load_yaml()
+    # test = App()
+    # chosen_dir = choose_dir(test)
 
-    metadata, save_dir = preprocess_img(chosen_dir, options, "kris")
-    ex = ProgressBar(len(metadata))
-    ex.show()
+    controller = Controller()
+    controller.show_progrees()
+    #ex = ProgressBar(len(metadata))
+    #ex.show()
     sys.exit(app.exec())
 
     '''
@@ -403,4 +455,3 @@ if __name__ == '__main__':
     ex.exec_()
     print(ex.selectedFiles())
     '''
-

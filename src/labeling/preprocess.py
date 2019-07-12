@@ -2,20 +2,19 @@ from PyQt5.QtWidgets import QListView, QTreeView, QFileSystemModel, QAbstractIte
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import QCoreApplication, QBasicTimer
-import cv2
-import os
-import sys
-import argparse
 from PIL import Image
 from PIL.ExifTags import TAGS
-import hashlib
-import json
-import yaml
 from tqdm import tqdm
 from joblib import Parallel, delayed
 import shutil
 import datetime
 import math
+import cv2
+import os
+import sys
+import hashlib
+import json
+import yaml
 
 preprocessed_folder = 'dataset'
 labeled_folder = 'labeled'
@@ -267,11 +266,12 @@ def preprocess_img(args, options, userid):
             return
     metadata = extract_metadata(args, list(options['exifmeta']),
                                 options['widgets'])
-    preprocess_images(args, save_dir)
-    update_database(metadata, save_dir)
+    #preprocess_images(args, save_dir)
+    #update_database(metadata, save_dir)
 
-    os.mkdir(os.path.join(save_dir, labeled_folder))
+    #os.mkdir(os.path.join(save_dir, labeled_folder))
 
+    return metadata, save_dir
 
 def preprocess_main(args, userid):
     options = load_yaml()
@@ -345,11 +345,11 @@ class FileDialog(QtWidgets.QFileDialog):
                 view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
 class ProgressBar(QWidget):
-    def __init__(self):
+    def __init__(self, num_files):
         super().__init__()
         self.progressBar = QProgressBar(self)
         self.progressBar.setGeometry(30,40,200,25)
-
+        self.num_files = num_files
         self.btnStart = QPushButton("Start",self)
         self.btnStart.move(40,80)
         self.btnStart.clicked.connect(self.startProgress)
@@ -371,16 +371,28 @@ class ProgressBar(QWidget):
             self.timer.stop()
             self.btnStart.setText("Finished")
             return
-        self.step += 1
+        self.step += (1*self.num_files)
         self.progressBar.setValue(self.step)
 
+class Complete_Screen(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.test = 0
+        print("test point reached")
+        return
 
 
 if __name__ == '__main__':
+    options = load_yaml()
+
     app = QApplication(sys.argv)
-    ex = ProgressBar()
+    test = App()
+    chosen_dir = choose_dir(test)
+    options = load_yaml()
+
+    metadata, save_dir = preprocess_img(chosen_dir, options, "kris")
+    ex = ProgressBar(len(metadata))
     ex.show()
-    preprocess_main(choose_dir(ex),"kris")
     sys.exit(app.exec())
 
     '''

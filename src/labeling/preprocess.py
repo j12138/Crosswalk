@@ -257,7 +257,7 @@ def process_dir(args, options, userid):
 
         # Temporarily, ow_flag will always be 1. Exceptions to be implemented
         ow_flag = 1
-        if(ow_flag):
+        if (ow_flag == 1):
             # remove existing dir
             shutil.rmtree(save_dir)
     else:
@@ -368,8 +368,8 @@ class ProgressBar(QWidget):
             # process_dir(self.chosen_dir, self.options, userid)
             # print("test point")
             # print(os.listdir(self.save_dir))
-            update_database(self.metadata, self.save_dir)
             preprocess_images(self.chosen_dir, self.save_dir)
+            update_database(self.metadata, self.save_dir)
             self.timer.start(100, self)
             self.btnStart.setText("Stop")
 

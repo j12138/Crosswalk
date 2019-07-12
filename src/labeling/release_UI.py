@@ -7,8 +7,9 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QTableWidget, QTableWidgetItem, QFileDialog
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
-from labeling_tool import LabelingController, LabelingTool, DataSelector
-import preprocess
+from labeling.labeling_tool import LabelingController, LabelingTool, \
+    DataSelector
+from labeling import preprocess
 
 startTime = 0
 
@@ -100,10 +101,11 @@ class Controller:
     Controller class for switching windows
     """
     def __init__(self):
-        pass
+        self.lc = LabelingController()
+        self.selector = DataSelector()
+        self.main_window = MainWindow()
 
     def show_main_window(self):
-        self.main_window = MainWindow()
         self.main_window.switch_window.connect(self.show_operation_window)
         self.main_window.show()
 
@@ -118,11 +120,13 @@ class Controller:
             self.show_selector()
 
     def show_selector(self):
-        self.selector = DataSelector()
         self.selector.switch_window.connect(self.show_tool)
         self.selector.show()
 
     def show_tool(self, dir_path):
+        self.lc = LabelingController()
+        self.lc.show_tool(dir_path)
+        return
         self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
         self.selector.close()
         global startTime
@@ -141,4 +145,4 @@ if __name__ == "__main__":
     controller = Controller()
     controller.show_main_window()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -658,10 +658,9 @@ class LabelingController:
     Controller class for switching windows
     """
     def __init__(self):
-        pass
+        self.selector = DataSelector()
 
     def show_selector(self):
-        self.selector = DataSelector()
         self.selector.switch_window.connect(self.show_tool)
         self.selector.show()
 

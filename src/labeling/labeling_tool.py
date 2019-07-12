@@ -14,16 +14,16 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+# sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+# sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import compute_label_lib as cl
 import crosswalk_data as cd
-import stats
+
+test_dir = os.path.abspath(os.path.dirname(__file__))
+print(test_dir)
 
 fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
-config_file = os.path.join(BASE_DIR, 'config.yaml')
 startTime = 0
 
 
@@ -99,7 +99,7 @@ class LabelingTool(QWidget):
         self.setLayout(grid)
 
         self.gbox_image = QGroupBox(
-            "Image ( 0 / {} )".format(len(self.img_files)))
+            "Image ( 0 / {} ) {}".format(len(self.img_files), test_dir))
 
         vbox_image = QVBoxLayout()
         vbox_image.addWidget(self.label_img)
@@ -653,7 +653,7 @@ class DataSelector(QWidget):
         self.switch_window.emit(self.child_dirs[picked_idx])
 
 
-class Controller:
+class LabelingController:
     """
     Controller class for switching windows
     """
@@ -691,8 +691,8 @@ def launch_annotator():
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
 
-    controller = Controller()
-    controller.show_selector()
+    labeling_controller = LabelingController()
+    labeling_controller.show_selector()
 
     sys.exit(app.exec_())
 

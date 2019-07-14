@@ -1,15 +1,16 @@
 import sys
 import os
 import time
+import glob
+import json
 from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
     QTableWidget, QTableWidgetItem, QFileDialog
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
-from labeling.labeling_tool import LabelingController, LabelingTool, \
-    DataSelector
-from labeling import preprocess
+from labeling_tool import LabelingController, LabelingTool, DataSelector
+# from labeling import preprocess
 
 startTime = 0
 
@@ -101,9 +102,9 @@ class Controller:
     Controller class for switching windows
     """
     def __init__(self):
-        self.lc = LabelingController()
-        self.selector = DataSelector()
+        # self.lc = LabelingController()
         self.main_window = MainWindow()
+        self.selector = DataSelector()
 
     def show_main_window(self):
         self.main_window.switch_window.connect(self.show_operation_window)
@@ -116,21 +117,21 @@ class Controller:
             self.do_preprocess.show()
 
         elif operation == 'labeling':
-            self.main_window.close()
+            self.selector.set_data_dir()
             self.show_selector()
+            self.selector.put_window_on_center_of_screen()
 
     def show_selector(self):
         self.selector.switch_window.connect(self.show_tool)
         self.selector.show()
+        self.main_window.close()
 
     def show_tool(self, dir_path):
-        self.lc = LabelingController()
-        self.lc.show_tool(dir_path)
-        return
-        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
-        self.selector.close()
         global startTime
         startTime = time.time()
+        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+        self.tool.switch_window.connect(self.show_main_window)
+        self.selector.close()
         self.tool.launch()
 
     def switch_labeling_to_main(self):

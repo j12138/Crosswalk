@@ -33,7 +33,7 @@ class LabelingTool(QWidget):
     """
     switch_window = pyqtSignal()
 
-    def __init__(self, img_dir):
+    def __init__(self, img_dir, start_time):
         """
         :param img_dir: preprocessed img directory to label.
         """
@@ -41,6 +41,7 @@ class LabelingTool(QWidget):
         self.img_dir = img_dir
         self.img_files = glob.glob(self.img_dir + '/*')
         self.img_idx = 0
+        self.start_time = start_time
 
         self.status = cd.LabelingStatus()
 
@@ -539,9 +540,9 @@ class LabelingTool(QWidget):
         save_path = os.path.join(self.img_dir, '..', 'labeled')
         self.__move_done_imgs(save_path)
 
-        global startTime
         print('{} images: {} m'.format(len(self.img_files),
-                                       round((time.time() - startTime) / 60, 2)))
+                                       round((time.time() - self.start_time) / 60, 2)))
+        self.switch_window.emit()
 
     def __move_done_imgs(self, save_path):
         """ move labeling done imgs from ./preprocess/ to ./labeled/
@@ -562,10 +563,14 @@ class DataSelector(QWidget):
 
     def __init__(self):
         QWidget.__init__(self)
-        self.data_dir = self.__get_preprocessed_data_dir()
-        self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
         self.setWindowTitle('Data selector')
         self.initUI()
+
+    def set_data_dir(self):
+        self.data_dir = self.__get_preprocessed_data_dir()
+        self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
+        self.tableWidget.setRowCount(len(self.child_dirs))
+        self.set_TableWidgetData()
 
     def __get_preprocessed_data_dir(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
@@ -575,9 +580,9 @@ class DataSelector(QWidget):
     def initUI(self):
         self.tableWidget = QTableWidget(self)
         self.tableWidget.resize(415, 400)
-        self.tableWidget.setRowCount(len(self.child_dirs))
+        self.tableWidget.setRowCount(1)
         self.tableWidget.setColumnCount(2)
-        self.setTableWidgetData()
+        # self.set_TableWidgetData()
 
         self.startbutton = QPushButton('Select')
         self.startbutton.clicked.connect(self.start_labeling)
@@ -596,7 +601,7 @@ class DataSelector(QWidget):
         current_row = self.tableWidget.currentItem().row()
         self.select_done(current_row)
 
-    def setTableWidgetData(self):
+    def set_TableWidgetData(self):
         self.tableWidget.setHorizontalHeaderLabels(['dirname',
                                                     'progress'])
         idx = 0
@@ -658,13 +663,17 @@ class LabelingController:
     Controller class for switching windows
     """
     def __init__(self):
+        print('labelingCont_init')
         self.selector = DataSelector()
+        self.selector.set_data_dir()
 
     def show_selector(self):
+        print('show_selector')
         self.selector.switch_window.connect(self.show_tool)
         self.selector.show()
 
     def show_tool(self, dir_path):
+        print('show_tool')
         self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
         self.selector.close()
         global startTime

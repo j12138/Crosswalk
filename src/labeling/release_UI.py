@@ -6,13 +6,20 @@ import json
 from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
-    QTableWidget, QTableWidgetItem, QFileDialog
+    QTableWidget, QTableWidgetItem, QFileDialog, QLineEdit
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 from labeling_tool import LabelingController, LabelingTool, DataSelector
 # from labeling import preprocess
 
 startTime = 0
+
+
+def put_window_on_center_of_screen(window):
+    qr = window.frameGeometry()
+    cp = QDesktopWidget().availableGeometry().center()
+    qr.moveCenter(cp)
+    window.move(qr.topLeft())
 
 
 class MainWindow(QWidget):
@@ -63,13 +70,7 @@ class MainWindow(QWidget):
         main_layout.addWidget(copyright)
 
         self.resize(600, 500)
-        self.put_window_on_center_of_screen()
-
-    def put_window_on_center_of_screen(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
+        put_window_on_center_of_screen(self)
 
     def __do_preprocess(self):
         self.switch_window.emit('preprocess')
@@ -78,23 +79,67 @@ class MainWindow(QWidget):
         self.switch_window.emit('labeling')
 
 
-class DoPreprocess(QWidget):
-    switch_window = pyqtSignal(str)
+class PreprocessWindow(QWidget):
+    switch_signal = pyqtSignal()
 
     def __init__(self):
         QWidget.__init__(self)
+        self.setWindowTitle('Preprocess')
+        self.data_dir = ''
         self.initUI()
 
     def initUI(self):
-        self.select_label = QLabel('Select data to preprocess')
+        self.select_label = QLabel('Select data to preprocess :')
+        self.button_filedialog = QPushButton(' Browse.. ')
+        self.textbox_datadir = QLineEdit()
+        self.button_filedialog.clicked.connect(self.select_directory)
+        self.button_filedialog.setFixedWidth(150)
+        self.userID_label = QLabel('User ID :')
+        self.textbox_userID = QLineEdit()
+        self.textbox_userID.setFixedWidth(200)
+        self.button_preprocess = QPushButton('Start Preprocess')
+        self.button_preprocess.setFixedHeight(50)
+        self.button_preprocess.setFixedWidth(150)
+        self.button_preprocess.setStyleSheet("background-color: skyblue")
         # More widgets here
 
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
+
+        browse_layout = QHBoxLayout()
+        browse_layout.addWidget(self.textbox_datadir)
+        browse_layout.addWidget(self.button_filedialog)
+        browse_layout.setSpacing(10)
+
+        userID_layout = QHBoxLayout()
+        userID_layout.addWidget(self.userID_label)
+        userID_layout.addWidget(self.textbox_userID)
+        userID_layout.addStretch(10)
+
+        start_layout = QHBoxLayout()
+        start_layout.addWidget(self.button_preprocess, Qt.AlignCenter)
+
+        main_layout.addStretch(1)
         main_layout.addWidget(self.select_label)
+        main_layout.addLayout(browse_layout)
+        main_layout.addStretch(1)
+        main_layout.addLayout(userID_layout)
+        main_layout.addStretch(2)
+        main_layout.addLayout(start_layout)
+        main_layout.addStretch(15)
         # Organize layout here
 
-        self.resize(500, 500)
+        self.resize(600, 500)
+        put_window_on_center_of_screen(self)
+
+    def select_directory(self):
+        picked_dir = str(QFileDialog.getExistingDirectory(self,
+                         "Select Directory"))
+        self.data_dir = picked_dir
+        self.textbox_datadir.setText(self.data_dir)
+
+    def closeEvent(self, event):
+        self.switch_signal.emit()
 
 
 class Controller:
@@ -112,9 +157,10 @@ class Controller:
 
     def show_operation_window(self, operation):
         if operation == 'preprocess':
-            self.do_preprocess = DoPreprocess()
+            self.preprocess_window = PreprocessWindow()
+            self.preprocess_window.switch_signal.connect(self.show_main_window)
             self.main_window.close()
-            self.do_preprocess.show()
+            self.preprocess_window.show()
 
         elif operation == 'labeling':
             self.selector.set_data_dir()
@@ -127,6 +173,12 @@ class Controller:
         self.main_window.close()
 
     def show_tool(self, dir_path):
+        if dir_path == 'cancel':
+            print('sdfsfd')
+            self.show_main_window()
+            self.selector.close()
+            return
+
         global startTime
         startTime = time.time()
         self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)

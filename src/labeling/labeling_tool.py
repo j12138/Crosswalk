@@ -594,6 +594,12 @@ class DataSelector(QWidget):
         main_layout.addWidget(self.tableWidget)
         main_layout.addWidget(self.startbutton)
 
+        # set Error Message Box
+        self.error_msg = QMessageBox()
+        self.error_msg.setIcon(QMessageBox.Critical)
+        self.error_msg.setWindowTitle('Error')
+        self.error_msg.setStandardButtons(QMessageBox.Cancel | QMessageBox.Retry)
+
         self.resize(500, 500)
         self.put_window_on_center_of_screen()
 
@@ -614,7 +620,18 @@ class DataSelector(QWidget):
                 with open(db_file, 'r') as f:
                     loaded = json.load(f)
             except Exception as e:
-                print('Failed to open database file {}: {}'.format(db_file, e))
+                msg = '{}'.format(e)
+                self.error_msg.setText(msg)
+                print(msg)
+                answer = self.error_msg.exec_()
+                if answer == QMessageBox.Retry:
+                    self.set_data_dir()
+                elif answer == QMessageBox.Cancel:
+                    self.switch_window.emit('cancel')
+                    self.close()
+                    print('??????')
+                return
+
             else:
                 idx = idx + 1
                 tot, lab, dir_name = self.show_labeling_progress_for_each_dir(
@@ -674,10 +691,10 @@ class LabelingController:
 
     def show_tool(self, dir_path):
         print('show_tool')
-        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
-        self.selector.close()
         global startTime
         startTime = time.time()
+        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+        self.selector.close()
         self.tool.launch()
 
 

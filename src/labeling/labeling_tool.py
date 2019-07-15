@@ -31,7 +31,7 @@ class LabelingTool(QWidget):
     """
     PyQt UI tool for labeling
     """
-    switch_window = pyqtSignal()
+    window_switch_signal = pyqtSignal()
 
     def __init__(self, img_dir, start_time):
         """
@@ -542,7 +542,7 @@ class LabelingTool(QWidget):
 
         print('{} images: {} m'.format(len(self.img_files),
                                        round((time.time() - self.start_time) / 60, 2)))
-        self.switch_window.emit()
+        self.window_switch_signal.emit()
 
     def __move_done_imgs(self, save_path):
         """ move labeling done imgs from ./preprocess/ to ./labeled/
@@ -559,18 +559,21 @@ class DataSelector(QWidget):
     """
     PyQt UI widget for data selector
     """
-    switch_window = pyqtSignal(str)
+    window_switch_signal = pyqtSignal(str)
 
     def __init__(self):
+        print('__init__')
         QWidget.__init__(self)
         self.setWindowTitle('Data selector')
         self.initUI()
 
     def set_data_dir(self):
+        print('set_data_dir')
         self.data_dir = self.__get_preprocessed_data_dir()
         self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
         self.tableWidget.setRowCount(len(self.child_dirs))
-        self.set_TableWidgetData()
+        result = self.set_TableWidgetData()
+        return result
 
     def __get_preprocessed_data_dir(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
@@ -578,6 +581,7 @@ class DataSelector(QWidget):
         return picked_dir
 
     def initUI(self):
+        print('initUI?')
         self.tableWidget = QTableWidget(self)
         self.tableWidget.resize(415, 400)
         self.tableWidget.setRowCount(1)
@@ -625,12 +629,11 @@ class DataSelector(QWidget):
                 print(msg)
                 answer = self.error_msg.exec_()
                 if answer == QMessageBox.Retry:
-                    self.set_data_dir()
+                    return 'Retry'
                 elif answer == QMessageBox.Cancel:
-                    self.switch_window.emit('cancel')
+                    # self.window_switch_signal.emit('cancel')
                     self.close()
-                    print('??????')
-                return
+                    return 'Close'
 
             else:
                 idx = idx + 1
@@ -672,7 +675,12 @@ class DataSelector(QWidget):
         self.move(qr.topLeft())
 
     def select_done(self, picked_idx):
-        self.switch_window.emit(self.child_dirs[picked_idx])
+        self.window_switch_signal.emit(self.child_dirs[picked_idx])
+
+    def closeEvent(self, a0):
+        print('DataSelector: closeEvent')
+        self.window_switch_signal.emit('cancel')
+        return super().closeEvent(a0)
 
 
 class LabelingController:
@@ -686,8 +694,8 @@ class LabelingController:
 
     def show_selector(self):
         print('show_selector')
-        self.selector.switch_window.connect(self.show_tool)
-        self.selector.show()
+        self.selector.window_switch_signal.connect(self.show_tool)
+        # self.selector.show()
 
     def show_tool(self, dir_path):
         print('show_tool')

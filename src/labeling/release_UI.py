@@ -26,7 +26,7 @@ class MainWindow(QWidget):
     """
     PyQt UI widget for main window
     """
-    switch_window = pyqtSignal(str)
+    window_switch_signal = pyqtSignal(str)
 
     def __init__(self):
         QWidget.__init__(self)
@@ -35,23 +35,29 @@ class MainWindow(QWidget):
 
     def initUI(self):
         app_name = QLabel('Crosswalk Data Manager')
-        test = QFont("Calibri", 27)
+        test = QFont("Calibri", 24)
         test.setBold(10)
         app_name.setFont(test)
         app_name.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
-        button_styleSheet = "QPushButton{font-size: 25px;font-family: Calibri;}"
-        but_preprocess = QPushButton('Preprocess')
-        but_preprocess.clicked.connect(self.__do_preprocess)
-        but_preprocess.setFixedHeight(50)
-        but_preprocess.setFixedWidth(200)
-        but_preprocess.setStyleSheet(button_styleSheet)
+        button_styleSheet = "QPushButton{font-size: 24px;font-family: Calibri;}"
+        btn_preprocess = QPushButton('Preprocess')
+        btn_preprocess.clicked.connect(self.__do_preprocess)
+        btn_preprocess.setFixedHeight(40)
+        btn_preprocess.setFixedWidth(200)
+        btn_preprocess.setStyleSheet(button_styleSheet)
 
-        but_labeling = QPushButton('Labeling')
-        but_labeling.clicked.connect(self.__do_labeling)
-        but_labeling.setFixedHeight(50)
-        but_labeling.setFixedWidth(200)
-        but_labeling.setStyleSheet(button_styleSheet)
+        btn_labeling = QPushButton('Labeling')
+        btn_labeling.clicked.connect(self.__do_labeling)
+        btn_labeling.setFixedHeight(40)
+        btn_labeling.setFixedWidth(200)
+        btn_labeling.setStyleSheet(button_styleSheet)
+
+        btn_upload = QPushButton('Upload DB')
+        # btn_upload.clicked.connect(self.__do_upload_DB)
+        btn_upload.setFixedHeight(40)
+        btn_upload.setFixedWidth(200)
+        btn_upload.setStyleSheet(button_styleSheet)
 
         copyright = QLabel('ⓒ2019. Batoners Inc. All Rights Reserved')
 
@@ -61,22 +67,33 @@ class MainWindow(QWidget):
         main_layout.addStretch(2)
         main_layout.addWidget(app_name)
         main_layout.addStretch(5)
-        main_layout.addWidget(but_preprocess)
-        main_layout.setAlignment(but_preprocess, Qt.AlignHCenter)
+
+        main_layout.addWidget(btn_preprocess)
+        main_layout.setAlignment(btn_preprocess, Qt.AlignHCenter)
         main_layout.addStretch(1)
-        main_layout.addWidget(but_labeling)
-        main_layout.setAlignment(but_labeling, Qt.AlignHCenter)
+
+        main_layout.addWidget(btn_labeling)
+        main_layout.setAlignment(btn_labeling, Qt.AlignHCenter)
+        main_layout.addStretch(1)
+
+        main_layout.addWidget(btn_upload)
+        main_layout.setAlignment(btn_upload, Qt.AlignHCenter)
         main_layout.addStretch(5)
+
         main_layout.addWidget(copyright)
 
-        self.resize(600, 500)
+        self.resize(470, 350)
         put_window_on_center_of_screen(self)
 
     def __do_preprocess(self):
-        self.switch_window.emit('preprocess')
+        self.window_switch_signal.emit('preprocess')
 
     def __do_labeling(self):
-        self.switch_window.emit('labeling')
+        self.window_switch_signal.emit('labeling')
+
+    def __do_upload_DB(self):
+        # self.swit
+        pass
 
 
 class PreprocessWindow(QWidget):
@@ -152,8 +169,10 @@ class Controller:
         self.selector = DataSelector()
 
     def show_main_window(self):
-        self.main_window.switch_window.connect(self.show_operation_window)
+        self.__init__()
+        self.main_window.window_switch_signal.connect(self.show_operation_window)
         self.main_window.show()
+        return
 
     def show_operation_window(self, operation):
         if operation == 'preprocess':
@@ -163,18 +182,27 @@ class Controller:
             self.preprocess_window.show()
 
         elif operation == 'labeling':
-            self.selector.set_data_dir()
+            file_dialog_result = 'Retry'
+            while file_dialog_result == 'Retry':
+                print('Retry loop')
+                file_dialog_result = self.selector.set_data_dir()
+
+            print('esacpe loop!')
+            if file_dialog_result == 'Close':
+                print('catch close!')
+                return
+
             self.show_selector()
             self.selector.put_window_on_center_of_screen()
+        return
 
     def show_selector(self):
-        self.selector.switch_window.connect(self.show_tool)
+        self.selector.window_switch_signal.connect(self.show_tool)
         self.selector.show()
         self.main_window.close()
 
     def show_tool(self, dir_path):
         if dir_path == 'cancel':
-            print('sdfsfd')
             self.show_main_window()
             self.selector.close()
             return
@@ -182,9 +210,10 @@ class Controller:
         global startTime
         startTime = time.time()
         self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
-        self.tool.switch_window.connect(self.show_main_window)
+        self.tool.window_switch_signal.connect(self.show_main_window)
         self.selector.close()
         self.tool.launch()
+        return
 
     def switch_labeling_to_main(self):
         pass

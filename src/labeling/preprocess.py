@@ -24,7 +24,7 @@ config_file = os.path.join(BASE_DIR, 'config.yaml')
 total_pixels = 250000 #total pixels of a resized image
 NUM_FILES = 0 # Number of pictures that are being preprocessed
 SUPPORTED_TYPES = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
-userid = "kris"
+#userid = "kris"
 
 def load_yaml():
     with open(config_file, 'r') as stream:
@@ -357,16 +357,17 @@ class ProgressBar(QWidget):
 
     switch_window = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, chosen_dir, userid):
         super().__init__()
+        print("test :" + self.chosen_dir, self.userid)
 
         # self.chosen_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        self.chosen_dir = "/Users/krislee/Documents/batoners/test_pics"
+        # self.chosen_dir = "/Users/krislee/Documents/batoners/test_pics"
         self.options = load_yaml()
         self.metadata = extract_metadata(self.chosen_dir, list(options['exifmeta']),
                                     options['widgets'])
 
-        self.save_dir_prefix, self.save_dir, self.files = process_dir(self.chosen_dir, self.options, userid)
+        self.save_dir_prefix, self.save_dir, self.files = process_dir(self.chosen_dir, self.options, self.userid)
         self.label_title = QLabel()
         self.label_title.setText("Processing Images...")
         self.label_title.setGeometry(190,50,100,50)
@@ -452,7 +453,7 @@ class Complete_Screen(QWidget):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-class Controller:
+class Controller():
     """
     Controller class for switching windows
     """
@@ -460,7 +461,7 @@ class Controller:
         pass
 
     def show_progrees(self):
-        self.selector = ProgressBar()
+        self.selector = ProgressBar(chosen_dir, userid)
         self.selector.switch_window.connect(self.show_complete)
         self.selector.show()
 
@@ -472,6 +473,20 @@ class Controller:
         #startTime = time.time()
         self.tool.show()
 
+
+def preprocess_main(chosen_dir, userid):
+    options = load_yaml()
+    # pr = Preprocess()
+    app = QApplication(sys.argv)
+    # test = App()
+    # chosen_dir = choose_dir(test)
+
+    controller = Controller()
+    controller.show_progrees()
+    #ex = ProgressBar(len(metadata))
+    #ex.show()
+    sys.exit(app.exec())
+'''
 if __name__ == '__main__':
     options = load_yaml()
     # pr = Preprocess()
@@ -485,11 +500,12 @@ if __name__ == '__main__':
     #ex.show()
     sys.exit(app.exec())
 
-    '''
+'''
     # multiple directory selector
-
+'''
     ex = FileDialog()
     ex.show()
     ex.exec_()
     print(ex.selectedFiles())
-    '''
+
+'''

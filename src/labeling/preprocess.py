@@ -85,7 +85,9 @@ def preprocess_images(input_dir: str, save_dir: str):
     :param input_dir: original image file directory
     :param save_dir: output directory to which the re-sized images are saved
     """
-    files = os.listdir(input_dir)
+
+    #files = os.listdir(input_dir)
+
     #TODO implement exception for unsupported types
     '''
     print(str(len(files))+" and ")
@@ -105,16 +107,23 @@ def preprocess_images(input_dir: str, save_dir: str):
             files.remove(each)
     '''
 
-    print("Resizing {} images".format(len(files)))
-    output_dir = os.path.join(save_dir, 'preprocessed')
-
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    # print("Resizing {} images".format(len(files)))
+    # output_dir = os.path.join(save_dir, 'preprocessed')
+    #
+    # if not os.path.exists(output_dir):
+    #     os.mkdir(output_dir)
+    #
+    # return files
 
     Parallel(n_jobs=-1)(
         delayed(resize_and_save)(input_dir, output_dir, img)
         for img in tqdm(files))
-
+    with Parallel(n_jobs=-1) as parallel:
+        with tqdm(files) as t:
+            for image in t:
+                result += 1
+                print(result)
+                return result
 
 def extract_metadata(input_dir: str, exifmeta_to_extract: list, widgets):
     """ For each image in the given directory, extract image metadata of
@@ -201,7 +210,6 @@ def update_database(metadata, save_dir):
             json.dump(load, f)
         print('Successfully updated!')
 
-
 def get_save_dir_path(original, prefix, userid):
     """ return name of save directory follows convention.
     [current date] _ [user id] _ [original name] _ [index]
@@ -260,11 +268,20 @@ def process_dir(args, options, userid):
         if (ow_flag == 1):
             # remove existing dir
             shutil.rmtree(save_dir)
+            os.mkdir(save_dir)
     else:
         os.mkdir(save_dir)
+        print(save_dir+" folder has been successfully created.")
 
+    files = os.listdir(args)
 
-    return save_dir_prefix, save_dir, ow_flag
+    print("Resizing {} images".format(len(files)))
+    output_dir = os.path.join(save_dir, 'preprocessed')
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    return save_dir_prefix, save_dir, files
 
 
 def preprocess_img(args, options, save_dir):
@@ -343,22 +360,33 @@ class ProgressBar(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.chosen_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        # self.chosen_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        self.chosen_dir = "/Users/krislee/Documents/batoners/test_pics"
         self.options = load_yaml()
-
         self.metadata = extract_metadata(self.chosen_dir, list(options['exifmeta']),
                                     options['widgets'])
-        self.save_dir_prefix, self.save_dir, self.ex_flag = process_dir(self.chosen_dir, self.options, userid)
-        # print(self.save_dir_prefix, self.save_dir, self.ex_flag)
-        self.num_files = len(self.metadata)
+
+        self.save_dir_prefix, self.save_dir, self.files = process_dir(self.chosen_dir, self.options, userid)
+        self.label_title = QLabel()
+        self.label_title.setText("Processing Images...")
+        self.label_title.setGeometry(190,50,100,50)
+
+        self.num_files = len(self.files)
         self.progressBar = QProgressBar(self)
-        self.progressBar.setGeometry(30,40,200,25)
+        self.setGeometry(100,100,480,320)
+        self.progressBar.setGeometry(80,100,320,60)
         self.btnStart = QPushButton("Start",self)
-        self.btnStart.move(40,80)
+        self.btnStart.setGeometry(190,160,100,50)
+        # self.setGeometry(self.left, self.top, self.width, self.height)
+
+        # self.btnStart.move(240,160)
         self.btnStart.clicked.connect(self.startProgress)
         self.timer = QBasicTimer()
         self.step = 0
+        self.result = 0
         self.put_window_on_center_of_screen()
+        self.btnStart.click()
+
 
     def startProgress(self):
         if self.timer.isActive():
@@ -368,7 +396,7 @@ class ProgressBar(QWidget):
             # process_dir(self.chosen_dir, self.options, userid)
             # print("test point")
             # print(os.listdir(self.save_dir))
-            preprocess_images(self.chosen_dir, self.save_dir)
+            #preprocess_images(self.chosen_dir, self.save_dir)
             update_database(self.metadata, self.save_dir)
             self.timer.start(100, self)
             self.btnStart.setText("Stop")
@@ -378,10 +406,20 @@ class ProgressBar(QWidget):
             self.progressBar.setValue(100)
             self.timer.stop()
             self.btnStart.setText("Finished")
-            self.switch_window.emit()
+            self.btnStart.clicked.connect(self.switch)
+
+            # self.switch_window.emit()
             return
-        self.step += (1*math.ceil(100/self.num_files))
-        self.progressBar.setValue(self.step)
+        with Parallel(n_jobs=-1) as parallel:
+            with tqdm(self.files) as t:
+                for image in t:
+                    self.result += 1
+                    print(self.result)
+                    self.step += ((self.result+1)*math.ceil(100/self.num_files))
+                    self.progressBar.setValue(self.step)
+
+    def switch(self):
+        self.switch_window.emit()
 
     def put_window_on_center_of_screen(self):
         qr = self.frameGeometry()
@@ -398,8 +436,8 @@ class Complete_Screen(QWidget):
         self.title = "Image Preprocess"
         self.left = 100
         self.top = 100
-        self.width = 640
-        self.height = 480
+        self.width = 480
+        self.height = 320
         print("test point reached")
         self.initUI()
         self.put_window_on_center_of_screen()

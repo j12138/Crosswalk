@@ -213,7 +213,6 @@ def update_database(metadata, save_dir):
 def get_save_dir_path(original, prefix, userid):
     """ return name of save directory follows convention.
     [current date] _ [user id] _ [original name] _ [index]
-
     :param original: original data directory name
     :param prefix: path to save preprocessed data
     :return: save path follows the convention
@@ -230,7 +229,6 @@ def get_save_dir_path(original, prefix, userid):
     '''
     idx = 0
     save_path
-
     while os.path.exists(save_path):
         idx = idx + 1
         if idx == 1:

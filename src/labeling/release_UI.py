@@ -10,8 +10,7 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 from labeling_tool import LabelingController, LabelingTool, DataSelector
-# from labeling import preprocess
-import preprocess
+from preprocess import preprocess_main
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import server
 
@@ -170,6 +169,93 @@ class PreprocessWindow(QWidget):
             print('.......')
             preprocess.Controller(self.textbox_datadir.text(),
                     self.textbox_userID.text()).show_progrees()
+        pass
+
+    def closeEvent(self, event):
+        self.window_switch_signal.emit()
+
+
+class UploadWindow(QWidget):
+    window_switch_signal = pyqtSignal()
+
+    def __init__(self):
+        QWidget.__init__(self)
+        self.setWindowTitle('Upload to Server')
+        self.initUI()
+
+    def initUI(self):
+        self.userid_label = QLabel('User ID :')
+        self.userpw_label = QLabel('User PW :')
+        self.textbox_userid = QLineEdit()
+        self.textbox_userpw = QLineEdit()
+        self.textbox_userid.setFixedWidth(200)
+        self.textbox_userpw.setFixedWidth(200)
+        self.select_label = QLabel('Data directory to upload :')
+        self.btn_filedialog = QPushButton(' Browse.. ')
+        self.btn_filedialog.clicked.connect(self.select_directory)
+        self.textbox_datadir = QLineEdit()
+        self.btn_filedialog.setFixedWidth(150)
+        self.btn_upload = QPushButton('Upload all DB')
+        self.btn_upload.clicked.connect(self.upload_all_db)
+        self.btn_upload.setFixedHeight(50)
+        self.btn_upload.setFixedWidth(150)
+
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
+
+        gbox_login = QGroupBox('Server Login Info')
+        vbox_login = QVBoxLayout()
+
+        hbox_id = QHBoxLayout()
+        hbox_id.addWidget(self.userid_label)
+        hbox_id.addWidget(self.textbox_userid)
+        hbox_id.addStretch(10)
+
+        hbox_pw = QHBoxLayout()
+        hbox_pw.addWidget(self.userpw_label)
+        hbox_pw.addWidget(self.textbox_userpw)
+        hbox_pw.addStretch(10)
+
+        vbox_login.addLayout(hbox_id)
+        vbox_login.addLayout(hbox_pw)
+        gbox_login.setLayout(vbox_login)
+
+        browse_layout = QHBoxLayout()
+        browse_layout.addWidget(self.textbox_datadir)
+        browse_layout.addWidget(self.btn_filedialog)
+        browse_layout.setSpacing(10)
+
+        upload_layout = QHBoxLayout()
+        upload_layout.addWidget(self.btn_upload, Qt.AlignCenter)
+
+        main_layout.addWidget(gbox_login)
+        main_layout.addStretch(1)
+        main_layout.addWidget(self.select_label)
+        main_layout.addLayout(browse_layout)
+        main_layout.addStretch(2)
+        main_layout.addLayout(upload_layout)
+        main_layout.addStretch(10)
+
+        self.resize(600, 500)
+        put_window_on_center_of_screen(self)
+
+    def select_directory(self):
+        picked_dir = str(QFileDialog.getExistingDirectory(self,
+                         "Select Directory"))
+        self.data_dir = picked_dir
+        self.textbox_datadir.setText(self.data_dir)
+
+    def start_preprocess(self):
+        if self.textbox_userID.text() == '':
+            print('userID: blank!')
+        elif ' ' in self.textbox_userID.text():
+            print('userID: space!')
+        elif self.textbox_datadir.text() == '':
+            print('data_dir: blank!')
+        else:
+            print('.......')
+            preprocess_main(self.textbox_datadir.text(),
+                            self.textbox_userID.text())
         pass
 
     def closeEvent(self, event):

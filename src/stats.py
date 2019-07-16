@@ -258,11 +258,11 @@ def show_db_stat(data_dir):
 
 def labeling_progress_for_each_dir(db, dir, idx):
     total = 0
-    labeled = 0
+
     for name in db.values():
         total = total + 1
-        if name['is_input_finished']:
-            labeled = labeled + 1
+
+    labeled = len(os.listdir(os.path.join(dir, 'labeled')))
 
     dir_name = os.path.basename(dir)
     print('[' + str(idx) + ']', dir_name, ':', show_proportion_bar(labeled, total))

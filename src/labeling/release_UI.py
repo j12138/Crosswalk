@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 from labeling_tool import LabelingController, LabelingTool, DataSelector
-from preprocess import preprocess_main
+import preprocess
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import server
 
@@ -148,8 +148,12 @@ class PreprocessWindow(QWidget):
         main_layout.addStretch(15)
         # Organize layout here
 
+
+
         self.resize(600, 500)
         put_window_on_center_of_screen(self)
+
+
 
     def select_directory(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
@@ -166,8 +170,11 @@ class PreprocessWindow(QWidget):
             print('data_dir: blank!')
         else:
             print('.......')
-            preprocess_main(self.textbox_datadir.text(),
-                            self.textbox_userID.text())
+            preprocess.Controller(self.textbox_datadir.text(), self.textbox_userID.text()).show_progrees()
+            # preprocess.ProgressBar(self.textbox_datadir.text(), self.textbox_userID.text()).show()
+            # self.close()
+            # preprocess_main(self.textbox_datadir.text(),
+            #                 self.textbox_userID.text())
         pass
 
     def closeEvent(self, event):

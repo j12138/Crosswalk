@@ -21,6 +21,7 @@ def load_yaml():
 
 def upload_all_npy(sftp, npy_dir, server_log, local_log):
     """ upload all local npy files at server.
+
     :param sftp: server connection object
     :param npy_dir: local npy directory path
     :param server_log: current npy log file on server (npy_log.txt)
@@ -59,6 +60,7 @@ def upload_all_npy(sftp, npy_dir, server_log, local_log):
 
 def download_all_npy(sftp, npy_dir, server_log, local_log):
     """ download all remote(on server) npy files to local
+
     :param sftp: server connection object
     :param npy_dir: local npy directory path
     :param server_log: current npy log file on server (npy_log.txt)
@@ -94,6 +96,7 @@ def download_all_npy(sftp, npy_dir, server_log, local_log):
 
 def upload_datasets(sftp, data_dir):
     """ upload all local datasets at server.
+
     :param sftp: server connection object
     :param data_dir: local data directory (./preprocessed_data)
     :return: None
@@ -109,7 +112,7 @@ def upload_datasets(sftp, data_dir):
 
         if sftp.exists(dir_name):
             sftp.chdir(dir_name)
-            print('already exists')
+            print('Data already exist:', dir_name)
         else:
             print('create new!')
             sftp.mkdir(dir_name)
@@ -129,13 +132,14 @@ def upload_datasets(sftp, data_dir):
                 sftp.remove(os.path.basename(img))
             sftp.chdir('../labeled')
             sftp.put(img)
-            sftp.chdir('../preprocessed')
+            sftp.chdir(os.path.join('..', 'preprocessed'))
 
-        sftp.chdir('./../..')
+        sftp.chdir(os.path.join('..', '..'))
 
 
 def download_datasets(sftp, data_dir):
     """ download all datasets from server to local dir
+
     :param sftp: server connection object
     :param data_dir: local data directory (./preprocessed_data)
     :return: None
@@ -168,7 +172,7 @@ def download_datasets(sftp, data_dir):
         for img in preprocessed_data:
             sftp.get(img, os.path.join(local_dir, 'preprocessed', img))
 
-        sftp.chdir('./../..')
+        sftp.chdir(os.path.join('..', '..'))
 
 
 def main():

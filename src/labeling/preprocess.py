@@ -273,13 +273,16 @@ def process_dir(args, options, userid):
         os.mkdir(save_dir)
         print(save_dir+" folder has been successfully created.")
 
+
     files = os.listdir(args)
 
     print("Resizing {} images".format(len(files)))
     output_dir = os.path.join(save_dir, 'preprocessed')
-
+    labeled_dir = os.path.join(save_dir, labeled_folder)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+    if not os.path.exists(labeled_dir):
+        os.mkdir(os.path.join(labeled_dir))
 
     return save_dir_prefix, save_dir, files
 
@@ -359,7 +362,8 @@ class ProgressBar(QWidget):
 
     def __init__(self, chosen_dir, userid):
         super().__init__()
-        print("test :" + chosen_dir, userid)
+
+        # print("test :" + chosen_dir, userid)
 
         # self.chosen_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         # self.chosen_dir = "/Users/krislee/Documents/batoners/test_pics"
@@ -368,16 +372,19 @@ class ProgressBar(QWidget):
                                     self.options['widgets'])
 
         self.save_dir_prefix, self.save_dir, self.files = process_dir(chosen_dir, self.options, userid)
-        self.label_title = QLabel()
-        self.label_title.setText("Processing Images...")
-        self.label_title.setGeometry(190,50,100,50)
+
+        # self.label_title = QLabel()
+        # self.label_title.setText("Processing Images...")
+        # self.label_title.setGeometry(190,50,100,50)
 
         self.num_files = len(self.files)
         self.progressBar = QProgressBar(self)
         self.setGeometry(100,100,480,320)
         self.progressBar.setGeometry(80,100,320,60)
+        self.progressBar.setMaximum(100)
         self.btnStart = QPushButton("Start",self)
         self.btnStart.setGeometry(190,160,100,50)
+
         # self.setGeometry(self.left, self.top, self.width, self.height)
 
         # self.btnStart.move(240,160)
@@ -385,24 +392,26 @@ class ProgressBar(QWidget):
         self.timer = QBasicTimer()
         self.step = 0
         self.result = 0
+        self.show()
         self.put_window_on_center_of_screen()
+
+        print('test point 1')
         self.btnStart.click()
 
 
     def startProgress(self):
-        if self.timer.isActive():
-            self.timer.stop()
-            self.btnStart.setText("Start")
-        else:
-            # process_dir(self.chosen_dir, self.options, userid)
-            # print("test point")
-            # print(os.listdir(self.save_dir))
-            #preprocess_images(self.chosen_dir, self.save_dir)
-            update_database(self.metadata, self.save_dir)
-            self.timer.start(100, self)
-            self.btnStart.setText("Stop")
+        print('test point 3')
+        update_database(self.metadata, self.save_dir)
 
-    def timerEvent(self, event):
+        while self.step < 100:
+            with Parallel(n_jobs=-1) as parallel:
+                with tqdm(self.files) as t:
+                    for image in t:
+                        resize_and_save(chosen_dir, self.save_dir, image)
+                        self.result += 1
+                        # print(self.result)
+                        self.step += ((self.result+1)*math.ceil(100/self.num_files))
+                        self.progressBar.setValue(self.step)
         if self.step >= 100:
             self.progressBar.setValue(100)
             self.timer.stop()
@@ -411,13 +420,37 @@ class ProgressBar(QWidget):
 
             # self.switch_window.emit()
             return
-        with Parallel(n_jobs=-1) as parallel:
-            with tqdm(self.files) as t:
-                for image in t:
-                    self.result += 1
-                    print(self.result)
-                    self.step += ((self.result+1)*math.ceil(100/self.num_files))
-                    self.progressBar.setValue(self.step)
+
+        # if self.timer.isActive():
+        #     self.timer.stop()
+        #     self.btnStart.setText("Start")
+        # else:
+        #     print('test point 2')
+        #     # process_dir(self.chosen_dir, self.options, userid)
+        #     # print("test point")
+        #     # print(os.listdir(self.save_dir))
+        #     #preprocess_images(self.chosen_dir, self.save_dir)
+        #     update_database(self.metadata, self.save_dir)
+        #     self.timer.start(100, self)
+        #     self.btnStart.setText("Stop")
+
+    # def timerEvent(self, event):
+    #     print('test point 3')
+    #     if self.step >= 100:
+    #         self.progressBar.setValue(100)
+    #         self.timer.stop()
+    #         self.btnStart.setText("Finished")
+    #         self.btnStart.clicked.connect(self.switch)
+    #
+    #         # self.switch_window.emit()
+    #         return
+    #     with Parallel(n_jobs=-1) as parallel:
+    #         with tqdm(self.files) as t:
+    #             for image in t:
+    #                 self.result += 1
+    #                 # print(self.result)
+    #                 self.step += ((self.result+1)*math.ceil(100/self.num_files))
+    #                 self.progressBar.setValue(self.step)
 
     def switch(self):
         self.switch_window.emit()
@@ -488,21 +521,20 @@ def preprocess_main(chosen_dir, userid):
     #ex = ProgressBar(len(metadata))
     #ex.show()
     # sys.exit(app.exec())
-'''
+
 if __name__ == '__main__':
     options = load_yaml()
     # pr = Preprocess()
     app = QApplication(sys.argv)
-    # test = App()
-    # chosen_dir = choose_dir(test)
+    test = App()
+    chosen_dir = choose_dir(test)
 
-    controller = Controller()
+    controller = Controller(chosen_dir, "kris")
     controller.show_progrees()
     #ex = ProgressBar(len(metadata))
     #ex.show()
     sys.exit(app.exec())
 
-'''
     # multiple directory selector
 '''
     ex = FileDialog()

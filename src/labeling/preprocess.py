@@ -284,7 +284,7 @@ def process_dir(args, options, userid):
     if not os.path.exists(labeled_dir):
         os.mkdir(os.path.join(labeled_dir))
 
-    return save_dir_prefix, save_dir, files
+    return save_dir_prefix, save_dir, files, output_dir
 
 
 def preprocess_img(args, options, save_dir):
@@ -346,6 +346,7 @@ class App(QWidget):
         super().__init__()
 
 # Class that allows to choose multiple directories
+# Currently not used 
 class FileDialog(QtWidgets.QFileDialog):
     def __init__(self, *args):
         QtWidgets.QFileDialog.__init__(self, *args)
@@ -371,7 +372,7 @@ class ProgressBar(QWidget):
         self.metadata = extract_metadata(chosen_dir, list(self.options['exifmeta']),
                                     self.options['widgets'])
 
-        self.save_dir_prefix, self.save_dir, self.files = process_dir(chosen_dir, self.options, userid)
+        self.save_dir_prefix, self.save_dir, self.files, self.output_dir = process_dir(chosen_dir, self.options, userid)
 
         # self.label_title = QLabel()
         # self.label_title.setText("Processing Images...")
@@ -407,7 +408,7 @@ class ProgressBar(QWidget):
             with Parallel(n_jobs=-1) as parallel:
                 with tqdm(self.files) as t:
                     for image in t:
-                        resize_and_save(chosen_dir, self.save_dir, image)
+                        resize_and_save(chosen_dir, self.output_dir, image)
                         self.result += 1
                         # print(self.result)
                         self.step += ((self.result+1)*math.ceil(100/self.num_files))
@@ -529,7 +530,7 @@ if __name__ == '__main__':
     test = App()
     chosen_dir = choose_dir(test)
 
-    controller = Controller(chosen_dir, "kris")
+    controller = Controller(chosen_dir, "krise")
     controller.show_progrees()
     #ex = ProgressBar(len(metadata))
     #ex.show()

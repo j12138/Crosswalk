@@ -14,16 +14,16 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+# sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+# sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import compute_label_lib as cl
 import crosswalk_data as cd
-import stats
+
+test_dir = os.path.abspath(os.path.dirname(__file__))
+print(test_dir)
 
 fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
-config_file = os.path.join(BASE_DIR, 'config.yaml')
 startTime = 0
 
 
@@ -31,9 +31,9 @@ class LabelingTool(QWidget):
     """
     PyQt UI tool for labeling
     """
-    switch_window = pyqtSignal()
+    window_switch_signal = pyqtSignal()
 
-    def __init__(self, img_dir):
+    def __init__(self, img_dir, start_time):
         """
         :param img_dir: preprocessed img directory to label.
         """
@@ -41,6 +41,7 @@ class LabelingTool(QWidget):
         self.img_dir = img_dir
         self.img_files = glob.glob(self.img_dir + '/*')
         self.img_idx = 0
+        self.start_time = start_time
 
         self.status = cd.LabelingStatus()
 
@@ -99,7 +100,7 @@ class LabelingTool(QWidget):
         self.setLayout(grid)
 
         self.gbox_image = QGroupBox(
-            "Image ( 0 / {} )".format(len(self.img_files)))
+            "Image ( 0 / {} ) {}".format(len(self.img_files), test_dir))
 
         vbox_image = QVBoxLayout()
         vbox_image.addWidget(self.label_img)
@@ -539,9 +540,9 @@ class LabelingTool(QWidget):
         save_path = os.path.join(self.img_dir, '..', 'labeled')
         self.__move_done_imgs(save_path)
 
-        global startTime
         print('{} images: {} m'.format(len(self.img_files),
-                                       round((time.time() - startTime) / 60, 2)))
+                                       round((time.time() - self.start_time) / 60, 2)))
+        self.window_switch_signal.emit()
 
     def __move_done_imgs(self, save_path):
         """ move labeling done imgs from ./preprocess/ to ./labeled/
@@ -558,26 +559,40 @@ class DataSelector(QWidget):
     """
     PyQt UI widget for data selector
     """
-    switch_window = pyqtSignal(str)
+    window_switch_signal = pyqtSignal(str)
 
     def __init__(self):
+        print('__init__')
         QWidget.__init__(self)
-        self.data_dir = self.__get_preprocessed_data_dir()
-        self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
         self.setWindowTitle('Data selector')
+        self.followed_by_labeling_tool = False
         self.initUI()
+
+    def set_data_dir(self):
+        print('set_data_dir')
+        self.data_dir = self.__get_preprocessed_data_dir()
+
+        if self.data_dir == '':
+            return 'Close'
+        
+        self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
+        self.tableWidget.setRowCount(len(self.child_dirs))
+        result = self.set_TableWidgetData()
+        return result
 
     def __get_preprocessed_data_dir(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
                                                           "Select Directory"))
+        print('FileD', picked_dir)
         return picked_dir
 
     def initUI(self):
+        print('initUI?')
         self.tableWidget = QTableWidget(self)
         self.tableWidget.resize(415, 400)
-        self.tableWidget.setRowCount(len(self.child_dirs))
+        self.tableWidget.setRowCount(1)
         self.tableWidget.setColumnCount(2)
-        self.setTableWidgetData()
+        # self.set_TableWidgetData()
 
         self.startbutton = QPushButton('Select')
         self.startbutton.clicked.connect(self.start_labeling)
@@ -589,14 +604,21 @@ class DataSelector(QWidget):
         main_layout.addWidget(self.tableWidget)
         main_layout.addWidget(self.startbutton)
 
+        # set Error Message Box
+        self.error_msg = QMessageBox()
+        self.error_msg.setIcon(QMessageBox.Critical)
+        self.error_msg.setWindowTitle('Error')
+        self.error_msg.setStandardButtons(QMessageBox.Cancel | QMessageBox.Retry)
+
         self.resize(500, 500)
         self.put_window_on_center_of_screen()
 
     def start_labeling(self):
         current_row = self.tableWidget.currentItem().row()
-        self.select_done(current_row)
+        self.followed_by_labeling_tool = True
+        self.window_switch_signal.emit(self.child_dirs[current_row])
 
-    def setTableWidgetData(self):
+    def set_TableWidgetData(self):
         self.tableWidget.setHorizontalHeaderLabels(['dirname',
                                                     'progress'])
         idx = 0
@@ -609,7 +631,19 @@ class DataSelector(QWidget):
                 with open(db_file, 'r') as f:
                     loaded = json.load(f)
             except Exception as e:
-                print('Failed to open database file {}: {}'.format(db_file, e))
+                msg = 'Invalid dataset dir: {}\n'.format(self.data_dir) + \
+                    'Please choose directory which contains ' + \
+                    'preprocessed datasets.'
+                self.error_msg.setText(msg)
+                answer = self.error_msg.exec_()
+
+                if answer == QMessageBox.Retry:
+                    return 'Retry'
+                elif answer == QMessageBox.Cancel:
+                    # self.window_switch_signal.emit('cancel')
+                    self.close()
+                    return 'Close'
+
             else:
                 idx = idx + 1
                 tot, lab, dir_name = self.show_labeling_progress_for_each_dir(
@@ -649,27 +683,35 @@ class DataSelector(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def select_done(self, picked_idx):
-        self.switch_window.emit(self.child_dirs[picked_idx])
+    def closeEvent(self, a0):
+        print('DataSelector: closeEvent')
+        if self.followed_by_labeling_tool:
+            print('Goto labeling_tool, nothing emitted')
+        else:
+            self.window_switch_signal.emit('cancel')
+        return super().closeEvent(a0)
 
 
-class Controller:
+class LabelingController:
     """
     Controller class for switching windows
     """
     def __init__(self):
-        pass
+        print('labelingCont_init')
+        self.selector = DataSelector()
+        self.selector.set_data_dir()
 
     def show_selector(self):
-        self.selector = DataSelector()
-        self.selector.switch_window.connect(self.show_tool)
-        self.selector.show()
+        print('show_selector')
+        self.selector.window_switch_signal.connect(self.show_tool)
+        # self.selector.show()
 
     def show_tool(self, dir_path):
-        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
-        self.selector.close()
+        print('show_tool')
         global startTime
         startTime = time.time()
+        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+        self.selector.close()
         self.tool.launch()
 
 
@@ -691,8 +733,8 @@ def launch_annotator():
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
 
-    controller = Controller()
-    controller.show_selector()
+    labeling_controller = LabelingController()
+    labeling_controller.show_selector()
 
     sys.exit(app.exec_())
 

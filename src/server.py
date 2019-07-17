@@ -94,7 +94,7 @@ def download_all_npy(sftp, npy_dir, server_log, local_log):
     print('downloaded {} items\n'.format(cnt))
 
 
-def upload_datasets(sftp, data_dir):
+def upload_datasets(sftp, data_dir, ui_callback=None):
     """ upload all local datasets at server.
 
     :param sftp: server connection object
@@ -132,9 +132,12 @@ def upload_datasets(sftp, data_dir):
                 sftp.remove(os.path.basename(img))
             sftp.chdir('../labeled')
             sftp.put(img)
-            sftp.chdir(os.path.join('..', 'preprocessed'))
 
-        sftp.chdir(os.path.join('..', '..'))
+            if ui_callback:
+                ('ui_callback: labeled')
+                ui_callback(img, 2)
+            sftp.chdir('../preprocessed')
+        sftp.chdir('./../..')
 
 
 def download_datasets(sftp, data_dir):
@@ -171,44 +174,58 @@ def download_datasets(sftp, data_dir):
 
         for img in preprocessed_data:
             sftp.get(img, os.path.join(local_dir, 'preprocessed', img))
+        sftp.chdir('./../..')
 
-        sftp.chdir(os.path.join('..', '..'))
 
-
-def main():
+def main(is_imported, username, password, datadir, ui_callback=None):
     options = load_yaml()
     npy_dir = os.path.join(ROOT_DIR, options['npy_dir'])
-    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
+    if is_imported:
+        data_dir = datadir
+    else:
+        data_dir = os.path.join(ROOT_DIR, options['data_dir'])
     server_npy_log = options['server_npy_log']
     local_npy_log = os.path.join(ROOT_DIR, options['local_npy_log'])
 
-    with pysftp.Connection(host=options['host'],
-                           username='alal',
-                           private_key=private_key,
-                           private_key_pass='p@$phr4se',
-                           cnopts=cnopts) as sftp:
+    if is_imported:
+        sftp = pysftp.Connection(host=options['host'],
+                                 username=username,
+                                 password=password,
+                                 cnopts=cnopts)
+    else:
+        sftp = pysftp.Connection(host=options['host'],
+                                 username='alal',
+                                 private_key=private_key,
+                                 private_key_pass='p@$phr4se',
+                                 cnopts=cnopts)
+    with sftp:
         sftp.chdir('..')
         sftp.chdir('..')
         sftp.chdir('crosswalk')
 
-        print('\nChoose mode:')
-        print('[1] Upload all npy files')
-        print('[2] Download all npy files')
-        print('[3] Upload all preprocessed datasets')
-        print('[4] Download all preprocessed datasets')
-        mode = int(input('>> '))
-
-        if mode == 1:  # Upload npy
-            upload_all_npy(sftp, npy_dir, server_npy_log, local_npy_log)
-        elif mode == 2:
-            download_all_npy(sftp, npy_dir, server_npy_log, local_npy_log)
-        elif mode == 3:
-            upload_datasets(sftp, data_dir)
-        elif mode == 4:
-            download_datasets(sftp, data_dir)
+        if is_imported:
+            # mode = 3
+            upload_datasets(sftp, data_dir, ui_callback)
         else:
-            print('invalid mode!\n')
+            print('\nChoose mode:')
+            print('[1] Upload all npy files')
+            print('[2] Download all npy files')
+            print('[3] Upload all preprocessed datasets')
+            print('[4] Download all preprocessed datasets')
+            mode = int(input('>> '))
+
+            if mode == 1:  # Upload npy
+                upload_all_npy(sftp, npy_dir, server_npy_log, local_npy_log)
+            elif mode == 2:
+                download_all_npy(sftp, npy_dir, server_npy_log, local_npy_log)
+            elif mode == 3:
+                upload_datasets(sftp, data_dir)
+            elif mode == 4:
+                download_datasets(sftp, data_dir)
+            else:
+                print('invalid mode!\n')
 
 
 if __name__ == "__main__":
-    main()
+    main(False, None, None, None)
+    

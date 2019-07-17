@@ -5,6 +5,7 @@
 .idea/
 .DS_Store
 .vscode
+.coverage
 tags
 
 # TODO: store the dataset in Git LFS (large file storage)

@@ -8,9 +8,9 @@ from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
     QTableWidget, QTableWidgetItem, QFileDialog, QLineEdit
 from PyQt5.QtGui import QImage, QPixmap, QFont
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer
 from labeling_tool import LabelingController, LabelingTool, DataSelector
-from preprocess import preprocess_main
+from preprocess import ProgressBar
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import server
 
@@ -98,7 +98,7 @@ class MainWindow(QWidget):
 
 
 class PreprocessWindow(QWidget):
-    window_switch_signal = pyqtSignal()
+    window_switch_signal = pyqtSignal(str, str, int)
 
     def __init__(self):
         QWidget.__init__(self)
@@ -120,6 +120,12 @@ class PreprocessWindow(QWidget):
         self.btn_start.setFixedHeight(50)
         self.btn_start.setFixedWidth(150)
         self.btn_start.setStyleSheet("background-color: skyblue")
+
+        self.error_msg = QMessageBox()
+        self.error_msg.setIcon(QMessageBox.Critical)
+        self.error_msg.setWindowTitle('Error')
+        self.error_msg.setStandardButtons(QMessageBox.Cancel)
+
         # More widgets here
 
         main_layout = QVBoxLayout()
@@ -247,19 +253,27 @@ class UploadWindow(QWidget):
 
     def start_preprocess(self):
         if self.textbox_userID.text() == '':
+            self.error_msg.setText('Please write User ID  ')
+            self.error_msg.exec_()
             print('userID: blank!')
         elif ' ' in self.textbox_userID.text():
+            self.error_msg.setText('User ID cannot contain any space  ')
+            self.error_msg.exec_()
             print('userID: space!')
         elif self.textbox_datadir.text() == '':
+            self.error_msg.setText('Please choose data directory  ')
+            self.error_msg.exec_()
             print('data_dir: blank!')
         else:
-            print('.......')
-            preprocess_main(self.textbox_datadir.text(),
-                            self.textbox_userID.text())
+            self.window_switch_signal.emit(self.textbox_datadir.text(),
+                                       self.textbox_userID.text(), 1)
+
+            # progress_bar.show()
         pass
 
     def closeEvent(self, event):
-        self.window_switch_signal.emit()
+        self.window_switch_signal.emit(self.textbox_datadir.text(),
+                                       self.textbox_userID.text(), 2)
 
 
 class UploadWindow(QWidget):
@@ -286,6 +300,12 @@ class UploadWindow(QWidget):
         self.btn_upload.clicked.connect(self.upload_all_db)
         self.btn_upload.setFixedHeight(50)
         self.btn_upload.setFixedWidth(150)
+        self.btn_upload.setStyleSheet("background-color: skyblue")
+
+        self.error_msg = QMessageBox()
+        self.error_msg.setIcon(QMessageBox.Critical)
+        self.error_msg.setWindowTitle('Error')
+        self.error_msg.setStandardButtons(QMessageBox.Cancel)
 
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
@@ -333,16 +353,45 @@ class UploadWindow(QWidget):
         self.textbox_datadir.setText(self.data_dir)
 
     def upload_all_db(self):
+        self.btn_upload.setDisabled(True)
+        self.btn_upload.setStyleSheet("background-color: grey")
+
         if self.textbox_userid.text() == '':
+            self.error_msg.setText('Please write User ID  ')
+            self.error_msg.exec_()
             print('userID: blank!')
         elif self.textbox_userpw.text() == '':
+            self.error_msg.setText('Please write User password  ')
+            self.error_msg.exec_()
             print('userPW: blank!')
         elif self.textbox_datadir.text() == '':
+            self.error_msg.setText('Please choose data directory  ')
+            self.error_msg.exec_()
             print('datadir: blank!')
         else:
-            server.main(True, self.textbox_userid.text(),
-                              self.textbox_userpw.text(),
-                              self.textbox_datadir.text())
+            # Time for disabling button
+            wait_loop = QEventLoop()
+            QTimer.singleShot(1000, wait_loop.quit)
+            wait_loop.exec_()
+
+            try:
+                server.main(True, self.textbox_userid.text(),
+                            self.textbox_userpw.text(),
+                            self.textbox_datadir.text())
+            except Exception as e:
+                print(e)
+                if 'Authentication failed' in str(e):
+                    self.error_msg.setText('Authentication faild.\nCheck your ID/PW.')
+                    self.error_msg.exec_()
+                elif 'Unable to connect' in str(e):
+                    self.error_msg.setText('Unable to connect to server.\nCheck your networt or Try later.')
+                    self.error_msg.exec_()
+                else:
+                    self.error_msg.setText('Failed to upload.\nCheck you network and try again, or contact developer.')
+                    self.error_msg.exec_()
+
+        self.btn_upload.setStyleSheet("background-color: skyblue")
+        self.btn_upload.setDisabled(False)
 
     def closeEvent(self, event):
         self.window_switch_signal.emit()
@@ -366,7 +415,7 @@ class Controller:
     def show_operation_window(self, operation):
         if operation == 'preprocess':
             self.preprocess_window = PreprocessWindow()
-            self.preprocess_window.window_switch_signal.connect(self.show_main_window)
+            self.preprocess_window.window_switch_signal.connect(self.show_progress)
             self.main_window.close()
             self.preprocess_window.show()
 
@@ -385,12 +434,21 @@ class Controller:
             self.selector.put_window_on_center_of_screen()
 
         elif operation == 'upload':
-            print('TODO: upload DB window')
             self.upload_db_window = UploadWindow()
             self.upload_db_window.window_switch_signal.connect(self.show_main_window)
             self.main_window.close()
             self.upload_db_window.show()
 
+        return
+
+    def show_progress(self, chosen_dir, userid, sigint):
+        if sigint == 2:
+            print("error occurred")
+            return
+
+        self.selector = ProgressBar(chosen_dir, userid)
+        # self.selector.switch_window.connect(self.show_complete)
+        self.selector.show()
         return
 
     def show_selector(self):
@@ -411,9 +469,6 @@ class Controller:
         self.selector.close()
         self.tool.launch()
         return
-
-    def switch_labeling_to_main(self):
-        pass
 
 
 if __name__ == "__main__":

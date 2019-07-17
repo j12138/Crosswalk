@@ -565,11 +565,16 @@ class DataSelector(QWidget):
         print('__init__')
         QWidget.__init__(self)
         self.setWindowTitle('Data selector')
+        self.followed_by_labeling_tool = False
         self.initUI()
 
     def set_data_dir(self):
         print('set_data_dir')
         self.data_dir = self.__get_preprocessed_data_dir()
+
+        if self.data_dir == '':
+            return 'Close'
+        
         self.child_dirs = glob.glob(os.path.join(self.data_dir, '*'))
         self.tableWidget.setRowCount(len(self.child_dirs))
         result = self.set_TableWidgetData()
@@ -578,6 +583,7 @@ class DataSelector(QWidget):
     def __get_preprocessed_data_dir(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
                                                           "Select Directory"))
+        print('FileD', picked_dir)
         return picked_dir
 
     def initUI(self):
@@ -609,7 +615,8 @@ class DataSelector(QWidget):
 
     def start_labeling(self):
         current_row = self.tableWidget.currentItem().row()
-        self.select_done(current_row)
+        self.followed_by_labeling_tool = True
+        self.window_switch_signal.emit(self.child_dirs[current_row])
 
     def set_TableWidgetData(self):
         self.tableWidget.setHorizontalHeaderLabels(['dirname',
@@ -624,10 +631,12 @@ class DataSelector(QWidget):
                 with open(db_file, 'r') as f:
                     loaded = json.load(f)
             except Exception as e:
-                msg = '{}'.format(e)
+                msg = 'Invalid dataset dir: {}\n'.format(self.data_dir) + \
+                    'Please choose directory which contains ' + \
+                    'preprocessed datasets.'
                 self.error_msg.setText(msg)
-                print(msg)
                 answer = self.error_msg.exec_()
+
                 if answer == QMessageBox.Retry:
                     return 'Retry'
                 elif answer == QMessageBox.Cancel:
@@ -674,12 +683,12 @@ class DataSelector(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def select_done(self, picked_idx):
-        self.window_switch_signal.emit(self.child_dirs[picked_idx])
-
     def closeEvent(self, a0):
         print('DataSelector: closeEvent')
-        self.window_switch_signal.emit('cancel')
+        if self.followed_by_labeling_tool:
+            print('Goto labeling_tool, nothing emitted')
+        else:
+            self.window_switch_signal.emit('cancel')
         return super().closeEvent(a0)
 
 

@@ -79,7 +79,6 @@ def resize_and_save(input_dir, output_dir, img_path):
     os.rename(save_path, save_path[:-4])
     # os.remove(os.path.join(input_dir, img_path))
 
-
 def preprocess_images(input_dir: str, save_dir: str):
     """ Preprocess all the images
     :param input_dir: original image file directory
@@ -213,6 +212,7 @@ def update_database(metadata, save_dir):
 def get_save_dir_path(original, prefix, userid):
     """ return name of save directory follows convention.
     [current date] _ [user id] _ [original name] _ [index]
+
     :param original: original data directory name
     :param prefix: path to save preprocessed data
     :return: save path follows the convention
@@ -229,6 +229,7 @@ def get_save_dir_path(original, prefix, userid):
     '''
     idx = 0
     save_path
+
     while os.path.exists(save_path):
         idx = idx + 1
         if idx == 1:
@@ -331,20 +332,27 @@ def preprocess_img(args, options, save_dir):
 
     os.mkdir(os.path.join(save_dir, labeled_folder))
 
-def preprocess_main(args, userid):
-    options = load_yaml()
-    preprocess_img(args, options, userid)
+# def preprocess_main(args, userid):
+#     options = load_yaml()
+#     preprocess_img(args, options, userid)
 
 def choose_dir(QWidget):
     file = str(QFileDialog.getExistingDirectory(QWidget, "Select Directory"))
     return file
+
+def test_parallel(QWidget, chosen_dir, output_dir, image):
+    resize_and_save(chosen_dir, output_dir, image)
+    # count += 1
+    # self.step += ((count)*math.ceil(100/self.num_files))
+    # self.progressBar.setValue(self.step)
+    # return 1
 
 class App(QWidget):
     def __init__(self):
         super().__init__()
 
 # Class that allows to choose multiple directories
-# Currently not used 
+# Currently not used
 class FileDialog(QtWidgets.QFileDialog):
     def __init__(self, *args):
         QtWidgets.QFileDialog.__init__(self, *args)
@@ -367,6 +375,7 @@ class ProgressBar(QWidget):
         # self.chosen_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         # self.chosen_dir = "/Users/krislee/Documents/batoners/test_pics"
         self.options = load_yaml()
+        self.chosen_dir = chosen_dir
         self.metadata = extract_metadata(chosen_dir, list(self.options['exifmeta']),
                                     self.options['widgets'])
 
@@ -394,31 +403,25 @@ class ProgressBar(QWidget):
         self.show()
         self.put_window_on_center_of_screen()
 
-        print('test point 1')
+        # print('test point 1')
         self.btnStart.click()
 
-
     def startProgress(self):
-        print('test point 3')
+        # print('test point 3')
         update_database(self.metadata, self.save_dir)
+        # while self.step < 100:
+        Parallel(n_jobs=-1)(
+            delayed(resize_and_save)(self.chosen_dir, self.output_dir, img)
+            for img in self.files)
 
-        while self.step < 100:
-            with Parallel(n_jobs=-1) as parallel:
-                with tqdm(self.files) as t:
-                    for image in t:
-                        resize_and_save(chosen_dir, self.output_dir, image)
-                        self.result += 1
-                        # print(self.result)
-                        self.step += ((self.result+1)*math.ceil(100/self.num_files))
-                        self.progressBar.setValue(self.step)
-        if self.step >= 100:
-            self.progressBar.setValue(100)
-            self.timer.stop()
-            self.btnStart.setText("Finished")
-            self.btnStart.clicked.connect(self.switch)
+        self.progressBar.setValue(100)
+        self.timer.stop()
+        self.btnStart.setText("Finished")
+        self.btnStart.setEnabled(False)
+        self.btnStart.clicked.connect(self.switch)
 
             # self.switch_window.emit()
-            return
+        # return
 
         # if self.timer.isActive():
         #     self.timer.stop()
@@ -521,6 +524,7 @@ def preprocess_main(chosen_dir, userid):
     #ex.show()
     # sys.exit(app.exec())
 
+
 if __name__ == '__main__':
     options = load_yaml()
     # pr = Preprocess()
@@ -533,6 +537,7 @@ if __name__ == '__main__':
     #ex = ProgressBar(len(metadata))
     #ex.show()
     sys.exit(app.exec())
+
 
     # multiple directory selector
 '''

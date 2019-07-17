@@ -172,9 +172,8 @@ class PreprocessWindow(QWidget):
         elif self.textbox_datadir.text() == '':
             print('data_dir: blank!')
         else:
-            print('.......')
-            preprocess.Controller(self.textbox_datadir.text(),
-                    self.textbox_userID.text()).show_progrees()
+            self.window_switch_signal.emit(self.textbox_datadir.text(),
+                                       self.textbox_userID.text(), 1)
         pass
 
     def closeEvent(self, event):

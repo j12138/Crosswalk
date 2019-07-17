@@ -21,6 +21,7 @@ def load_yaml():
 
 def upload_all_npy(sftp, npy_dir, server_log, local_log):
     """ upload all local npy files at server.
+
     :param sftp: server connection object
     :param npy_dir: local npy directory path
     :param server_log: current npy log file on server (npy_log.txt)
@@ -59,6 +60,7 @@ def upload_all_npy(sftp, npy_dir, server_log, local_log):
 
 def download_all_npy(sftp, npy_dir, server_log, local_log):
     """ download all remote(on server) npy files to local
+
     :param sftp: server connection object
     :param npy_dir: local npy directory path
     :param server_log: current npy log file on server (npy_log.txt)
@@ -94,6 +96,7 @@ def download_all_npy(sftp, npy_dir, server_log, local_log):
 
 def upload_datasets(sftp, data_dir, ui_callback=None):
     """ upload all local datasets at server.
+
     :param sftp: server connection object
     :param data_dir: local data directory (./preprocessed_data)
     :return: None
@@ -109,7 +112,7 @@ def upload_datasets(sftp, data_dir, ui_callback=None):
 
         if sftp.exists(dir_name):
             sftp.chdir(dir_name)
-            print('already exists')
+            print('Data already exist:', dir_name)
         else:
             print('create new!')
             sftp.mkdir(dir_name)
@@ -123,25 +126,23 @@ def upload_datasets(sftp, data_dir, ui_callback=None):
         sftp.chdir('preprocessed')
         for img in glob.glob(os.path.join(dir, 'preprocessed', '*')):
             sftp.put(img)
-            if ui_callback:
-                print('ui_callback: preprocessed')
-                ui_callback(img, 1)
 
         for img in glob.glob(os.path.join(dir, 'labeled', '*')):
             if sftp.exists(os.path.basename(img)):
                 sftp.remove(os.path.basename(img))
             sftp.chdir('../labeled')
             sftp.put(img)
+
             if ui_callback:
                 ('ui_callback: labeled')
                 ui_callback(img, 2)
             sftp.chdir('../preprocessed')
-
         sftp.chdir('./../..')
 
 
 def download_datasets(sftp, data_dir):
     """ download all datasets from server to local dir
+
     :param sftp: server connection object
     :param data_dir: local data directory (./preprocessed_data)
     :return: None
@@ -173,7 +174,6 @@ def download_datasets(sftp, data_dir):
 
         for img in preprocessed_data:
             sftp.get(img, os.path.join(local_dir, 'preprocessed', img))
-
         sftp.chdir('./../..')
 
 
@@ -192,14 +192,12 @@ def main(is_imported, username, password, datadir, ui_callback=None):
                                  username=username,
                                  password=password,
                                  cnopts=cnopts)
-
     else:
         sftp = pysftp.Connection(host=options['host'],
                                  username='alal',
                                  private_key=private_key,
                                  private_key_pass='p@$phr4se',
                                  cnopts=cnopts)
-
     with sftp:
         sftp.chdir('..')
         sftp.chdir('..')
@@ -230,3 +228,4 @@ def main(is_imported, username, password, datadir, ui_callback=None):
 
 if __name__ == "__main__":
     main(False, None, None, None)
+    

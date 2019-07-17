@@ -181,7 +181,6 @@ class PreprocessWindow(QWidget):
             self.window_switch_signal.emit(self.textbox_datadir.text(),
                                        self.textbox_userID.text(), 1)
             self.close()
-
             # progress_bar.show()
         pass
 
@@ -341,6 +340,7 @@ class Controller:
         self.__init__()
         self.main_window.window_switch_signal.connect(self.show_operation_window)
         self.main_window.show()
+        print("test point reached!-!")
         return
 
     def show_operation_window(self, operation):
@@ -378,8 +378,9 @@ class Controller:
             return
 
         self.selector = ProgressBar(chosen_dir, userid)
-        # self.selector.switch_window.connect(self.show_complete)
+        self.selector.switch_window.connect(self.show_main_window)
         self.selector.show()
+
         return
 
     def show_selector(self):
@@ -411,4 +412,3 @@ if __name__ == "__main__":
     controller.show_main_window()
 
     sys.exit(app.exec())
-

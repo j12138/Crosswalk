@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDesktopWidget, QListView, QTreeView, QFileSystemModel, QAbstractItemView, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
+from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDesktopWidget, QListView, QTreeView, QFileSystemModel, QAbstractItemView, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import QCoreApplication, QBasicTimer, pyqtSignal
@@ -15,6 +15,7 @@ import sys
 import hashlib
 import json
 import yaml
+import time
 
 preprocessed_folder = 'dataset'
 labeled_folder = 'labeled'
@@ -381,30 +382,39 @@ class ProgressBar(QWidget):
 
         self.save_dir_prefix, self.save_dir, self.files, self.output_dir = process_dir(chosen_dir, self.options, userid)
 
-        # self.label_title = QLabel()
-        # self.label_title.setText("Processing Images...")
+        main_layout = QVBoxLayout()
+        # self.setLayout(main_layout)
+
+        self.setGeometry(100,100,480,320)
+
+        self.label_title = QLabel()
+        self.label_title.setText("Processing Images...")
+        main_layout.addWidget(self.label_title)
         # self.label_title.setGeometry(190,50,100,50)
 
         self.num_files = len(self.files)
         self.progressBar = QProgressBar(self)
-        self.setGeometry(100,100,480,320)
-        self.progressBar.setGeometry(80,100,320,60)
+        self.progressBar.setGeometry(80,100,320,30)
         self.progressBar.setMaximum(100)
+        main_layout.addWidget(self.progressBar)
+
         self.btnStart = QPushButton("Start",self)
         self.btnStart.setGeometry(190,160,100,50)
+        main_layout.addWidget(self.btnStart)
 
         # self.setGeometry(self.left, self.top, self.width, self.height)
 
         # self.btnStart.move(240,160)
-        self.btnStart.clicked.connect(self.startProgress)
+        # self.btnStart.clicked.connect(self.startProgress)
         self.timer = QBasicTimer()
         self.step = 0
         self.result = 0
+        self.btnStart.setEnabled(False)
         self.show()
         self.put_window_on_center_of_screen()
 
         # print('test point 1')
-        self.btnStart.click()
+        self.startProgress()
 
     def startProgress(self):
         # print('test point 3')
@@ -417,10 +427,28 @@ class ProgressBar(QWidget):
         self.progressBar.setValue(100)
         self.timer.stop()
         self.btnStart.setText("Finished")
-        self.btnStart.setEnabled(False)
-        self.btnStart.clicked.connect(self.switch)
-
+        self.btnStart.setEnabled(True)
+        self.btnStart.clicked.connect(self.close_application)
+        # time.sleep(2)
+        # self.close_application()
+        # if sigint == 1:
+            # self.close()
             # self.switch_window.emit()
+
+    def close_application(self):
+        choice = QMessageBox.question(self, 'Preprocessing Images...',
+                                            "Image Processing done!",
+                                            QMessageBox.Ok)
+        self.close()
+        # if choice == QMessageBox.Ok:
+        #     return 1
+        # else:
+        #     pass
+
+    def closeEvent(self, event):
+        self.switch_window.emit()
+
+        # self.switch_window.emit()
         # return
 
         # if self.timer.isActive():
@@ -462,88 +490,3 @@ class ProgressBar(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-
-class Complete_Screen(QWidget):
-
-    switch_window = pyqtSignal()
-
-    def __init__(self):
-        super().__init__()
-        self.title = "Image Preprocess"
-        self.left = 100
-        self.top = 100
-        self.width = 480
-        self.height = 320
-        print("test point reached")
-        self.initUI()
-        self.put_window_on_center_of_screen()
-
-    def put_window_on_center_of_screen(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    def initUI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-
-class Controller():
-    """
-    Controller class for switching windows
-    """
-    def __init__(self, chosen_dir, userid):
-        self.chosen_dir = chosen_dir
-        self.userid = userid
-
-    def show_progrees(self):
-        self.selector = ProgressBar(self.chosen_dir, self.userid)
-        self.selector.switch_window.connect(self.show_complete)
-        self.selector.show()
-
-    def show_complete(self):
-        #self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'))
-        self.tool = Complete_Screen()
-        self.selector.close()
-        #global startTime
-        #startTime = time.time()
-        self.tool.show()
-
-
-def preprocess_main(chosen_dir, userid):
-
-    # options = load_yaml()
-    # pr = Preprocess()
-    # app = QApplication(sys.argv)
-    # test = App()
-    # chosen_dir = choose_dir(test)
-
-    controller = Controller(chosen_dir, userid)
-    controller.show_progrees()
-    #ex = ProgressBar(len(metadata))
-    #ex.show()
-    # sys.exit(app.exec())
-
-
-if __name__ == '__main__':
-    options = load_yaml()
-    # pr = Preprocess()
-    app = QApplication(sys.argv)
-    test = App()
-    chosen_dir = choose_dir(test)
-
-    controller = Controller(chosen_dir, "krise")
-    controller.show_progrees()
-    #ex = ProgressBar(len(metadata))
-    #ex.show()
-    sys.exit(app.exec())
-
-
-    # multiple directory selector
-'''
-    ex = FileDialog()
-    ex.show()
-    ex.exec_()
-    print(ex.selectedFiles())
-
-'''

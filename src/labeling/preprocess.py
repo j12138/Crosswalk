@@ -17,19 +17,32 @@ import json
 import yaml
 import time
 
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 preprocessed_folder = 'dataset'
 labeled_folder = 'labeled'
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
-config_file = os.path.join(BASE_DIR, 'config.yaml')
+# config_file = os.path.join(BASE_DIR, 'config.yaml')
+config_file = 'config.yaml'
 total_pixels = 250000 #total pixels of a resized image
 NUM_FILES = 0 # Number of pictures that are being preprocessed
 SUPPORTED_TYPES = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
 #userid = "kris"
 
 def load_yaml():
+    '''
     with open(config_file, 'r') as stream:
         options = yaml.load(stream)
+    '''
+    options = {'db_file': './Crosswalk_Database.json', 'npy_log_file': './makenp_log.txt', 'data_dir': './preprocessed_data/', 'preprocess_width': 150, 'preprocess_height': 120, 'exifmeta': {'ImageWidth': None, 'ImageLength': None, 'Make': None,
+'Model': None, 'GPSInfo': None, 'DateTimeOriginal': None, 'BrightnessValue': None}, 'manualmeta': {'obs_car': [0, 1, 0], 'obs_human': [0, 1, 0], 'shadow': [0, 1, 0], 'column': [1, 2, 1], 'zebra_ratio': [0, 100, 60], 'out_of_range':
+[0, 1, 0], 'old': [0, 1, 0], 'invalid': [0, 0, 0]}, 'widgets': {'cb_obscar': False, 'cb_obshuman': False, 'cb_shadow': False, 'cb_old': False, 'cb_outrange': False, 'rb_1col': True, 'slider_ratio': 60}}
+
     return options
 
 
@@ -420,9 +433,14 @@ class ProgressBar(QWidget):
         # print('test point 3')
         update_database(self.metadata, self.save_dir)
         # while self.step < 100:
+        '''
         Parallel(n_jobs=-1)(
             delayed(resize_and_save)(self.chosen_dir, self.output_dir, img)
             for img in self.files)
+        '''
+
+        for img in self.files:
+            resize_and_save(self.chosen_dir, self.output_dir, img)
 
         self.progressBar.setValue(100)
         self.timer.stop()

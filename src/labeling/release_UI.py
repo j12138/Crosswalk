@@ -11,8 +11,9 @@ from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer
 from labeling_tool import LabelingController, LabelingTool, DataSelector
 from preprocess import ProgressBar
-sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 import server
+
+sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "lib"))
 
 startTime = 0
 
@@ -157,7 +158,6 @@ class PreprocessWindow(QWidget):
         self.resize(600, 500)
         put_window_on_center_of_screen(self)
 
-
     def select_directory(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
                          "Select Directory"))
@@ -204,6 +204,7 @@ class UploadWindow(QWidget):
         self.textbox_userpw = QLineEdit()
         self.textbox_userid.setFixedWidth(200)
         self.textbox_userpw.setFixedWidth(200)
+        self.textbox_userpw.setEchoMode(QLineEdit.Password)
         self.select_label = QLabel('Data directory to upload :')
         self.btn_filedialog = QPushButton(' Browse.. ')
         self.btn_filedialog.clicked.connect(self.select_directory)
@@ -221,6 +222,10 @@ class UploadWindow(QWidget):
         self.error_msg = QMessageBox()
         self.error_msg.setIcon(QMessageBox.Critical)
         self.error_msg.setWindowTitle('Error')
+        self.error_msg.setStandardButtons(QMessageBox.Cancel)
+
+        self.complete_msg = QMessageBox()
+        self.complete_msg.setWindowTitle('Complete')
         self.error_msg.setStandardButtons(QMessageBox.Cancel)
 
         main_layout = QVBoxLayout()
@@ -297,6 +302,10 @@ class UploadWindow(QWidget):
                             self.textbox_userpw.text(),
                             self.textbox_datadir.text(),
                             ui_callback=self.update_upload_log)
+
+                self.complete_msg.setText('Complete uploading DB!')
+                self.complete_msg.exec_()
+                
             except Exception as e:
                 print(e)
                 if 'Authentication failed' in str(e):

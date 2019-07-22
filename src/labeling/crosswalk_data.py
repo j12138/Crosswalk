@@ -12,8 +12,10 @@ config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
 def loadyaml():
-    with open(config_file, 'r') as stream: 
-        options = yaml.load(stream)
+    options = {'db_file': './Crosswalk_Database.json', 'npy_log_file': './makenp_log.txt', 'data_dir': './preprocessed_data/', 'preprocess_width': 150, 'preprocess_height': 120, 'exifmeta': {'ImageWidth': None, 'ImageLength': None, 'Make': None,
+'Model': None, 'GPSInfo': None, 'DateTimeOriginal': None, 'BrightnessValue': None}, 'manualmeta': {'obs_car': [0, 1, 0], 'obs_human': [0, 1, 0], 'shadow': [0, 1, 0], 'column': [1, 2, 1], 'zebra_ratio': [0, 100, 60], 'out_of_range':
+[0, 1, 0], 'old': [0, 1, 0], 'invalid': [0, 0, 0]}, 'widgets': {'cb_obscar': False, 'cb_obshuman': False, 'cb_shadow': False, 'cb_old': False, 'cb_outrange': False, 'rb_1col': True, 'slider_ratio': 60}}
+
     return options
 
 

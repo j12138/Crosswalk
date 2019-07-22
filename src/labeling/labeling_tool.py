@@ -177,6 +177,10 @@ class LabelingTool(QWidget):
             self.close()
             return
 
+        if len(self.img_files) == 0:
+            self.close()
+            return
+
         img_file = self.img_files[self.img_idx]
         self.data = cd.CrosswalkData(img_file)
 
@@ -523,6 +527,15 @@ class LabelingTool(QWidget):
 
     def closeEvent(self, event):
         """ This method is called when the window gets 'close()' signal """
+
+        if len(self.img_files) == 0:
+            msg = 'There are NO imgs to label!'
+            close_msg = QMessageBox()
+            close_msg.setStandardButtons(QMessageBox.Cancel)
+            close_msg.setWindowTitle('Error')
+            close_msg.exec_()
+            self.window_switch_signal.emit()
+            return
 
         process = 'Labeled img: {} / {}\n\n'.format(len(self.done_img_idx),
                                                     len(self.img_files))

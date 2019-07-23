@@ -177,3 +177,17 @@ model.fit_generator(train_gen,
                     epochs=nb_epoch,
                     callbacks=callbacks)
 
+custom_input_tensor = tf.placeholder(tf.float32, shape=(1,784))
+output_tensor = model(custom_input_tensor)
+
+frozen_graph = freeze_session(K.get_session(),
+                              output_names[output_tensor.op.name])
+
+tflite_model = tf.contrib.lite.toco_convert(frozen_graph, 
+                                            [custom_input_tensor],
+                                            [output_tensor])
+
+open("./test.tflite", "wb").write(tflite_model)
+
+ 
+

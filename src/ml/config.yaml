@@ -1,6 +1,6 @@
 npy_log_file: './makenp_log.txt'
-data_dir: ./preprocessed_data/
-experiment_name: 'Crosswalk_guide'
+data_dir: ./dataset/
+experiment_name: 'Crosswalk_guide_test'
 val_imgs: './npy/2019-06-26__08-08-16_X.npy'
 val_labels: './npy/2019-06-26__08-08-16_Y.npy'
 num_gpus: 1

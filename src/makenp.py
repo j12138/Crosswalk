@@ -135,6 +135,7 @@ def show_and_pick_filters(filterlist):
 
 def process(img, processes):
     width, height, gray = processes
+    H, W = img.shape[:2]
 
     # resizing
     if width > 0:
@@ -142,7 +143,8 @@ def process(img, processes):
         H, W = img.shape[:2]
     # cut
     if height > 0:
-        img = img[int(H - height):, :]
+        cutoff_upper = int((H - height)/2)
+        img = img[cutoff_upper:cutoff_upper + height, :]
     # adjust
     if gray == 1:
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

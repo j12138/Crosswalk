@@ -1,7 +1,6 @@
-from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDesktopWidget, QListView, QTreeView, QFileSystemModel, QAbstractItemView, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
+from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDesktopWidget, QFileDialog, QWidget, QApplication, QLabel, QPushButton, QProgressBar
 from PyQt5 import QtWidgets
-from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtCore import QCoreApplication, QBasicTimer, pyqtSignal
+from PyQt5.QtCore import QCoreApplication, QBasicTimer, pyqtSignal, QThread, QWaitCondition, QMutex
 from PIL import Image
 from PIL.ExifTags import TAGS
 from tqdm import tqdm
@@ -16,7 +15,7 @@ import hashlib
 import json
 import yaml
 import time
-
+import logging
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -34,14 +33,37 @@ NUM_FILES = 0 # Number of pictures that are being preprocessed
 SUPPORTED_TYPES = [".bmp", ".pbm", ".pgm", ".ppm", ".sr", ".ras", ".jpeg", ".jpg", ".jpe", ".jp2", ".tiff", ".tif", ".png"]
 #userid = "kris"
 
+logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
+                    level=logging.WARNING,
+                    format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+
 def load_yaml():
-    '''
-    with open(config_file, 'r') as stream:
-        options = yaml.load(stream)
-    '''
-    options = {'db_file': './Crosswalk_Database.json', 'npy_log_file': './makenp_log.txt', 'data_dir': './preprocessed_data/', 'preprocess_width': 150, 'preprocess_height': 120, 'exifmeta': {'ImageWidth': None, 'ImageLength': None, 'Make': None,
-'Model': None, 'GPSInfo': None, 'DateTimeOriginal': None, 'BrightnessValue': None}, 'manualmeta': {'obs_car': [0, 1, 0], 'obs_human': [0, 1, 0], 'shadow': [0, 1, 0], 'column': [1, 2, 1], 'zebra_ratio': [0, 100, 60], 'out_of_range':
-[0, 1, 0], 'old': [0, 1, 0], 'invalid': [0, 0, 0]}, 'widgets': {'cb_obscar': False, 'cb_obshuman': False, 'cb_shadow': False, 'cb_old': False, 'cb_outrange': False, 'rb_1col': True, 'slider_ratio': 60}}
+    if os.environ.get('FROZEN'):
+        print('hello')
+        options = {'db_file': './Crosswalk_Database.json',
+                   'npy_log_file': './makenp_log.txt',
+                   'data_dir': './preprocessed_data/',
+                   'preprocess_width': 150, 'preprocess_height': 120,
+                   'exifmeta': {'ImageWidth': None, 'ImageLength': None,
+                                'Make': None,
+                                'Model': None, 'GPSInfo': None,
+                                'DateTimeOriginal': None,
+                                'BrightnessValue': None},
+                    'manualmeta': {'obs_car': [0, 1, 0],
+                                   'obs_human': [0, 1, 0],
+                                   'shadow': [0, 1, 0], 'column': [1, 2, 1],
+                                   'zebra_ratio': [0, 100, 60],
+                                   'out_of_range': [0, 1, 0], 'old': [0, 1, 0],
+                                   'invalid': [0, 0, 0]}, 
+                    'widgets': {'cb_obscar': False, 'cb_obshuman': False,
+                                'cb_shadow': False, 'cb_old': False,
+                                'cb_outrange': False, 'rb_1col': True,
+                                'slider_ratio': 60}}
+    else:
+        with open(config_file, 'r') as stream:
+            options = yaml.load(stream)
 
     return options
 
@@ -62,6 +84,7 @@ def resize_and_save(input_dir, output_dir, img_path):
     :param img_path: Path to an image to process
     :return: None
     """
+    print('resizing')
 
     # Check if the extension is supported by cv2. If not, return.
     ext = os.path.splitext(img_path)[-1].lower()
@@ -203,7 +226,9 @@ def init_labeling_status(metadata_per_each, widgets):
 
 def update_database(metadata, save_dir):
     # create an empty README.md file
+    print('update_database')
     readme_file = os.path.join(save_dir, 'README.txt')
+    print(readme_file)
     with open(readme_file, 'w') as f:
         f.write("#_data: " + str(len(metadata)))
 
@@ -367,6 +392,7 @@ class App(QWidget):
 
 # Class that allows to choose multiple directories
 # Currently not used
+'''
 class FileDialog(QtWidgets.QFileDialog):
     def __init__(self, *args):
         QtWidgets.QFileDialog.__init__(self, *args)
@@ -376,6 +402,7 @@ class FileDialog(QtWidgets.QFileDialog):
         for view in self.findChildren((QtWidgets.QListView, QtWidgets.QTreeView)):
             if isinstance(view.model(), QtWidgets.QFileSystemModel):
                 view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+'''
 
 class ProgressBar(QWidget):
 
@@ -508,3 +535,65 @@ class ProgressBar(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
+
+class PreprocessThread(QThread):
+
+    change_value = pyqtSignal(int)
+
+    def __init__(self, datadir, userid):
+        QThread.__init__(self)
+        self.cond = QWaitCondition()
+        self.mutex = QMutex()
+
+        self.datadir = datadir
+        self.userid = userid
+        self.options = load_yaml()
+        self.metadata = extract_metadata(datadir, list(self.options['exifmeta']),
+                                    self.options['widgets'])
+        self.save_dir_prefix, self.save_dir, self.files, self.output_dir = process_dir(self.datadir, self.options, self.userid)
+        update_database(self.metadata, self.save_dir)
+
+        self.cnt = 0
+        self.numdata = len(self.files)
+        self._status = True
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        while True:
+            self.mutex.lock()
+
+            if not self._status:
+                self.cond.wait(self.mutex)
+
+            img = self.files[self.cnt]
+            resize_and_save(self.datadir, self.output_dir, img)
+
+            self.cnt += 1
+            self.change_value.emit(self._comput_progress_value(self.cnt))
+            self.msleep(100)
+
+            if self.cnt >= self.numdata:
+                self.change_value.emit(100)
+                self._status = False
+
+            self.mutex.unlock()
+
+    def toggle_status(self):
+        self._status = not self._status
+        if self._status:
+            self.cond.wakeAll()
+
+    def _comput_progress_value(self, cnt):
+        prop = (float(cnt) / float(self.numdata)) * 100.0
+        
+        return int(prop)
+
+    @property
+    def status(self):
+        return self._status
+    
+
+            

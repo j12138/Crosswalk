@@ -41,6 +41,7 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
 
 def load_yaml():
     if os.environ.get('FROZEN'):
+        # if code was called by executive file
         print('hello')
         options = {'db_file': './Crosswalk_Database.json',
                    'npy_log_file': './makenp_log.txt',

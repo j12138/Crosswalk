@@ -26,7 +26,11 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
 def load_yaml():
 
     if os.environ.get('FROZEN'):
-        options = {'local_npy_log': './makenp_log.txt', 'server_npy_log': './npy_log.txt', 'npy_dir': 'npy', 'data_dir': 'preprocessed_data', 'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
+        # if code was called by executive file
+        options = {'local_npy_log': './makenp_log.txt',
+        'server_npy_log': './npy_log.txt', 'npy_dir': 'npy',
+        'data_dir': 'preprocessed_data',
+        'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
     else:
         with open(config_file, 'r') as stream:
             options = yaml.load(stream)
@@ -197,18 +201,6 @@ def download_datasets(sftp, data_dir):
         sftp.chdir('./../..')
 
 
-def show_server_statistics(sftp):
-
-    stats.show_db_stat(data_dir)
-
-    pass
-
-
-def make_npy_from_server(sftp):
-
-    pass
-
-
 def main(is_imported, username, password, datadir, ui_callback=None):
     options = load_yaml()
     npy_dir = os.path.join(ROOT_DIR, options['npy_dir'])
@@ -245,8 +237,6 @@ def main(is_imported, username, password, datadir, ui_callback=None):
             print('[2] Download all npy files')
             print('[3] Upload all preprocessed datasets')
             print('[4] Download all preprocessed datasets')
-            print('[5] Show server data statistics')
-            print('[6] Make npy from server data')
             mode = int(input('>> '))
 
             if mode == 1:  # Upload npy
@@ -257,10 +247,6 @@ def main(is_imported, username, password, datadir, ui_callback=None):
                 upload_datasets(sftp, data_dir)
             elif mode == 4:
                 download_datasets(sftp, data_dir)
-            elif mode == 5:
-                show_server_statistics(sftp)
-            elif mode == 6:
-                make_npy_from_server(sftp)
             else:
                 print('invalid mode!\n')
 

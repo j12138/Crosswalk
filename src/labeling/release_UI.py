@@ -38,31 +38,6 @@ def put_window_on_center_of_screen(window):
     window.move(qr.topLeft())
 
 
-class UploadThread(QThread):
-
-    change_value = pyqtSignal(int)
-
-    def __init__(self):
-        self.cond = QWaitCondition()
-        self.mutex = QMutex()
-
-    def __del__(self):
-        self.wait()
-
-    def run(self):
-        pass
-
-    def toggle_status(self):
-        self._status = not self._status
-        if self._status:
-            self.cond.wakeAll()
-
-    def _comput_progress_value(self, cnt):
-        # prop = (float(cnt) / float(self.numdata)) * 100.0
-        # return int(prop)
-        return
-
-
 class MainWindow(QWidget):
     """
     PyQt UI widget for main window
@@ -222,7 +197,6 @@ class PreprocessWindow(QWidget):
             self.error_msg.setText('Please choose data directory  ')
             self.error_msg.exec_()
             print('data_dir: blank!')
-        # TODO : detect any korean letter
         else:
             self.btn_start.setDisabled(True)
             self.btn_start.setStyleSheet("background-color: grey")

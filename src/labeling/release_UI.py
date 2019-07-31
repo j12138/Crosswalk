@@ -1,21 +1,35 @@
 import sys
 import os
 import time
-import glob
-import json
-from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
+import logging
+from PyQt5.QtWidgets import QMessageBox, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
-    QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
-    QTableWidget, QTableWidgetItem, QFileDialog, QLineEdit
-from PyQt5.QtGui import QImage, QPixmap, QFont
-from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer
-from labeling_tool import LabelingController, LabelingTool, DataSelector
-from preprocess import ProgressBar
-sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+    QLabel, QStyle, QStyleFactory, \
+    QFileDialog, QLineEdit, QProgressBar
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer, QThread, QWaitCondition, QMutex
+from labeling_tool import LabelingTool, DataSelector
+from preprocess import PreprocessThread
 import server
+
+sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "lib"))
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
+                    level=logging.WARNING,
+                    format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+# logger = logging.getLogger(__name__)
+
 
 startTime = 0
 
+print(os.environ.get('FROZEN'))
 
 def put_window_on_center_of_screen(window):
     qr = window.frameGeometry()
@@ -104,6 +118,7 @@ class PreprocessWindow(QWidget):
         QWidget.__init__(self)
         self.setWindowTitle('Preprocess')
         self.data_dir = ''
+        self.progress_bar = QProgressBar()
         self.initUI()
 
     def initUI(self):
@@ -125,6 +140,10 @@ class PreprocessWindow(QWidget):
         self.error_msg.setIcon(QMessageBox.Critical)
         self.error_msg.setWindowTitle('Error')
         self.error_msg.setStandardButtons(QMessageBox.Cancel)
+
+        self.done_msg = QMessageBox()
+        self.done_msg.setWindowTitle('Complete')
+        self.done_msg.setStandardButtons(QMessageBox.Cancel)
 
         # More widgets here
 
@@ -151,12 +170,13 @@ class PreprocessWindow(QWidget):
         main_layout.addLayout(userID_layout)
         main_layout.addStretch(2)
         main_layout.addLayout(start_layout)
+        main_layout.addStretch(2)
+        main_layout.addWidget(self.progress_bar)
         main_layout.addStretch(15)
         # Organize layout here
 
         self.resize(600, 500)
         put_window_on_center_of_screen(self)
-
 
     def select_directory(self):
         picked_dir = str(QFileDialog.getExistingDirectory(self,
@@ -178,15 +198,47 @@ class PreprocessWindow(QWidget):
             self.error_msg.exec_()
             print('data_dir: blank!')
         else:
-            self.window_switch_signal.emit(self.textbox_datadir.text(),
-                                       self.textbox_userID.text(), 1)
-            self.close()
-            # progress_bar.show()
+            self.btn_start.setDisabled(True)
+            self.btn_start.setStyleSheet("background-color: grey")
+
+            try:
+                self.thread = PreprocessThread(self.textbox_datadir.text(),
+                                               self.textbox_userID.text())
+
+            except Exception as e:
+                if '_getexif' in str(e):
+                    self.error_msg.setText('Invalid data: can`t get embedded metadata(_getexif)')
+                    self.error_msg.exec_()
+                    self.btn_start.setEnabled(True)
+                    self.btn_start.setStyleSheet("background-color: skyblue")
+                else:
+                    logging.error(e)
+                    self.error_msg.setText('Unknown error: ' + str(e))
+                    self.error_msg.exec_()
+                    self.btn_start.setEnabled(True)
+                    self.btn_start.setStyleSheet("background-color: skyblue")
+
+            else:  
+                self.thread.change_value.connect(self._change_progress_bar_value)
+                self.thread.start()
+
+            # self.window_switch_signal.emit(self.textbox_datadir.text(),
+            #                                self.textbox_userID.text(), 1)
         pass
+    
+    def _change_progress_bar_value(self, int):
+        self.progress_bar.setValue(int)
+        if int >= 100:
+            print('done!')
+            self.btn_start.setEnabled(True)
+            self.btn_start.setStyleSheet("background-color: skyblue")
+
+            self.done_msg.setText('Complete preprocessing {} images!'.format(self.thread.numdata))
+            self.done_msg.exec_()
 
     def closeEvent(self, event):
-        self.window_switch_signal.emit(self.textbox_datadir.text(),
-                                       self.textbox_userID.text(), 2)
+        self.window_switch_signal.emit(None,
+                                       None, 2)
 
 
 class UploadWindow(QWidget):
@@ -198,12 +250,6 @@ class UploadWindow(QWidget):
         self.initUI()
 
     def initUI(self):
-        self.userid_label = QLabel('User ID :')
-        self.userpw_label = QLabel('User PW :')
-        self.textbox_userid = QLineEdit()
-        self.textbox_userpw = QLineEdit()
-        self.textbox_userid.setFixedWidth(200)
-        self.textbox_userpw.setFixedWidth(200)
         self.select_label = QLabel('Data directory to upload :')
         self.btn_filedialog = QPushButton(' Browse.. ')
         self.btn_filedialog.clicked.connect(self.select_directory)
@@ -223,25 +269,12 @@ class UploadWindow(QWidget):
         self.error_msg.setWindowTitle('Error')
         self.error_msg.setStandardButtons(QMessageBox.Cancel)
 
+        self.complete_msg = QMessageBox()
+        self.complete_msg.setWindowTitle('Complete')
+        self.error_msg.setStandardButtons(QMessageBox.Cancel)
+
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
-
-        gbox_login = QGroupBox('Server Login Info')
-        vbox_login = QVBoxLayout()
-
-        hbox_id = QHBoxLayout()
-        hbox_id.addWidget(self.userid_label)
-        hbox_id.addWidget(self.textbox_userid)
-        hbox_id.addStretch(10)
-
-        hbox_pw = QHBoxLayout()
-        hbox_pw.addWidget(self.userpw_label)
-        hbox_pw.addWidget(self.textbox_userpw)
-        hbox_pw.addStretch(10)
-
-        vbox_login.addLayout(hbox_id)
-        vbox_login.addLayout(hbox_pw)
-        gbox_login.setLayout(vbox_login)
 
         browse_layout = QHBoxLayout()
         browse_layout.addWidget(self.textbox_datadir)
@@ -251,22 +284,29 @@ class UploadWindow(QWidget):
         upload_layout = QHBoxLayout()
         upload_layout.addWidget(self.btn_upload, Qt.AlignCenter)
 
-        main_layout.addWidget(gbox_login)
+        # main_layout.addWidget(gbox_login)
         main_layout.addStretch(1)
         main_layout.addWidget(self.select_label)
         main_layout.addLayout(browse_layout)
         main_layout.addStretch(2)
         main_layout.addLayout(upload_layout)
         main_layout.addStretch(2)
-        #main_layout.addWidget(self.textbox_log)
+        # main_layout.addWidget(self.textbox_log)
         main_layout.addStretch(2)
 
         self.resize(600, 500)
         put_window_on_center_of_screen(self)
 
     def select_directory(self):
-        picked_dir = str(QFileDialog.getExistingDirectory(self,
+        try:
+            f = open ('fake_file.txt')
+            picked_dir = str(QFileDialog.getExistingDirectory(self,
                          "Select Directory"))
+        except Exception as e:
+            logging.error(e)
+            self.error_msg.setText('Unknown error: ' + str(e))
+            self.error_msg.exec_()
+
         self.data_dir = picked_dir
         self.textbox_datadir.setText(self.data_dir)
 
@@ -274,15 +314,7 @@ class UploadWindow(QWidget):
         self.btn_upload.setDisabled(True)
         self.btn_upload.setStyleSheet("background-color: grey")
 
-        if self.textbox_userid.text() == '':
-            self.error_msg.setText('Please write User ID  ')
-            self.error_msg.exec_()
-            print('userID: blank!')
-        elif self.textbox_userpw.text() == '':
-            self.error_msg.setText('Please write User password  ')
-            self.error_msg.exec_()
-            print('userPW: blank!')
-        elif self.textbox_datadir.text() == '':
+        if self.textbox_datadir.text() == '':
             self.error_msg.setText('Please choose data directory  ')
             self.error_msg.exec_()
             print('datadir: blank!')
@@ -293,10 +325,13 @@ class UploadWindow(QWidget):
             wait_loop.exec_()
 
             try:
-                server.main(True, self.textbox_userid.text(),
-                            self.textbox_userpw.text(),
+                server.main(True, None, None,
                             self.textbox_datadir.text(),
                             ui_callback=self.update_upload_log)
+
+                self.complete_msg.setText('Complete uploading DB!')
+                self.complete_msg.exec_()
+                
             except Exception as e:
                 print(e)
                 if 'Authentication failed' in str(e):
@@ -308,6 +343,7 @@ class UploadWindow(QWidget):
                 else:
                     self.error_msg.setText('Failed to upload.\nCheck you network and try again, or contact developer.')
                     self.error_msg.exec_()
+                    logging.error(e)
 
         self.btn_upload.setStyleSheet("background-color: skyblue")
         self.btn_upload.setDisabled(False)
@@ -354,7 +390,10 @@ class Controller:
             file_dialog_result = 'Retry'
             while file_dialog_result == 'Retry':
                 print('Retry loop')
-                file_dialog_result = self.selector.set_data_dir()
+                try:
+                    file_dialog_result = self.selector.set_data_dir()
+                except Exception as e:
+                    logging.error(e)
 
             print('esacpe loop!')
             if file_dialog_result == 'Close':
@@ -374,13 +413,8 @@ class Controller:
 
     def show_progress(self, chosen_dir, userid, sigint):
         if sigint == 2:
-            print("error occurred")
+            self.show_main_window()
             return
-
-        self.selector = ProgressBar(chosen_dir, userid)
-        self.selector.switch_window.connect(self.show_main_window)
-        self.selector.show()
-
         return
 
     def show_selector(self):
@@ -404,6 +438,7 @@ class Controller:
 
 
 if __name__ == "__main__":
+    
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
@@ -412,3 +447,4 @@ if __name__ == "__main__":
     controller.show_main_window()
 
     sys.exit(app.exec())
+

@@ -23,12 +23,9 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
               'human': lambda x: x['obs_human'] == 1,
               'onecol': lambda x: x['column'] == 1,
               'twocol': lambda x: x['column'] == 2,
+              'odd2col': lambda x: x['column'] == 3,
               'boundary': lambda x: abs(float(x['loc'])) > 0.8,
-              'old': lambda x: x['old'] == 1,
-              'not_out_of_range': lambda x: x['out_of_range'] == 0,
-              'no_obs_not_old_over_60':
-                  lambda x: (x['obs_car'] == 0 and x['obs_human'] == 0 and x[
-                      'old'] == 0 and x['zebra_ratio'] >= 60)
+              'old': lambda x: x['old'] == 1
               }
 
 

@@ -2,20 +2,38 @@ import pysftp
 import os
 import yaml
 import glob
+import logging
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+import makenp, stats
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.join(BASE_DIR, "..")
+ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+
 
 cnopts = pysftp.CnOpts()
 cnopts.hostkeys = None
 config_file = 'server_config.yaml'
 private_key = os.path.join(ROOT_DIR, '..', '.ssh', 'id_rsa')
 
+logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
+                    level=logging.WARNING,
+                    format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
 
 def load_yaml():
-    with open(os.path.join(BASE_DIR, config_file), 'r') as stream:
-        options = yaml.load(stream)
+
+    if os.environ.get('FROZEN'):
+        # if code was called by executive file
+        options = {'local_npy_log': './makenp_log.txt',
+        'server_npy_log': './npy_log.txt', 'npy_dir': 'npy',
+        'data_dir': 'preprocessed_data',
+        'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
+    else:
+        with open(config_file, 'r') as stream:
+            options = yaml.load(stream)
     return options
 
 
@@ -156,6 +174,12 @@ def download_datasets(sftp, data_dir):
         print(local_dir)
         sftp.chdir(dir)
 
+        if not os.path.exists(local_dir):
+            print('make new')
+            os.mkdir(local_dir)
+            os.mkdir(os.path.join(local_dir, 'labeled'))
+            os.mkdir(os.path.join(local_dir, 'preprocessed'))
+
         sftp.get('db.json', os.path.join(local_dir, 'db.json'))
         sftp.get('README.txt', os.path.join(local_dir, 'README.txt'))
 
@@ -183,15 +207,16 @@ def main(is_imported, username, password, datadir, ui_callback=None):
     if is_imported:
         data_dir = datadir
     else:
-        data_dir = os.path.join(ROOT_DIR, options['data_dir'])
+        data_dir = os.path.join(BASE_DIR, 'dataset')
     server_npy_log = options['server_npy_log']
     local_npy_log = os.path.join(ROOT_DIR, options['local_npy_log'])
 
     if is_imported:
         sftp = pysftp.Connection(host=options['host'],
-                                 username=username,
-                                 password=password,
+                                 username='uploader',
+                                 password='tkwlsdmfdhfflwk99',
                                  cnopts=cnopts)
+        print('hello?')
     else:
         sftp = pysftp.Connection(host=options['host'],
                                  username='alal',

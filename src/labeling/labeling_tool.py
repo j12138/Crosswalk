@@ -696,21 +696,26 @@ class LabelingController:
     """
     Controller class for switching windows
     """
-    def __init__(self):
+    def __init__(self, validation=False):
         print('labelingCont_init')
         self.selector = DataSelector()
         self.selector.set_data_dir()
+        self.validation = validation
 
     def show_selector(self):
         print('show_selector')
         self.selector.window_switch_signal.connect(self.show_tool)
-        # self.selector.show()
+        self.selector.show()
 
     def show_tool(self, dir_path):
         print('show_tool')
         global startTime
         startTime = time.time()
-        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+
+        if (self.validation):
+            self.tool = LabelingTool(os.path.join(dir_path, 'labeled'), startTime)
+        else:
+            self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
         self.selector.close()
         self.tool.launch()
 
@@ -723,7 +728,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def launch_annotator():
+def launch_annotator(validation=False):
     """ the actual 'main' function.
     Other modules that import this module shall call this as the entry
     point.
@@ -733,7 +738,10 @@ def launch_annotator():
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
 
-    labeling_controller = LabelingController()
+    if validation:
+        labeling_controller = LabelingController(validation=True)
+    else:
+        labeling_controller = LabelingController()
     labeling_controller.show_selector()
 
     sys.exit(app.exec_())
@@ -741,17 +749,14 @@ def launch_annotator():
 
 def main(args):
     if (args.validate):
-        data_path = os.path.join(args.data_path, 'labeled')
-        if len(glob.glob(data_path + '/*')) <= 0:
-            print('There are no labeled img')
-            return
+        launch_annotator(validation=True)
     else:
         data_path = os.path.join(args.data_path, 'preprocessed')
     launch_annotator()
 
 
 if __name__ == "__main__":
-    if (len(sys.argv) < 2):
+    if (len(sys.argv) < 1):
         launch_annotator()
         sys.exit(0)
 

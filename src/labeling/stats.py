@@ -1,13 +1,24 @@
 import json
 import yaml
 from math import ceil
+import matplotlib
 import matplotlib.pyplot as plt
 import glob
 import os
+import argparse
+from pandas import DataFrame
+import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..")
-config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
+config_file = os.path.join(BASE_DIR, 'config.yaml')
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--visualize', action="store_true")
+    parser.add_argument('-c', '--cron', action="store_true")
+    return parser.parse_args()
 
 
 def collect_all_db(data_dir):
@@ -56,7 +67,7 @@ def show_proportion_bar(target, total):
         proportion = 100 * float(target) / total
         blocks = ceil(proportion * 0.25)
 
-    bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) +\
+    bar = '=' * blocks + '.' * (25 - blocks) + ' [ ' + str(target) +\
           ' / ' + str(total) + ' ]'
 
     return bar
@@ -66,6 +77,9 @@ def show_label_scatter_plot(db):
     """ show scatter plots for computed labels.
         2 plots: loc - ang / pit - roll
     """
+
+    matplotlib.use('TkAgg')
+
     loc = []
     ang = []
     pit = []
@@ -128,7 +142,7 @@ def show_total_stat(db):
     print('total_#: ', cnt)
     print('labeled: ', labeled)
     print('invalid: ', invalid)
-    print('*valid(labeled): ' + show_proportion_bar(labeled-invalid, labeled))
+    print('valid(labeled): ' + show_proportion_bar(labeled-invalid, labeled))
 
     return cnt, labeled
 
@@ -145,11 +159,7 @@ def show_manual_meta_stat(db, total):
     shadow = 0
     one_column = 0
     two_column = 0
-    under_20 = 0
-    under_40 = 0
-    under_60 = 0
-    under_80 = 0
-    over_80 = 0
+    odd_2column = 0
     old = 0
 
     for item in db:
@@ -166,16 +176,8 @@ def show_manual_meta_stat(db, total):
                 one_column = one_column + 1
             if item['column'] == 2:
                 two_column = two_column + 1
-            if 0 <= item['zebra_ratio'] <= 20:
-                under_20 = under_20 + 1
-            if 20 < item['zebra_ratio'] <= 40:
-                under_40 = under_40 + 1
-            if 40 < item['zebra_ratio'] <= 60:
-                under_60 = under_60 + 1
-            if 60 < item['zebra_ratio'] <= 80:
-                under_80 = under_80 + 1
-            if 80 < item['zebra_ratio']:
-                over_80 = over_80 + 1
+            if item['column'] == 3:
+                odd_2column = odd_2column + 1
             if item['old'] == 1:
                 old = old + 1
         except Exception as e:
@@ -188,15 +190,9 @@ def show_manual_meta_stat(db, total):
     print('old:      ', show_proportion_bar(old, total), '\n')
 
     print('column:')
-    print('  └─ [1]  ', show_proportion_bar(one_column, total))
-    print('  └─ [2]  ', show_proportion_bar(two_column, total), '\n')
-
-    print('zebra_ratio:')
-    print(' └─ [~20] ', show_proportion_bar(under_20, total))
-    print(' └─ [~40] ', show_proportion_bar(under_40, total))
-    print(' └─ [~60] ', show_proportion_bar(under_60, total))
-    print(' └─ [~80] ', show_proportion_bar(under_80, total))
-    print(' └─ [80~] ', show_proportion_bar(over_80, total))
+    print('  [1]  ', show_proportion_bar(one_column, total))
+    print('  [2]  ', show_proportion_bar(two_column, total))
+    print('  [1.5]', show_proportion_bar(odd_2column, total), '\n')
 
 
 def show_exifmeta_stat(db, total):
@@ -229,15 +225,12 @@ def show_exifmeta_stat(db, total):
 
     print('horizontal:', show_proportion_bar(horizontal, total))
     print('\nMake')
-    print('└─Samsung:', show_proportion_bar(Samsung, total))
-    print('└─Apple:  ', show_proportion_bar(Apple, total))
-    print('└─Others: ', show_proportion_bar(make_other, total))
+    print('  Samsung:', show_proportion_bar(Samsung, total))
+    print('  Apple:  ', show_proportion_bar(Apple, total))
+    print('  Others: ', show_proportion_bar(make_other, total))
 
 
-def show_db_stat(data_dir):
-    db2 = collect_all_db(data_dir)
-    db = db2.values()
-
+def show_db_stat(db):
     print('\n--------- total ---------\n')
     total, labeled = show_total_stat(db)
 
@@ -250,7 +243,6 @@ def show_db_stat(data_dir):
 
     print('\n--------- manual metadata (labeled) ---------\n')
     show_manual_meta_stat(db, labeled)
-
     show_label_scatter_plot(db)
 
     print('')
@@ -304,21 +296,59 @@ def show_labeling_progress(data_dir):
     return child_dirs
 
 
-def main():
-    options = loadyaml()
+def show_db_stats(db, cron):
+    now = datetime.datetime.now()
+    nowDatetime = now.strftime('%Y-%m-%d')
 
-    print('\n[1] Show total DB statistics')
-    print('[2] Show labeling progress\n')
-    mode = input('Choose mode: ')
-    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
+    df = DataFrame.from_dict(db)
+    columns = ['total', 'labeled', 'invalid', 'obs_car', 'obs_human',
+               'shadow', 'old', '1col', '2col', 'odd2col']
+    stats = DataFrame(index=[nowDatetime], columns=columns)
 
-    if mode == '1':
-        show_db_stat(data_dir)
-    elif mode == '2':
-        show_labeling_progress(data_dir)
+    stats['total'] = df.shape[0]
+    stats['labeled'] = df[df['is_input_finished']].shape[0]
+    stats['invalid'] = df[df['invalid'] == 1].shape[0]
+    # horizontal = df[df['horizontal'] == 1].shape[0]
+    stats['obs_car'] = df[df['obs_car'] == 1].shape[0]
+    stats['obs_human'] = df[df['obs_human'] == 1].shape[0]
+    stats['shadow'] = df[df['shadow'] == 1].shape[0]
+    stats['old'] = df[df['old'] == 1].shape[0]
+    stats['1col'] = df[df['column'] == 1].shape[0]
+    stats['2col'] = df[df['column'] == 2].shape[0]
+    stats['odd2col'] = df[df['column'] == 2.5].shape[0]
+
+    df_stats = DataFrame(stats)
+
+    if cron:
+        with open('trend.csv', 'a', newline='') as f:
+            df_stats.to_csv(f, header=False)
     else:
-        print('Wrong input!\n')
+        print(df_stats)
+
+    pass
+
+
+def main(args):
+    options = loadyaml()
+    data_dir = os.path.join(BASE_DIR, 'dataset')
+    db = collect_all_db(data_dir).values()
+
+    if args.visualize:
+        print('\n[1] Show total DB statistics')
+        print('[2] Show labeling progress\n')
+        mode = input('Choose mode: ')
+        
+        if mode == '1':
+            show_db_stat(db)
+        elif mode == '2':
+            show_labeling_progress(data_dir)
+        else:
+            print('Wrong input!\n')
+    
+    else:
+        show_db_stats(db, args.cron)
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)

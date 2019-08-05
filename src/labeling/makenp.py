@@ -11,7 +11,7 @@ import random
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..")
-config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
+config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
 # coding=utf-8
@@ -111,7 +111,7 @@ def show_and_pick_filters(filterlist):
 
     print('----------------------------')
     print('select filters (ex: 1 2 3 4 5)')
-    picked_num = input('└─ here: ')
+    picked_num = input('  *here: ')
     picked_num_list = picked_num.split(' ')
 
     filter_keys = list(filterlist.keys())
@@ -224,8 +224,6 @@ class DBMS(object):
         val_idx = random.sample(range(0, total), val_num)
         self.val_query_list = {}
 
-        print(val_idx)
-
         all_img_path = list(all_data.keys())
 
         for idx in val_idx:
@@ -330,7 +328,7 @@ def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
 
-    data_dir = os.path.join(BASE_DIR, 'labeling', options['data_dir'])
+    data_dir = os.path.join(BASE_DIR, options['data_dir'])
     db = DBMS(data_dir, picked_filters, picked_process)
     db.query()
     db.make_npy()

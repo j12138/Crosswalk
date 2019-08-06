@@ -91,16 +91,23 @@ def show_label_scatter_plot(db):
             if item['invalid'] == 0:
                 loc.append(item['loc'])
                 ang.append(item['ang'])
-                pit.append(item['pit'])
+                pit.append(item['pit'] - 0.5)
                 roll.append(item['roll'])
         except:
             continue
 
+    '''
+    print('loc', max(loc), min(loc))
+    print('ang', max(ang), min(ang))
+    print('pit', max(pit), min(pit))
+    print('roll', max(roll), min(roll))
+    '''
+
     plt.figure(figsize=(10, 4))
     # loc, ang
     plt.subplot(121)
-    plt.scatter(loc, ang)
-    plt.xlim((-2.0, 2.0))
+    plt.scatter(loc, ang, s=3)
+    plt.xlim((-2.5, 2.5))
     plt.ylim((-90, 90))
     plt.xlabel('loc')
     plt.ylabel('ang ($^{\circ}$)')
@@ -108,14 +115,15 @@ def show_label_scatter_plot(db):
 
     # pit, roll
     plt.subplot(122)
-    plt.scatter(pit, roll)
-    plt.xlim((0.0, 1.0))
-    plt.ylim((-20, 20))
+    plt.scatter(pit, roll, s=3)
+    plt.xlim((-0.75, 0.75))
+    plt.ylim((-30, 30))
     # plt.axis(option='auto')
     plt.xlabel('pit')
     plt.ylabel('roll ($^{\circ}$)')
     plt.title('pitch ─ roll')
 
+    plt.savefig('stats_label_figure.png')
     plt.show()
 
 
@@ -303,6 +311,10 @@ def show_db_stats(db, cron):
     df = DataFrame.from_dict(db)
     columns = ['total', 'labeled', 'invalid', 'obs_car', 'obs_human',
                'shadow', 'old', '1col', '2col', 'odd2col']
+    label_range = {'loc': [-2.5, 2.5], 'ang': [-90, 90],
+                   'pit': [-0.25, 1.25], 'roll': [-30, 30]}
+    labels = ['loc', 'ang', 'pit', 'roll']
+
     stats = DataFrame(index=[nowDatetime], columns=columns)
 
     stats['total'] = df.shape[0]
@@ -316,6 +328,20 @@ def show_db_stats(db, cron):
     stats['1col'] = df[df['column'] == 1].shape[0]
     stats['2col'] = df[df['column'] == 2].shape[0]
     stats['odd2col'] = df[df['column'] == 2.5].shape[0]
+
+    
+
+    for label in labels:
+        interval = (label_range[label][1] - label_range[label][0]) / 10.0
+
+        for i in range(10):
+            bucket = label + '_' + str(i)
+            columns.append(bucket)
+            b_range = [label_range[label][0] + i * interval,
+                       label_range[label][0] + (i + 1) * interval]
+
+            test = (df[label] >= b_range[0]) & (df[label] < b_range[1])
+            stats[bucket] = df[test].shape[0]
 
     df_stats = DataFrame(stats)
 
@@ -337,7 +363,7 @@ def main(args):
         print('\n[1] Show total DB statistics')
         print('[2] Show labeling progress\n')
         mode = input('Choose mode: ')
-        
+
         if mode == '1':
             show_db_stat(db)
         elif mode == '2':

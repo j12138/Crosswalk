@@ -207,13 +207,13 @@ def make_npy_from_server(sftp):
 
 def main(is_imported, username, password, datadir, ui_callback=None):
     options = load_yaml()
-    npy_dir = os.path.join(ROOT_DIR, options['npy_dir'])
+    npy_dir = os.path.join(BASE_DIR, options['npy_dir'])
     if is_imported:
         data_dir = datadir
     else:
         data_dir = os.path.join(BASE_DIR, 'dataset')
     server_npy_log = options['server_npy_log']
-    local_npy_log = os.path.join(ROOT_DIR, options['local_npy_log'])
+    local_npy_log = os.path.join(BASE_DIR, options['local_npy_log'])
 
     if is_imported:
         sftp = pysftp.Connection(host=options['host'],

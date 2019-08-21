@@ -12,10 +12,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 
 
+
 cnopts = pysftp.CnOpts()
 cnopts.hostkeys = None
 config_file = 'server_config.yaml'
-private_key = os.path.join(ROOT_DIR, '..', '.ssh', 'id_rsa')
+private_key = os.path.join(ROOT_DIR, '..', '..', '.ssh', 'id_rsa')
+
+logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
+                    level=logging.WARNING,
+                    format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     level=logging.WARNING,
@@ -26,11 +32,15 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
 def load_yaml():
 
     if os.environ.get('FROZEN'):
+<<<<<<< HEAD:src/labeling/server.py
         # if code was called by executive file
         options = {'local_npy_log': './makenp_log.txt',
         'server_npy_log': './npy_log.txt', 'npy_dir': 'npy',
         'data_dir': 'preprocessed_data',
         'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
+=======
+        options = {'local_npy_log': './makenp_log.txt', 'server_npy_log': './npy_log.txt', 'npy_dir': 'npy', 'data_dir': 'preprocessed_data', 'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
+>>>>>>> dev_augmentor:src/labeling/server.py
     else:
         with open(config_file, 'r') as stream:
             options = yaml.load(stream)
@@ -39,7 +49,6 @@ def load_yaml():
 
 def upload_all_npy(sftp, npy_dir, server_log, local_log):
     """ upload all local npy files at server.
-
     :param sftp: server connection object
     :param npy_dir: local npy directory path
     :param server_log: current npy log file on server (npy_log.txt)
@@ -78,7 +87,6 @@ def upload_all_npy(sftp, npy_dir, server_log, local_log):
 
 def download_all_npy(sftp, npy_dir, server_log, local_log):
     """ download all remote(on server) npy files to local
-
     :param sftp: server connection object
     :param npy_dir: local npy directory path
     :param server_log: current npy log file on server (npy_log.txt)
@@ -114,7 +122,6 @@ def download_all_npy(sftp, npy_dir, server_log, local_log):
 
 def upload_datasets(sftp, data_dir, ui_callback=None):
     """ upload all local datasets at server.
-
     :param sftp: server connection object
     :param data_dir: local data directory (./preprocessed_data)
     :return: None
@@ -160,7 +167,6 @@ def upload_datasets(sftp, data_dir, ui_callback=None):
 
 def download_datasets(sftp, data_dir):
     """ download all datasets from server to local dir
-
     :param sftp: server connection object
     :param data_dir: local data directory (./preprocessed_data)
     :return: None
@@ -201,15 +207,27 @@ def download_datasets(sftp, data_dir):
         sftp.chdir('./../..')
 
 
+def show_server_statistics(sftp):
+
+    stats.show_db_stat(data_dir)
+
+    pass
+
+
+def make_npy_from_server(sftp):
+
+    pass
+
+
 def main(is_imported, username, password, datadir, ui_callback=None):
     options = load_yaml()
-    npy_dir = os.path.join(ROOT_DIR, options['npy_dir'])
+    npy_dir = os.path.join(BASE_DIR, options['npy_dir'])
     if is_imported:
         data_dir = datadir
     else:
         data_dir = os.path.join(BASE_DIR, 'dataset')
     server_npy_log = options['server_npy_log']
-    local_npy_log = os.path.join(ROOT_DIR, options['local_npy_log'])
+    local_npy_log = os.path.join(BASE_DIR, options['local_npy_log'])
 
     if is_imported:
         sftp = pysftp.Connection(host=options['host'],
@@ -237,6 +255,8 @@ def main(is_imported, username, password, datadir, ui_callback=None):
             print('[2] Download all npy files')
             print('[3] Upload all preprocessed datasets')
             print('[4] Download all preprocessed datasets')
+            print('[5] Show server data statistics')
+            print('[6] Make npy from server data')
             mode = int(input('>> '))
 
             if mode == 1:  # Upload npy
@@ -247,6 +267,10 @@ def main(is_imported, username, password, datadir, ui_callback=None):
                 upload_datasets(sftp, data_dir)
             elif mode == 4:
                 download_datasets(sftp, data_dir)
+            elif mode == 5:
+                show_server_statistics(sftp)
+            elif mode == 6:
+                make_npy_from_server(sftp)
             else:
                 print('invalid mode!\n')
 

@@ -7,26 +7,12 @@
 .vscode
 .coverage
 tags
-src/labeling/error_log.log
 src/labeling/build/
+src/labeling/dist/
 src/labeling/dist_old/
+*.log
+
 
 # TODO: store the dataset in Git LFS (large file storage)
-npy/2019-06-20__07-01-32_X.npy
-npy/2019-06-20__07-01-32_Y.npy
-npy/2019-06-20__07-03-05_X.npy
-npy/2019-06-20__07-03-05_Y.npy
-npy/2019-06-20__07-03-21_X.npy
-npy/2019-06-20__07-03-21_Y.npy
-npy/2019-06-20__07-49-34_X.npy
-npy/2019-06-20__07-49-34_Y.npy
-npy/2019-04-02__07-57-59_X.npy
-npy/2019-04-02__07-57-59_Y.npy
-npy/2019-04-02__07-58-08_X.npy
-npy/2019-04-02__07-58-08_Y.npy
-npy/2019-04-02__08-01-41_X.npy
-npy/2019-04-02__08-01-41_Y.npy
-npy/2019-06-21__07-28-58_X.npy
-npy/2019-06-21__07-28-58_Y.npy
-npy/2019-06-21__07-35-44_X.npy
-npy/2019-06-21__07-35-44_Y.npy
+dataset
+makenp_log.txt

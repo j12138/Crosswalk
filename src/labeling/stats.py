@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import glob
 import os
 import argparse
-from pandas import DataFrame
+import pandas as pd
 import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -72,13 +72,14 @@ def show_proportion_bar(target, total):
 
     return bar
 
+def show_label_scatter_plot(db,cron=False):
 
-def show_label_scatter_plot(db):
     """ show scatter plots for computed labels.
         2 plots: loc - ang / pit - roll
     """
 
-    matplotlib.use('TkAgg')
+
+    matplotlib.use('Agg')
 
     loc = []
     ang = []
@@ -91,10 +92,12 @@ def show_label_scatter_plot(db):
             if item['invalid'] == 0:
                 loc.append(item['loc'])
                 ang.append(item['ang'])
+
                 pit.append(item['pit'] - 0.5)
                 roll.append(item['roll'])
         except:
             continue
+
 
     '''
     print('loc', max(loc), min(loc))
@@ -115,16 +118,24 @@ def show_label_scatter_plot(db):
 
     # pit, roll
     plt.subplot(122)
+
     plt.scatter(pit, roll, s=3)
     plt.xlim((-0.75, 0.75))
     plt.ylim((-30, 30))
+
     # plt.axis(option='auto')
     plt.xlabel('pit')
     plt.ylabel('roll ($^{\circ}$)')
     plt.title('pitch ─ roll')
 
-    plt.savefig('stats_label_figure.png')
-    plt.show()
+    if cron:
+        now = datetime.datetime.now()
+        nowDatetime = now.strftime('%Y-%m-%d')
+        figure_path = os.path.join('figure', 'label_' + nowDatetime + '.png')
+        plt.savefig(figure_path)
+    else:
+        plt.savefig('stats_label_figure.png')
+        plt.show()
 
 
 def show_total_stat(db):
@@ -168,6 +179,7 @@ def show_manual_meta_stat(db, total):
     one_column = 0
     two_column = 0
     odd_2column = 0
+
     old = 0
 
     for item in db:
@@ -184,7 +196,7 @@ def show_manual_meta_stat(db, total):
                 one_column = one_column + 1
             if item['column'] == 2:
                 two_column = two_column + 1
-<<<<<<< HEAD:src/stats.py
+
             '''
             if 0 <= item['zebra_ratio'] <= 20:
                 under_20 = under_20 + 1
@@ -197,10 +209,9 @@ def show_manual_meta_stat(db, total):
             if 80 < item['zebra_ratio']:
                 over_80 = over_80 + 1
             '''
-=======
-            if item['column'] == 3:
+
+            if item['column'] == 2.5:
                 odd_2column = odd_2column + 1
->>>>>>> dev_augmentor:src/labeling/stats.py
             if item['old'] == 1:
                 old = old + 1
         except Exception as e:
@@ -213,24 +224,10 @@ def show_manual_meta_stat(db, total):
     print('old:      ', show_proportion_bar(old, total), '\n')
 
     print('column:')
-<<<<<<< HEAD:src/stats.py
     print('  └─ [1]  ', show_proportion_bar(one_column, total))
     print('  └─ [2]  ', show_proportion_bar(two_column, total), '\n')
-
-    '''
-    print('zebra_ratio:')
-    print(' └─ [~20] ', show_proportion_bar(under_20, total))
-    print(' └─ [~40] ', show_proportion_bar(under_40, total))
-    print(' └─ [~60] ', show_proportion_bar(under_60, total))
-    print(' └─ [~80] ', show_proportion_bar(under_80, total))
-    print(' └─ [80~] ', show_proportion_bar(over_80, total))
-    '''
-=======
-    print('  [1]  ', show_proportion_bar(one_column, total))
-    print('  [2]  ', show_proportion_bar(two_column, total))
     print('  [1.5]', show_proportion_bar(odd_2column, total), '\n')
->>>>>>> dev_augmentor:src/labeling/stats.py
-
+    
 
 def show_exifmeta_stat(db, total):
     """ show exif metadata (internal info from imgs)
@@ -337,14 +334,16 @@ def show_db_stats(db, cron):
     now = datetime.datetime.now()
     nowDatetime = now.strftime('%Y-%m-%d')
 
-    df = DataFrame.from_dict(db)
-    columns = ['total', 'labeled', 'invalid', 'obs_car', 'obs_human',
+    df = pd.DataFrame.from_dict(db)
+    columns = ['date', 'total', 'labeled', 'invalid', 'obs_car', 'obs_human',
                'shadow', 'old', '1col', '2col', 'odd2col']
     label_range = {'loc': [-2.5, 2.5], 'ang': [-90, 90],
                    'pit': [-0.25, 1.25], 'roll': [-30, 30]}
     labels = ['loc', 'ang', 'pit', 'roll']
 
-    stats = DataFrame(index=[nowDatetime], columns=columns)
+    stats = pd.DataFrame(index=range(1), columns=columns)
+
+    stats['date'] = nowDatetime
 
     stats['total'] = df.shape[0]
     stats['labeled'] = df[df['is_input_finished']].shape[0]
@@ -358,8 +357,6 @@ def show_db_stats(db, cron):
     stats['2col'] = df[df['column'] == 2].shape[0]
     stats['odd2col'] = df[df['column'] == 2.5].shape[0]
 
-    
-
     for label in labels:
         interval = (label_range[label][1] - label_range[label][0]) / 10.0
 
@@ -372,11 +369,22 @@ def show_db_stats(db, cron):
             test = (df[label] >= b_range[0]) & (df[label] < b_range[1])
             stats[bucket] = df[test].shape[0]
 
-    df_stats = DataFrame(stats)
+    df_stats = pd.DataFrame(stats)
 
     if cron:
         with open('trend.csv', 'a', newline='') as f:
             df_stats.to_csv(f, header=False)
+
+        show_label_scatter_plot(db, cron)
+
+        with open('trend.csv', 'r') as f:
+            df_trend = pd.read_csv(f)
+            df_trend[['date', 'labeled']].plot.bar(x='date', y='labeled',
+                                                   rot=0)
+
+            figure_path = os.path.join('figure', 'num_labeled.png')
+            plt.savefig(figure_path)
+
     else:
         print(df_stats)
 
@@ -399,7 +407,6 @@ def main(args):
             show_labeling_progress(data_dir)
         else:
             print('Wrong input!\n')
-    
     else:
         show_db_stats(db, args.cron)
 
@@ -407,3 +414,4 @@ def main(args):
 if __name__ == '__main__':
     args = parse_args()
     main(args)
+

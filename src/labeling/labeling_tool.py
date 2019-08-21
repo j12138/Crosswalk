@@ -39,6 +39,15 @@ for line in check_list:
 print(check_img)
 
 
+check_list = open('./check_list.txt')
+check_img = []
+
+for line in check_list:
+    check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
+
+print(check_img)
+
+
 class LabelingTool(QWidget):
     """
     PyQt UI tool for labeling
@@ -193,23 +202,20 @@ class LabelingTool(QWidget):
 
         img_file = self.img_files[self.img_idx]
         print(img_file)
-        try:
-            cv2.imread('fake_img.png')
-            self.data = cd.CrosswalkData(img_file)
-            self.img_to_display = self.data.img.copy()
-            img = self.img_to_display
-            self.update_img(img)
-            self.__update_screen()
-            self.__draw_labeling_status()
+        self.data = cd.CrosswalkData(img_file)
+
+
+        self.img_to_display = self.data.img.copy()
+        img = self.img_to_display
+        self.update_img(img)
+        self.__update_screen()
+        self.__draw_labeling_status()
 
         # TEST #
         if os.path.normpath(img_file) in check_img:
             print('@@@ CATCH !')
 
-
-            self.update_img(img)
-        except Exception as e:
-            logging.exception(e)
+        self.update_img(img)
 
     def put_window_on_center_of_screen(self):
         qr = self.frameGeometry()

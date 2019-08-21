@@ -1,6 +1,6 @@
 local_npy_log: './makenp_log.txt'
+server_npy_log: './makenp_log.txt'
 
-server_npy_log: './npy_log.txt'
 npy_dir: 'npy'
 data_dir: 'dataset'
 

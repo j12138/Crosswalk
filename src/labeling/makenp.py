@@ -10,7 +10,8 @@ import os
 import random
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.join(BASE_DIR, "..")
+ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
@@ -26,12 +27,10 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
               'twocol': lambda x: x['column'] == 2,
               'odd2col': lambda x: x['column'] == 3,
               'boundary': lambda x: abs(float(x['loc'])) > 0.8,
-<<<<<<< HEAD:src/makenp.py
-              'old': lambda x: x['old'] == 1
-=======
               'old': lambda x: x['old'] == 1,
-              'random 0.8/0.2': None
->>>>>>> dev_augmentor:src/labeling/makenp.py
+              'random 0.8/0.2': None,
+              'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0
+
               }
 
 
@@ -80,7 +79,6 @@ def choose_process():
     """
 
     print('\n------- additional process -------')
-    print('* Just Enter for skip each process')
     print('[1] Resize with fixed ratio')
     resize_width = input('  width: ')
     print('[2] Cut off upper img')
@@ -116,7 +114,9 @@ def show_and_pick_filters(filterlist):
 
     print('----------------------------')
     print('select filters (ex: 1 2 3 4 5)')
-    picked_num = input('  *here: ')
+
+    picked_num = input('└─ here: ')
+
     picked_num_list = picked_num.split(' ')
 
     filter_keys = list(filterlist.keys())
@@ -146,7 +146,10 @@ def process(img, processes):
         H, W = img.shape[:2]
     # cut
     if height > 0:
-        cutoff_upper = int((H - height)/2)
+        cutoff_upper = int((H - height) / 2)
+        if cutoff_upper < 0:
+            raise Exception('your height is shorter than resized height!')
+
         img = img[cutoff_upper:cutoff_upper + height, :]
     # adjust
     if gray == 1:
@@ -196,7 +199,8 @@ class DBMS(object):
 
         if 'random 0.8/0.2' in self.filters:
             if len(self.filters) > 1:
-                os.error('<random> options cannot be selected with others')
+                raise Exception('<random> options cannot be selected with others')
+
             else:
                 self.query_random()
                 return
@@ -214,7 +218,8 @@ class DBMS(object):
 
                     if suc:
                         img_path = os.path.join(dir, 'labeled', item['filehash'])
-                        # print('Success: ' + img_path)
+                        print('Success: ' + img_path)
+
 
                         self.query_list[img_path] = (item['loc'], item['ang'])
 
@@ -293,6 +298,8 @@ class DBMS(object):
 
             # additional process (resize, cut, grayscale)
             img = process(img, self.processes)
+            self.processes = self.processes[0], img.shape[0], self.processes[2]
+
             x_train.append(img)
             y_train.append(label)
 
@@ -301,13 +308,12 @@ class DBMS(object):
 
         # npy file name convention
         nowDatetime = self.__write_log(cnt, validation)
-        save_prefix = os.path.join(ROOT_DIR, 'npy', nowDatetime)
+        save_prefix = os.path.join(BASE_DIR, 'npy', nowDatetime)
         print(save_prefix)
-
         np.save(save_prefix + '_X.npy', x_train)
         np.save(save_prefix + '_Y.npy', y_train)
 
-    def __write_log(self, num, validation):
+    def __write_log(self, num):
         """ write information of current npy packaging.
         :param num: number of packed data
         """
@@ -323,7 +329,9 @@ class DBMS(object):
             process_line = process_line + '\t' + str(self.processes[i])
         print(process_line)
 
-        with open(os.path.join(ROOT_DIR, './makenp_log.txt'), "a") as f:
+
+        with open(os.path.join(BASE_DIR, './makenp_log.txt'), "a") as f:
+
             f.write(
                 nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
                 + '\t' + str(self.processes) + '\n')
@@ -334,6 +342,7 @@ class DBMS(object):
 def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
+    db = DBMS(data_dir, picked_filters, picked_process)
 
     data_dir = os.path.join(BASE_DIR, options['data_dir'])
     db = DBMS(data_dir, picked_filters, picked_process)
@@ -341,7 +350,6 @@ def make_npy_file(options, picked_filters, picked_process):
     db.make_npy()
     if db.val_query_list != None:
         db.make_npy(validation=True)
-
 
 def main():
     options = load_yaml()

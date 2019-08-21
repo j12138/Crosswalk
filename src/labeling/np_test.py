@@ -3,8 +3,8 @@ import cv2
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.join(BASE_DIR, "..")
-npy_log_file = os.path.join(ROOT_DIR, 'makenp_log.txt')
+ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+npy_log_file = os.path.join(BASE_DIR, 'makenp_log.txt')
 
 
 def select_npy_data(npy_log_file):
@@ -33,7 +33,7 @@ def select_npy_data(npy_log_file):
         print(picked_npy_file)
         img_spec = picked_line[-1].strip('(').strip(')').split(', ')
 
-        path_prefix = os.path.join(ROOT_DIR, 'npy', picked_npy_file)
+        path_prefix = os.path.join(BASE_DIR, 'npy', picked_npy_file)
         x_npy = path_prefix + '_X.npy'
         y_npy = path_prefix + '_Y.npy'
 

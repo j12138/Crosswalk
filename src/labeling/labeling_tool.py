@@ -30,6 +30,14 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
+check_list = open('./check_list.txt')
+check_img = []
+
+for line in check_list:
+    check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
+
+print(check_img)
+
 
 class LabelingTool(QWidget):
     """
@@ -184,15 +192,20 @@ class LabelingTool(QWidget):
             return
 
         img_file = self.img_files[self.img_idx]
+        print(img_file)
         try:
             cv2.imread('fake_img.png')
             self.data = cd.CrosswalkData(img_file)
-
             self.img_to_display = self.data.img.copy()
             img = self.img_to_display
             self.update_img(img)
             self.__update_screen()
             self.__draw_labeling_status()
+
+        # TEST #
+        if os.path.normpath(img_file) in check_img:
+            print('@@@ CATCH !')
+
 
             self.update_img(img)
         except Exception as e:
@@ -745,6 +758,7 @@ class LabelingController:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--validate', action="store_true")
+    parser.add_argument('-s', '--select', action="store_true")
     parser.add_argument('data_path', help='Path of folder containing images',
                         default='', type=str)
     return parser.parse_args()

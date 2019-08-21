@@ -7,10 +7,11 @@ from scipy.misc import imread
 import datetime
 import glob
 import os
+import random
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..")
-config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
+config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
 # coding=utf-8
@@ -23,12 +24,14 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
               'human': lambda x: x['obs_human'] == 1,
               'onecol': lambda x: x['column'] == 1,
               'twocol': lambda x: x['column'] == 2,
+              'odd2col': lambda x: x['column'] == 3,
               'boundary': lambda x: abs(float(x['loc'])) > 0.8,
+<<<<<<< HEAD:src/makenp.py
+              'old': lambda x: x['old'] == 1
+=======
               'old': lambda x: x['old'] == 1,
-              'not_out_of_range': lambda x: x['out_of_range'] == 0,
-              'no_obs_not_old_over_60':
-                  lambda x: (x['obs_car'] == 0 and x['obs_human'] == 0 and x[
-                      'old'] == 0 and x['zebra_ratio'] >= 60)
+              'random 0.8/0.2': None
+>>>>>>> dev_augmentor:src/labeling/makenp.py
               }
 
 
@@ -113,7 +116,7 @@ def show_and_pick_filters(filterlist):
 
     print('----------------------------')
     print('select filters (ex: 1 2 3 4 5)')
-    picked_num = input('└─ here: ')
+    picked_num = input('  *here: ')
     picked_num_list = picked_num.split(' ')
 
     filter_keys = list(filterlist.keys())
@@ -135,6 +138,7 @@ def show_and_pick_filters(filterlist):
 
 def process(img, processes):
     width, height, gray = processes
+    H, W = img.shape[:2]
 
     # resizing
     if width > 0:
@@ -142,7 +146,8 @@ def process(img, processes):
         H, W = img.shape[:2]
     # cut
     if height > 0:
-        img = img[int(H - height):, :]
+        cutoff_upper = int((H - height)/2)
+        img = img[cutoff_upper:cutoff_upper + height, :]
     # adjust
     if gray == 1:
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -168,6 +173,7 @@ class DBMS(object):
         self.filters = picked_filters  # keys
         self.processes = picked_process
         self.query_list = {}
+        self.val_query_list = None
 
     def __load(self, dir):
         """ load DB file of current dataset.
@@ -187,6 +193,13 @@ class DBMS(object):
         """ Collect filtered data at self.query_list. """
 
         print(self.filters)
+
+        if 'random 0.8/0.2' in self.filters:
+            if len(self.filters) > 1:
+                os.error('<random> options cannot be selected with others')
+            else:
+                self.query_random()
+                return
 
         for dir in self.child_dirs:
             for item in self.__load(dir):
@@ -212,12 +225,57 @@ class DBMS(object):
             # print(query_list)
         print('Selected data: ', len(self.query_list))
 
-    def make_npy(self):
+    def query_random(self):
+        all_data, total = self.__get_total_data()
+        val_num = int(total * 0.2)
+        val_idx = random.sample(range(0, total), val_num)
+        self.val_query_list = {}
+
+        all_img_path = list(all_data.keys())
+
+        for idx in val_idx:
+            key = all_img_path[idx]
+            label = all_data.pop(key)
+
+            self.val_query_list[key] = label
+
+        self.query_list = all_data
+
+        print('Selected data: ', len(self.query_list))
+        print('Validation data: ', len(self.val_query_list))
+
+        return
+
+    def __get_total_data(self):
+        all_data = {}
+        total = 0
+
+        for dir in self.child_dirs:
+            for item in self.__load(dir):
+                if not item['is_input_finished']:
+                    continue
+
+                try:
+                    img_path = os.path.join(dir, 'labeled', item['filehash'])
+                    # print('Success: ' + img_path)
+                    all_data[img_path] = (item['loc'], item['ang'])
+                    total = total + 1
+                except:
+                    continue
+
+        print('Total {} data'.format(total))
+
+        return all_data, total
+
+    def make_npy(self, validation=False):
         """ Make npy files for training, from query_list """
 
         x_train = []  # image array
         y_train = []  # labels
         cv2.namedWindow('tool')
+
+        if validation:
+            self.query_list = self.val_query_list
 
         for item in self.query_list:
             img_path = item
@@ -242,19 +300,24 @@ class DBMS(object):
         print('Packed data: ', cnt)
 
         # npy file name convention
-        nowDatetime = self.__write_log(cnt)
+        nowDatetime = self.__write_log(cnt, validation)
         save_prefix = os.path.join(ROOT_DIR, 'npy', nowDatetime)
         print(save_prefix)
+
         np.save(save_prefix + '_X.npy', x_train)
         np.save(save_prefix + '_Y.npy', y_train)
 
-    def __write_log(self, num):
+    def __write_log(self, num, validation):
         """ write information of current npy packaging.
         :param num: number of packed data
         """
 
         now = datetime.datetime.now()
         nowDatetime = now.strftime('%Y-%m-%d__%H-%M-%S')
+
+        if validation:
+            nowDatetime = nowDatetime + '_val'
+
         process_line = ''
         for i in range(len(self.processes)):
             process_line = process_line + '\t' + str(self.processes[i])
@@ -271,10 +334,13 @@ class DBMS(object):
 def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
+
+    data_dir = os.path.join(BASE_DIR, options['data_dir'])
     db = DBMS(data_dir, picked_filters, picked_process)
     db.query()
     db.make_npy()
+    if db.val_query_list != None:
+        db.make_npy(validation=True)
 
 
 def main():

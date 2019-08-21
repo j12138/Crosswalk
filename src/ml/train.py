@@ -19,6 +19,7 @@ from Generator.augmentation import BatchGenerator
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+labeling_dir = os.path.join(ROOT_DIR, 'src', 'labeling')
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 train_npy_idx = -1
 
@@ -65,7 +66,7 @@ def select_npy_data(npy_log_file, picked_train_npy):
         print(picked_npy_file)
         img_spec = picked_line[-1].strip('(').strip(')').split(', ')
 
-        path_prefix = os.path.join(ROOT_DIR, 'npy', picked_npy_file)
+        path_prefix = os.path.join(labeling_dir, 'npy', picked_npy_file)
         x_npy = path_prefix + '_X.npy'
         y_npy = path_prefix + '_Y.npy'
 
@@ -77,7 +78,7 @@ options = loadyaml(config_file)
 print('Training Configuration')
 print(yaml.dump(options, default_flow_style=False, default_style=''))
 
-npy_log_file = os.path.join(ROOT_DIR, options['npy_log_file'])
+npy_log_file = os.path.join(labeling_dir, options['npy_log_file'])
 # choose your training data
 print('Choose train npy:')
 x_npy, y_npy, img_spec, idx = select_npy_data(npy_log_file, -1)

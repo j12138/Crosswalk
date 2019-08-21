@@ -7,6 +7,7 @@ import cv2
 import os, sys, glob
 import json
 import time
+import logging
 from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
@@ -19,12 +20,24 @@ from PyQt5.QtCore import Qt, pyqtSignal
 import compute_label_lib as cl
 import crosswalk_data as cd
 
-test_dir = os.path.abspath(os.path.dirname(__file__))
-print(test_dir)
 
 fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 startTime = 0
+
+logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
+                    level=logging.WARNING,
+                    format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+
+check_list = open('./check_list.txt')
+check_img = []
+
+for line in check_list:
+    check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
+
+print(check_img)
 
 
 class LabelingTool(QWidget):
@@ -63,9 +76,7 @@ class LabelingTool(QWidget):
             # 'cb_outrange': QCheckBox('out_of_range'),
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
-            'rb_odd2col': QRadioButton('Odd 2 Columns'),
-            # 'rb_ratio': [QRadioButton('20'), QRadioButton('40'),
-            #              QRadioButton('60'), QRadioButton('80')]
+            'rb_odd2col': QRadioButton('Odd 2 Columns')
         }
         self.initUI()
 
@@ -100,7 +111,7 @@ class LabelingTool(QWidget):
         self.setLayout(grid)
 
         self.gbox_image = QGroupBox(
-            "Image ( 0 / {} ) {}".format(len(self.img_files), test_dir))
+            "Image ( 0 / {} )".format(len(self.img_files)))
 
         vbox_image = QVBoxLayout()
         vbox_image.addWidget(self.label_img)
@@ -177,14 +188,23 @@ class LabelingTool(QWidget):
             self.close()
             return
 
+        if len(self.img_files) == 0:
+            self.close()
+            return
+
         img_file = self.img_files[self.img_idx]
+        print(img_file)
         self.data = cd.CrosswalkData(img_file)
 
-        self.img_to_display = self.data.img.copy()
-        img = self.img_to_display
-        self.update_img(img)
-        self.__update_screen()
-        self.__draw_labeling_status()
+            self.img_to_display = self.data.img.copy()
+            img = self.img_to_display
+            self.update_img(img)
+            self.__update_screen()
+            self.__draw_labeling_status()
+
+        # TEST #
+        if os.path.normpath(img_file) in check_img:
+            print('@@@ CATCH !')
 
         self.update_img(img)
 
@@ -402,16 +422,19 @@ class LabelingTool(QWidget):
     def update_img(self, img):
         """ Update img component of UI to current img to display.
         """
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        qimage = QImage(img, img.shape[1], img.shape[0],
-                        img.shape[1] * 3, QImage.Format_RGB888)
-        pixmap = QPixmap(qimage)
-        self.imgsize = pixmap.size()
-        # pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
-        self.label_img.setPixmap(pixmap)
-        self.gbox_image.setTitle(
-            'Image ( {} / {} )'.format(self.img_idx + 1,
-                                       len(self.img_files)))
+        try:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            qimage = QImage(img, img.shape[1], img.shape[0],
+                            img.shape[1] * 3, QImage.Format_RGB888)
+            pixmap = QPixmap(qimage)
+            self.imgsize = pixmap.size()
+            # pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
+            self.label_img.setPixmap(pixmap)
+            self.gbox_image.setTitle(
+                'Image ( {} / {} )'.format(self.img_idx + 1,
+                                           len(self.img_files)))
+        except Exception as e:
+            logging.error(e)
 
     def save_labeling_status(self):
         """ save current labeling status at DB file.
@@ -523,6 +546,15 @@ class LabelingTool(QWidget):
 
     def closeEvent(self, event):
         """ This method is called when the window gets 'close()' signal """
+
+        if len(self.img_files) == 0:
+            msg = 'There are NO imgs to label!'
+            close_msg = QMessageBox()
+            close_msg.setStandardButtons(QMessageBox.Cancel)
+            close_msg.setWindowTitle('Error')
+            close_msg.exec_()
+            self.window_switch_signal.emit()
+            return
 
         process = 'Labeled img: {} / {}\n\n'.format(len(self.done_img_idx),
                                                     len(self.img_files))
@@ -718,6 +750,7 @@ class LabelingController:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--validate', action="store_true")
+    parser.add_argument('-s', '--select', action="store_true")
     parser.add_argument('data_path', help='Path of folder containing images',
                         default='', type=str)
     return parser.parse_args()
@@ -747,7 +780,12 @@ def main(args):
             return
     else:
         data_path = os.path.join(args.data_path, 'preprocessed')
-    launch_annotator()
+
+    app = QApplication(sys.argv)
+    app.setStyle(QStyleFactory.create('Fusion'))
+    app.setFont(QFont("Calibri", 10))
+    tool = LabelingTool(data_path, startTime)
+    tool.launch()
 
 
 if __name__ == "__main__":

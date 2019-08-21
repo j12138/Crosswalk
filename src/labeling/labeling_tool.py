@@ -31,6 +31,15 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     datefmt='%Y-%m-%d %H:%M:%S')
 
 
+check_list = open('./check_list.txt')
+check_img = []
+
+for line in check_list:
+    check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
+
+print(check_img)
+
+
 class LabelingTool(QWidget):
     """
     PyQt UI tool for labeling
@@ -184,9 +193,8 @@ class LabelingTool(QWidget):
             return
 
         img_file = self.img_files[self.img_idx]
-        try:
-            cv2.imread('fake_img.png')
-            self.data = cd.CrosswalkData(img_file)
+        print(img_file)
+        self.data = cd.CrosswalkData(img_file)
 
             self.img_to_display = self.data.img.copy()
             img = self.img_to_display
@@ -194,9 +202,11 @@ class LabelingTool(QWidget):
             self.__update_screen()
             self.__draw_labeling_status()
 
-            self.update_img(img)
-        except Exception as e:
-            logging.exception(e)
+        # TEST #
+        if os.path.normpath(img_file) in check_img:
+            print('@@@ CATCH !')
+
+        self.update_img(img)
 
     def put_window_on_center_of_screen(self):
         qr = self.frameGeometry()
@@ -740,6 +750,7 @@ class LabelingController:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--validate', action="store_true")
+    parser.add_argument('-s', '--select', action="store_true")
     parser.add_argument('data_path', help='Path of folder containing images',
                         default='', type=str)
     return parser.parse_args()

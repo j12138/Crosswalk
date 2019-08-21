@@ -190,6 +190,7 @@ def find_otherside_line(p1, p2, p3, p4, image_width, image_height):
 
 def compute_all_labels(imgW, imgH, all_points, is_odd2col):
     p1, p2, p3, p4, p5, p6 = tuple(all_points)
+    print(imgW, imgH, all_points, is_odd2col)
 
     if is_odd2col:
         # 한쪽 side만 보이는 2 column인 경우
@@ -215,10 +216,10 @@ def compute_all_labels(imgW, imgH, all_points, is_odd2col):
     loc = compute_loc(mid_pt, imgW, bottom_width)
     ang = compute_angle2(left_line, right_line, imgW, imgH)
 
-    print(imgW, imgH, all_points, is_odd2col)
-    print('prev:', compute_angle(left_line, right_line, mid_pt, imgH))
-    print('new:', ang)
-    print('new2:', compute_angle3(p1, p3, loc, imgW, imgH))
+    
+    # print('prev:', compute_angle(left_line, right_line, mid_pt, imgH))
+    # print('new:', ang)
+    # print('new2:', compute_angle3(p1, p3, loc, imgW, imgH))
 
     mid = mid_point(p5, p6)
     slope = line(p5, p6)[0]

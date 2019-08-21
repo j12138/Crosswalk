@@ -538,63 +538,8 @@ class ProgressBar(QWidget):
         self.move(qr.topLeft())
 
 
-class PreprocessThread(QThread):
+def main():
+    pass
 
-    change_value = pyqtSignal(int)
-
-    def __init__(self, datadir, userid):
-        QThread.__init__(self)
-        self.cond = QWaitCondition()
-        self.mutex = QMutex()
-
-        self.datadir = datadir
-        self.userid = userid
-        self.options = load_yaml()
-        self.metadata = extract_metadata(datadir, list(self.options['exifmeta']),
-                                    self.options['widgets'])
-        self.save_dir_prefix, self.save_dir, self.files, self.output_dir = process_dir(self.datadir, self.options, self.userid)
-        update_database(self.metadata, self.save_dir)
-
-        self.cnt = 0
-        self.numdata = len(self.files)
-        self._status = True
-
-    def __del__(self):
-        self.wait()
-
-    def run(self):
-        while True:
-            self.mutex.lock()
-
-            if not self._status:
-                self.cond.wait(self.mutex)
-
-            img = self.files[self.cnt]
-            resize_and_save(self.datadir, self.output_dir, img)
-
-            self.cnt += 1
-            self.change_value.emit(self._comput_progress_value(self.cnt))
-            self.msleep(100)
-
-            if self.cnt >= self.numdata:
-                self.change_value.emit(100)
-                self._status = False
-
-            self.mutex.unlock()
-
-    def toggle_status(self):
-        self._status = not self._status
-        if self._status:
-            self.cond.wakeAll()
-
-    def _comput_progress_value(self, cnt):
-        prop = (float(cnt) / float(self.numdata)) * 100.0
-        
-        return int(prop)
-
-    @property
-    def status(self):
-        return self._status
-    
-
-            
+if __name__ == "__main__":
+    main()

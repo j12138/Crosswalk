@@ -26,11 +26,7 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
 def load_yaml():
 
     if os.environ.get('FROZEN'):
-        # if code was called by executive file
-        options = {'local_npy_log': './makenp_log.txt',
-        'server_npy_log': './npy_log.txt', 'npy_dir': 'npy',
-        'data_dir': 'preprocessed_data',
-        'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
+        options = {'local_npy_log': './makenp_log.txt', 'server_npy_log': './makenp_log.txt', 'npy_dir': 'npy', 'data_dir': 'preprocessed_data', 'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
     else:
         with open(config_file, 'r') as stream:
             options = yaml.load(stream)
@@ -90,13 +86,15 @@ def download_all_npy(sftp, npy_dir, server_log, local_log):
         lines = f.readlines()
         sftp.chdir('npy')
 
+        print(lines)
+
         for line in lines:
             if line[:2] == '//':
                 continue
 
             line_item = (line.rstrip()).split('\t')
             npy_file = line_item[0]
-            # print(npy_file)
+            print(npy_file)
 
             if os.path.exists(os.path.join(npy_dir, npy_file) + '_X.npy'):
                 continue

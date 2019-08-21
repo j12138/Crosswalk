@@ -1,2 +1,0 @@
-//date		#_of_imgs		applied_filters	img_spec(width, height, grayscale)
-2019-06-26__08-08-16	185	['not_out_of_range']	(400, 400, '1')

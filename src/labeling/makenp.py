@@ -8,12 +8,10 @@ import datetime
 import glob
 import os
 import random
-# from cProfile import Profile
-# from pstats import Stats
-# from bisect import bisect_left
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
+
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 
 
@@ -32,6 +30,7 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
               'old': lambda x: x['old'] == 1,
               'random 0.8/0.2': None,
               'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0
+
               }
 
 
@@ -115,7 +114,9 @@ def show_and_pick_filters(filterlist):
 
     print('----------------------------')
     print('select filters (ex: 1 2 3 4 5)')
+
     picked_num = input('└─ here: ')
+
     picked_num_list = picked_num.split(' ')
 
     filter_keys = list(filterlist.keys())
@@ -148,6 +149,7 @@ def process(img, processes):
         cutoff_upper = int((H - height) / 2)
         if cutoff_upper < 0:
             raise Exception('your height is shorter than resized height!')
+
         img = img[cutoff_upper:cutoff_upper + height, :]
     # adjust
     if gray == 1:
@@ -174,6 +176,7 @@ class DBMS(object):
         self.filters = picked_filters  # keys
         self.processes = picked_process
         self.query_list = {}
+        self.val_query_list = None
 
     def __load(self, dir):
         """ load DB file of current dataset.
@@ -197,6 +200,7 @@ class DBMS(object):
         if 'random 0.8/0.2' in self.filters:
             if len(self.filters) > 1:
                 raise Exception('<random> options cannot be selected with others')
+
             else:
                 self.query_random()
                 return
@@ -216,6 +220,7 @@ class DBMS(object):
                         img_path = os.path.join(dir, 'labeled', item['filehash'])
                         print('Success: ' + img_path)
 
+
                         self.query_list[img_path] = (item['loc'], item['ang'])
 
                 except:
@@ -225,12 +230,57 @@ class DBMS(object):
             # print(query_list)
         print('Selected data: ', len(self.query_list))
 
-    def make_npy(self):
+    def query_random(self):
+        all_data, total = self.__get_total_data()
+        val_num = int(total * 0.2)
+        val_idx = random.sample(range(0, total), val_num)
+        self.val_query_list = {}
+
+        all_img_path = list(all_data.keys())
+
+        for idx in val_idx:
+            key = all_img_path[idx]
+            label = all_data.pop(key)
+
+            self.val_query_list[key] = label
+
+        self.query_list = all_data
+
+        print('Selected data: ', len(self.query_list))
+        print('Validation data: ', len(self.val_query_list))
+
+        return
+
+    def __get_total_data(self):
+        all_data = {}
+        total = 0
+
+        for dir in self.child_dirs:
+            for item in self.__load(dir):
+                if not item['is_input_finished']:
+                    continue
+
+                try:
+                    img_path = os.path.join(dir, 'labeled', item['filehash'])
+                    # print('Success: ' + img_path)
+                    all_data[img_path] = (item['loc'], item['ang'])
+                    total = total + 1
+                except:
+                    continue
+
+        print('Total {} data'.format(total))
+
+        return all_data, total
+
+    def make_npy(self, validation=False):
         """ Make npy files for training, from query_list """
 
         x_train = []  # image array
         y_train = []  # labels
         cv2.namedWindow('tool')
+
+        if validation:
+            self.query_list = self.val_query_list
 
         for item in self.query_list:
             img_path = item
@@ -239,7 +289,7 @@ class DBMS(object):
                 img = imread(img_path, mode='RGB')
                 cv2.imshow('tool', img)
             except Exception:
-                print('Fail: ' + hash)
+                # print('Fail: ' + hash)
                 continue
 
             # print('Success: ' + hash)
@@ -249,6 +299,7 @@ class DBMS(object):
             # additional process (resize, cut, grayscale)
             img = process(img, self.processes)
             self.processes = self.processes[0], img.shape[0], self.processes[2]
+
             x_train.append(img)
             y_train.append(label)
 
@@ -269,12 +320,18 @@ class DBMS(object):
 
         now = datetime.datetime.now()
         nowDatetime = now.strftime('%Y-%m-%d__%H-%M-%S')
+
+        if validation:
+            nowDatetime = nowDatetime + '_val'
+
         process_line = ''
         for i in range(len(self.processes)):
             process_line = process_line + '\t' + str(self.processes[i])
         print(process_line)
 
+
         with open(os.path.join(BASE_DIR, './makenp_log.txt'), "a") as f:
+
             f.write(
                 nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
                 + '\t' + str(self.processes) + '\n')
@@ -285,14 +342,16 @@ class DBMS(object):
 def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
+    db = DBMS(data_dir, picked_filters, picked_process)
+
+    data_dir = os.path.join(BASE_DIR, options['data_dir'])
     db = DBMS(data_dir, picked_filters, picked_process)
     db.query()
     db.make_npy()
-
+    if db.val_query_list != None:
+        db.make_npy(validation=True)
 
 def main():
-    
     options = load_yaml()
     picked_filters = show_and_pick_filters(filterlist)  # key
     picked_process = choose_process()
@@ -300,13 +359,4 @@ def main():
 
 
 if __name__ == "__main__":
-    '''
-    profiler = Profile()
-    profiler.runcall(main)
-
-    stats = Stats(profiler)
-    stats.strip_dirs()
-    stats.sort_stats('cumulative')
-    stats.print_stats()
-    '''
     main()

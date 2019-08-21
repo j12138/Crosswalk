@@ -1,6 +1,7 @@
 import json
 import yaml
 from math import ceil
+import matplotlib
 import matplotlib.pyplot as plt
 import glob
 import os
@@ -10,7 +11,14 @@ import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..")
-config_file = os.path.join(BASE_DIR, 'labeling', 'config.yaml')
+config_file = os.path.join(BASE_DIR, 'config.yaml')
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--visualize', action="store_true")
+    parser.add_argument('-c', '--cron', action="store_true")
+    return parser.parse_args()
 
 
 def collect_all_db(data_dir):
@@ -59,16 +67,17 @@ def show_proportion_bar(target, total):
         proportion = 100 * float(target) / total
         blocks = ceil(proportion * 0.25)
 
-    bar = '█' * blocks + '░' * (25 - blocks) + ' [ ' + str(target) +\
+    bar = '=' * blocks + '.' * (25 - blocks) + ' [ ' + str(target) +\
           ' / ' + str(total) + ' ]'
 
     return bar
 
-
 def show_label_scatter_plot(db,cron=False):
+
     """ show scatter plots for computed labels.
         2 plots: loc - ang / pit - roll
     """
+
 
     matplotlib.use('Agg')
 
@@ -83,16 +92,25 @@ def show_label_scatter_plot(db,cron=False):
             if item['invalid'] == 0:
                 loc.append(item['loc'])
                 ang.append(item['ang'])
-                pit.append(item['pit'])
+
+                pit.append(item['pit'] - 0.5)
                 roll.append(item['roll'])
         except:
             continue
 
+
+    '''
+    print('loc', max(loc), min(loc))
+    print('ang', max(ang), min(ang))
+    print('pit', max(pit), min(pit))
+    print('roll', max(roll), min(roll))
+    '''
+
     plt.figure(figsize=(10, 4))
     # loc, ang
     plt.subplot(121)
-    plt.scatter(loc, ang)
-    plt.xlim((-2.0, 2.0))
+    plt.scatter(loc, ang, s=3)
+    plt.xlim((-2.5, 2.5))
     plt.ylim((-90, 90))
     plt.xlabel('loc')
     plt.ylabel('ang ($^{\circ}$)')
@@ -100,9 +118,11 @@ def show_label_scatter_plot(db,cron=False):
 
     # pit, roll
     plt.subplot(122)
-    plt.scatter(pit, roll)
-    plt.xlim((0.0, 1.0))
-    plt.ylim((-20, 20))
+
+    plt.scatter(pit, roll, s=3)
+    plt.xlim((-0.75, 0.75))
+    plt.ylim((-30, 30))
+
     # plt.axis(option='auto')
     plt.xlabel('pit')
     plt.ylabel('roll ($^{\circ}$)')
@@ -141,7 +161,7 @@ def show_total_stat(db):
     print('total_#: ', cnt)
     print('labeled: ', labeled)
     print('invalid: ', invalid)
-    print('*valid(labeled): ' + show_proportion_bar(labeled-invalid, labeled))
+    print('valid(labeled): ' + show_proportion_bar(labeled-invalid, labeled))
 
     return cnt, labeled
 
@@ -158,11 +178,8 @@ def show_manual_meta_stat(db, total):
     shadow = 0
     one_column = 0
     two_column = 0
-    under_20 = 0
-    under_40 = 0
-    under_60 = 0
-    under_80 = 0
-    over_80 = 0
+    odd_2column = 0
+
     old = 0
 
     for item in db:
@@ -179,6 +196,7 @@ def show_manual_meta_stat(db, total):
                 one_column = one_column + 1
             if item['column'] == 2:
                 two_column = two_column + 1
+
             '''
             if 0 <= item['zebra_ratio'] <= 20:
                 under_20 = under_20 + 1
@@ -191,6 +209,9 @@ def show_manual_meta_stat(db, total):
             if 80 < item['zebra_ratio']:
                 over_80 = over_80 + 1
             '''
+
+            if item['column'] == 2.5:
+                odd_2column = odd_2column + 1
             if item['old'] == 1:
                 old = old + 1
         except Exception as e:
@@ -205,16 +226,8 @@ def show_manual_meta_stat(db, total):
     print('column:')
     print('  └─ [1]  ', show_proportion_bar(one_column, total))
     print('  └─ [2]  ', show_proportion_bar(two_column, total), '\n')
-
-    '''
-    print('zebra_ratio:')
-    print(' └─ [~20] ', show_proportion_bar(under_20, total))
-    print(' └─ [~40] ', show_proportion_bar(under_40, total))
-    print(' └─ [~60] ', show_proportion_bar(under_60, total))
-    print(' └─ [~80] ', show_proportion_bar(under_80, total))
-    print(' └─ [80~] ', show_proportion_bar(over_80, total))
-    '''
-
+    print('  [1.5]', show_proportion_bar(odd_2column, total), '\n')
+    
 
 def show_exifmeta_stat(db, total):
     """ show exif metadata (internal info from imgs)
@@ -246,15 +259,12 @@ def show_exifmeta_stat(db, total):
 
     print('horizontal:', show_proportion_bar(horizontal, total))
     print('\nMake')
-    print('└─Samsung:', show_proportion_bar(Samsung, total))
-    print('└─Apple:  ', show_proportion_bar(Apple, total))
-    print('└─Others: ', show_proportion_bar(make_other, total))
+    print('  Samsung:', show_proportion_bar(Samsung, total))
+    print('  Apple:  ', show_proportion_bar(Apple, total))
+    print('  Others: ', show_proportion_bar(make_other, total))
 
 
-def show_db_stat(data_dir):
-    db2 = collect_all_db(data_dir)
-    db = db2.values()
-
+def show_db_stat(db):
     print('\n--------- total ---------\n')
     total, labeled = show_total_stat(db)
 
@@ -267,7 +277,6 @@ def show_db_stat(data_dir):
 
     print('\n--------- manual metadata (labeled) ---------\n')
     show_manual_meta_stat(db, labeled)
-
     show_label_scatter_plot(db)
 
     print('')
@@ -335,6 +344,7 @@ def show_db_stats(db, cron):
     stats = pd.DataFrame(index=range(1), columns=columns)
 
     stats['date'] = nowDatetime
+
     stats['total'] = df.shape[0]
     stats['labeled'] = df[df['is_input_finished']].shape[0]
     stats['invalid'] = df[df['invalid'] == 1].shape[0]
@@ -380,10 +390,6 @@ def show_db_stats(db, cron):
 
     pass
 
-    print('\n[1] Show total DB statistics')
-    print('[2] Show labeling progress\n')
-    mode = input('Choose mode: ')
-    data_dir = os.path.join(ROOT_DIR, options['data_dir'])
 
 def main(args):
     options = loadyaml()
@@ -401,10 +407,11 @@ def main(args):
             show_labeling_progress(data_dir)
         else:
             print('Wrong input!\n')
-
     else:
-        print('Wrong input!\n')
+        show_db_stats(db, args.cron)
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)
+

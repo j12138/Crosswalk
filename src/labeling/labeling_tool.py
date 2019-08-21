@@ -30,6 +30,14 @@ logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
+check_list = open('./check_list.txt')
+check_img = []
+
+for line in check_list:
+    check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
+
+print(check_img)
+
 
 check_list = open('./check_list.txt')
 check_img = []
@@ -196,11 +204,12 @@ class LabelingTool(QWidget):
         print(img_file)
         self.data = cd.CrosswalkData(img_file)
 
-            self.img_to_display = self.data.img.copy()
-            img = self.img_to_display
-            self.update_img(img)
-            self.__update_screen()
-            self.__draw_labeling_status()
+
+        self.img_to_display = self.data.img.copy()
+        img = self.img_to_display
+        self.update_img(img)
+        self.__update_screen()
+        self.__draw_labeling_status()
 
         # TEST #
         if os.path.normpath(img_file) in check_img:
@@ -728,21 +737,26 @@ class LabelingController:
     """
     Controller class for switching windows
     """
-    def __init__(self):
+    def __init__(self, validation=False):
         print('labelingCont_init')
         self.selector = DataSelector()
         self.selector.set_data_dir()
+        self.validation = validation
 
     def show_selector(self):
         print('show_selector')
         self.selector.window_switch_signal.connect(self.show_tool)
-        # self.selector.show()
+        self.selector.show()
 
     def show_tool(self, dir_path):
         print('show_tool')
         global startTime
         startTime = time.time()
-        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+
+        if (self.validation):
+            self.tool = LabelingTool(os.path.join(dir_path, 'labeled'), startTime)
+        else:
+            self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
         self.selector.close()
         self.tool.launch()
 
@@ -756,7 +770,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def launch_annotator():
+def launch_annotator(validation=False):
     """ the actual 'main' function.
     Other modules that import this module shall call this as the entry
     point.
@@ -766,7 +780,10 @@ def launch_annotator():
     app.setStyle(QStyleFactory.create('Fusion'))
     app.setFont(QFont("Calibri", 10))
 
-    labeling_controller = LabelingController()
+    if validation:
+        labeling_controller = LabelingController(validation=True)
+    else:
+        labeling_controller = LabelingController()
     labeling_controller.show_selector()
 
     sys.exit(app.exec_())
@@ -774,10 +791,7 @@ def launch_annotator():
 
 def main(args):
     if (args.validate):
-        data_path = os.path.join(args.data_path, 'labeled')
-        if len(glob.glob(data_path + '/*')) <= 0:
-            print('There are no labeled img')
-            return
+        launch_annotator(validation=True)
     else:
         data_path = os.path.join(args.data_path, 'preprocessed')
 
@@ -789,7 +803,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    if (len(sys.argv) < 2):
+    if (len(sys.argv) < 1):
         launch_annotator()
         sys.exit(0)
 

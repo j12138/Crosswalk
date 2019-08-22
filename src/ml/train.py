@@ -54,17 +54,18 @@ def select_npy_data(npy_log_file, picked_train_npy):
                 continue
             cnt = cnt + 1
             if cnt == picked_train_npy:
-                print('[*]', line.strip())
+                print('[*]', line.strip().replace(',', '\t'))
             else:
-                print('['+str(cnt)+']', line.strip())
+                print('['+str(cnt)+']', line.strip().replace(',', '\t'))
             pass
         print('------------------------------')
 
         picked_num = input('select npy: ')
-        picked_line = (lines[int(picked_num)].rstrip()).split('\t')
+        picked_line = (lines[int(picked_num)].rstrip()).split(',')
         picked_npy_file = picked_line[0]
         print(picked_npy_file)
-        img_spec = picked_line[-1].strip('(').strip(')').split(', ')
+        img_spec = picked_line[-1].split(' ')
+        print(img_spec)
 
         path_prefix = os.path.join(labeling_dir, 'npy', picked_npy_file)
         x_npy = path_prefix + '_X.npy'

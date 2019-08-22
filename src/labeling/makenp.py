@@ -218,7 +218,7 @@ class DBMS(object):
 
                     if suc:
                         img_path = os.path.join(dir, 'labeled', item['filehash'])
-                        print('Success: ' + img_path)
+                        # print('Success: ' + img_path)
 
 
                         self.query_list[img_path] = (item['loc'], item['ang'])
@@ -313,7 +313,7 @@ class DBMS(object):
         np.save(save_prefix + '_X.npy', x_train)
         np.save(save_prefix + '_Y.npy', y_train)
 
-    def __write_log(self, num):
+    def __write_log(self, num, validation):
         """ write information of current npy packaging.
         :param num: number of packed data
         """
@@ -329,12 +329,15 @@ class DBMS(object):
             process_line = process_line + '\t' + str(self.processes[i])
         print(process_line)
 
+        process_line = str(self.processes[0]) + ' ' + str(self.processes[1]) \
+                       + ' ' + str(self.processes[2])
+
 
         with open(os.path.join(BASE_DIR, './makenp_log.txt'), "a") as f:
 
             f.write(
-                nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
-                + '\t' + str(self.processes) + '\n')
+                nowDatetime + ',' + str(num) + ',' + str(self.filters)
+                + ',' + process_line + '\n')
 
         return nowDatetime
 
@@ -342,9 +345,10 @@ class DBMS(object):
 def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
-    db = DBMS(data_dir, picked_filters, picked_process)
 
     data_dir = os.path.join(BASE_DIR, options['data_dir'])
+    db = DBMS(data_dir, picked_filters, picked_process)
+
     db = DBMS(data_dir, picked_filters, picked_process)
     db.query()
     db.make_npy()

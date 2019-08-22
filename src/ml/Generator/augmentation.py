@@ -101,22 +101,49 @@ class BatchGenerator:
         return self
 
     def __next__(self):
-        indecies = np.random.randint(0,self.X.shape[0],self.batch_size)
-        
+        indecies = np.random.randint(0, self.X.shape[0], self.batch_size)
+        target = self.y[indecies]
+
+        target = self.__normalize_label(target)
+
         if self.noaugs:
             images = self.X[indecies]/255.0
-            target = self.y[indecies]
-
-            for i in range(self.batch_size):
-                target[i][1] /= 90.0
-            
-           # print(target[1])
-
             return images, target
 
         imgs = augment(self.X[indecies],self.num_aug,self.affine)/255.0
         
-        target = self.y[indecies]
         return imgs, target
     
-    
+    def __normalize_label(self, target):
+
+        for i in range(self.batch_size):
+            loc = target[i][0]
+            ang = target[i][1]
+
+            cut = False
+            
+            # normalize loc
+            if loc >= 2.0:
+                loc = 2.0
+                cut = True
+            elif loc <= -2.0:
+                loc = -2.0
+                cut = True
+
+            # normalize ang
+            if ang >= 60.0:
+                ang = 60.0
+                cut = True
+            elif ang <= -60.0:
+                ang = -60.0
+                cut = True
+
+            if cut:
+                print(target[i], loc, ang)
+            
+            loc = loc / 2.0
+            ang = ang / 60.0
+            target[i][0] = loc
+            target[i][1] = ang
+
+        return target

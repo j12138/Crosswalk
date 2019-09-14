@@ -1,0 +1,4 @@
+//date		#_of_imgs		applied_filters	img_spec(width, height, grayscale)
+2019-06-26__08-08-16	185	['not_out_of_range']	(400, 400, '1')
+train	1872	['random 0.8/0.2']	(150, 199, 0)
+val	468	['random 0.8/0.2']	(150, 199, 0)

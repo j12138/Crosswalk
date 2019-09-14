@@ -69,7 +69,8 @@ def augment(imgs,max_augs,affine=False,debug=False):
         #Choose a number of augmentations to use
         num_aug=np.random.randint(0,max_augs+1)
         #set of augmentations to use
-        augs=[blur(),noise(),contrast(),greyscale(),invert(),hue(),add(),multiply(),sharpen(),emboss()]
+        #add(),multiply(),
+        augs=[blur(),noise(),contrast(),greyscale(),invert(),hue(),sharpen(),emboss()]
         #apply augmentations
         seq=iaa.Sequential(list(np.random.choice(augs,num_aug)))
         aug_img=seq.augment_image(img)

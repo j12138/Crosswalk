@@ -137,7 +137,7 @@ def MobileNetV2(input_shape=(224,224,3),weight_penalty=0.0001,momentum=.9):
     x=Dense(100, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
     x=Dense(50, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
     x=Dense(10, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
-    x=Dense(2,activation='softsign',kernel_initializer='he_normal')(x)
+    x=Dense(2,activation='sigmoid',kernel_initializer='he_normal')(x)
     model = Model(img_input, x, name='MobileNetV2')
     return model
 

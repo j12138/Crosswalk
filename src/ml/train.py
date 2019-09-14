@@ -33,8 +33,8 @@ def parse_args():
 # Load the training config file
 def loadyaml(filename):
     with open(filename, 'r') as stream: 
-        options = yaml.load(stream)
-    return options
+        opt = yaml.load(stream)
+    return opt
 
 
 def select_npy_data(npy_log_file, picked_train_npy):
@@ -73,49 +73,42 @@ def select_npy_data(npy_log_file, picked_train_npy):
     return x_npy, y_npy, img_spec, int(picked_num)
 
 
-options = loadyaml(config_file)
+opt = loadyaml(config_file)
 
 print('Training Configuration')
-print(yaml.dump(options, default_flow_style=False, default_style=''))
+print(yaml.dump(opt, default_flow_style=False, default_style=''))
 
-npy_log_file = os.path.join(labeling_dir, options['npy_log_file'])
-# choose your training data
-print('Choose train npy:')
-x_npy, y_npy, img_spec, idx = select_npy_data(npy_log_file, -1)
-print('\nChoose validation npy:')
-val_x_npy, val_y_npy, img_spec, idx = select_npy_data(npy_log_file, idx)
+#npy_log_file = os.path.join(labeling_dir, opt['npy_log_file'])
 
-x_train = np.load(x_npy)
-y_train = np.load(y_npy)
-x_val = np.load(val_x_npy)
-y_val = np.load(val_y_npy)
+x_train = np.load(opt['x_train'])
+y_train = np.load(opt['y_train'])
+x_val = np.load(opt['x_val'])
+y_val = np.load(opt['y_val'])
 
-width, height, grayscale = int(img_spec[0]), int(img_spec[1]), int(img_spec[2])
+width, height, grayscale = opt['width'], opt['height'], opt['grayscale']
 if width <= 0:
-    width = options['width']
+    width = opt['width']
 if height <= 0:
-    height = options['height']
-if grayscale == 1:
-    channel = 1
-else:
-    channel = 3
-print(width, height)
+    height = opt['height']
+channel = 1 if grayscale else 3
 
-experiment_name = options['experiment_name']
-num_gpus = options['num_gpus']
-network = options['network']
-nb_epoch = options['epochs']
-batch_size = options['batch_size']
-learning_rate = options['learning_rate']
-sgd_momentum = options['sgd_momentum']
-step_decay = options['step_decay']
-drop_factor = options['drop_factor']
-epochs_until_drop = options['epochs_until_drop']
-optimizer = options['optimizer']
-batch_momentum = options['batch_momentum']
-weight_decay = options['weight_decay']
-augmentation = options['augmentation']
-affine_augs = options['affine_augs']
+print("width: ", width, ", height: ", height)
+
+experiment_name = opt['experiment_name']
+num_gpus = opt['num_gpus']
+network = opt['network']
+nb_epoch = opt['epochs']
+batch_size = opt['batch_size']
+learning_rate = opt['learning_rate']
+sgd_momentum = opt['sgd_momentum']
+step_decay = opt['step_decay']
+drop_factor = opt['drop_factor']
+epochs_until_drop = opt['epochs_until_drop']
+optimizer = opt['optimizer']
+batch_momentum = opt['batch_momentum']
+weight_decay = opt['weight_decay']
+augmentation = opt['augmentation']
+affine_augs = opt['affine_augs']
 
 
 # Make directories if needed

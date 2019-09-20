@@ -106,7 +106,7 @@ def show_label_scatter_plot(db,cron=False):
     print('roll', max(roll), min(roll))
     '''
 
-    plt.figure(figsize=(10, 4))
+    plt.figure(figsize=(20, 8))
     # loc, ang
     plt.subplot(121)
     plt.scatter(loc, ang, s=3)

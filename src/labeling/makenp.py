@@ -29,7 +29,8 @@ filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
               'boundary': lambda x: abs(float(x['loc'])) > 0.8,
               'old': lambda x: x['old'] == 1,
               'random 0.8/0.2': None,
-              'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0
+              'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
+              'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0
 
               }
 

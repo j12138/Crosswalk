@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import QMessageBox, QApplication, \
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer, QThread, QWaitCondition, QMutex
 from labeling_tool import LabelingTool, DataSelector
-from preprocess import PreprocessThread
 import server
 
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "lib"))

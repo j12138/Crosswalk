@@ -19,20 +19,26 @@ private_key = os.path.join(ROOT_DIR, '..', '.ssh', 'id_rsa')
 cnopts = pysftp.CnOpts()
 cnopts.hostkeys = None
 
+'''
 logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     level=logging.WARNING,
                     format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+'''
 
 
 def load_yaml():
 
+    options = {'local_npy_log': './makenp_log.txt', 'server_npy_log': './makenp_log.txt', 'npy_dir': 'npy', 'data_dir': 'preprocessed_data', 'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
+
+    '''
     if os.environ.get('FROZEN'):
         options = {'local_npy_log': './makenp_log.txt', 'server_npy_log': './makenp_log.txt', 'npy_dir': 'npy', 'data_dir': 'preprocessed_data', 'host': 'ec2-13-124-112-247.ap-northeast-2.compute.amazonaws.com'}
 
     else:
         with open(config_file, 'r') as stream:
             options = yaml.load(stream)
+    '''
     return options
 
 

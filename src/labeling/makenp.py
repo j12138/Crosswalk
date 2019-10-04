@@ -314,7 +314,7 @@ class DBMS(object):
         np.save(save_prefix + '_X.npy', x_train)
         np.save(save_prefix + '_Y.npy', y_train)
 
-    def __write_log(self, num):
+    def __write_log(self, num, validation):
         """ write information of current npy packaging.
         :param num: number of packed data
         """
@@ -343,6 +343,7 @@ class DBMS(object):
 def make_npy_file(options, picked_filters, picked_process):
     """ the actual 'main' function. Other modules that import this module shall
     call this as the entry point. """
+    data_dir = './dataest/'
     db = DBMS(data_dir, picked_filters, picked_process)
 
     data_dir = os.path.join(BASE_DIR, options['data_dir'])

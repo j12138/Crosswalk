@@ -1,3 +1,5 @@
+#
+#
 import json
 import numpy as np
 import yaml
@@ -8,6 +10,8 @@ import datetime
 import glob
 import os
 import random
+import math
+from typing import Tuple, List, Dict
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
@@ -172,26 +176,41 @@ class DBMS(object):
         :param picked_filters: filters choosen by user
         :param pricked_process: additional processes choosen by user
         """
-
-        self.child_dirs = glob.glob(os.path.join(data_dir, '*'))
+        self.entries = {}           # DB entries. Dictionary of dictionaries
+        self.batch_dirs = glob.glob(os.path.join(data_dir, '*'))
         self.filters = picked_filters  # keys
         self.processes = picked_process
         self.query_list = {}
         self.val_query_list = None
 
-    def __load(self, dir):
-        """ load DB file of current dataset.
-        :param dir: current preprocessed dataset directory
-        :return: loaded DB file
+    def __load_db_in_batch(self, batch_path: str) -> Dict[Dict]:
+        """ A batch refers to a "batch" of dataset collected in a single
+        burst. around 100 to a few hundreds of images are contained in a
+        batch, typically.
+        This function loads the dataset database stored in the given batch
+        path directory.
+
+        :param batch_path: current preprocessed dataset directory
+        :return: Dict of db entries, where each entry is a dictionary.
         """
 
-        db_file = db_file = os.path.join(dir, 'db.json')
+        db_file = os.path.join(batch_path, 'db.json')
         try:
             with open(db_file, "r") as read_file:
                 # list of metadata dictionaries
-                return json.load(read_file).values()
+                entries = json.load(read_file)
+                for key, val in entries.items():
+                    # recover the image path and add as a new column
+                    val['img_path'] = os.path.join(batch_path, 'labeled',
+                                                   val["filehash"])
+                return entries
         except Exception as e:
             print('Failed to open database file {}: {}'.format(db_file, e))
+
+    def load_database(self) -> None:
+        """ Load the whole database throughout all the batches """
+        for batch_dir in self.batch_dirs:
+            self.entries.update(self.__load_db_in_batch(batch_dir))
 
     def query(self):
         """ Collect filtered data at self.query_list. """
@@ -206,72 +225,48 @@ class DBMS(object):
                 self.query_random()
                 return
 
-        for dir in self.child_dirs:
-            for item in self.__load(dir):
-                # for unlabeled image, just skip
-                if not item['is_input_finished']:
-                    continue
+        for item in self.entries:
+            # for unlabeled image, just skip
+            if not item['is_input_finished']:
+                continue
 
-                suc = True
-                try:
-                    for filt in self.filters:
-                        suc = suc and filterlist[filt](item)
+            suc = True
+            try:
+                for filt in self.filters:
+                    suc = suc and filterlist[filt](item)
 
-                    if suc:
-                        img_path = os.path.join(dir, 'labeled', item['filehash'])
-                        print('Success: ' + img_path)
+                if suc:
+                    img_path = os.path.join(dir, 'labeled', item['filehash'])
+                    print('Success: ' + img_path)
 
 
-                        self.query_list[img_path] = (item['loc'], item['ang'])
+                    self.query_list[img_path] = (item['loc'], item['ang'])
 
-                except:
-                    # print('Fail: ' + item['filehash'])
-                    continue
+            except:
+                # print('Fail: ' + item['filehash'])
+                continue
 
             # print(query_list)
         print('Selected data: ', len(self.query_list))
 
-    def query_random(self):
-        all_data, total = self.__get_total_data()
-        val_num = int(total * 0.2)
-        val_idx = random.sample(range(0, total), val_num)
-        self.val_query_list = {}
+    def query_random(self, ratio: float = 0.2) -> Tuple[List, List]:
+        """ Randomly split the dataset into two (train/val) by the given ratio.
+        The specified ratio is for the validation dataset.
 
-        all_img_path = list(all_data.keys())
+        :param ratio: the ratio of the whole data to set aside for validation
+        :return: a Tuple of two key lists, one for train and the other for val.
+        """
+        assert 0.0 < ratio <= 1.0
+        key_list = list(self.entries.keys())
+        random.shuffle(key_list)
+        set_aside_cut_index = math.floor(len(self.entries) * ratio)
+        return key_list[set_aside_cut_index:], key_list[:set_aside_cut_index]
 
-        for idx in val_idx:
-            key = all_img_path[idx]
-            label = all_data.pop(key)
-
-            self.val_query_list[key] = label
-
-        self.query_list = all_data
-
+        # TODO: remove the following class variables
         print('Selected data: ', len(self.query_list))
         print('Validation data: ', len(self.val_query_list))
 
-        return
-
-    def __get_total_data(self):
-        all_data = {}
-        total = 0
-
-        for dir in self.child_dirs:
-            for item in self.__load(dir):
-                if not item['is_input_finished']:
-                    continue
-
-                try:
-                    img_path = os.path.join(dir, 'labeled', item['filehash'])
-                    # print('Success: ' + img_path)
-                    all_data[img_path] = (item['loc'], item['ang'])
-                    total = total + 1
-                except:
-                    continue
-
-        print('Total {} data'.format(total))
-
-        return all_data, total
+    # def make_npy(self, key_list, filename):
 
     def make_npy(self, validation=False):
         """ Make npy files for training, from query_list """

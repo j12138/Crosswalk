@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import QMessageBox, QApplication, \
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer, QThread, QWaitCondition, QMutex
 from labeling_tool import LabelingTool, DataSelector
+from preprocess import PreprocessThread
 import server
 
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "lib"))
@@ -18,10 +19,12 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+'''
 logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     level=logging.WARNING,
                     format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+'''
 
 # logger = logging.getLogger(__name__)
 
@@ -211,7 +214,6 @@ class PreprocessWindow(QWidget):
                     self.btn_start.setEnabled(True)
                     self.btn_start.setStyleSheet("background-color: skyblue")
                 else:
-                    logging.error(e)
                     self.error_msg.setText('Unknown error: ' + str(e))
                     self.error_msg.exec_()
                     self.btn_start.setEnabled(True)
@@ -298,11 +300,10 @@ class UploadWindow(QWidget):
 
     def select_directory(self):
         try:
-            f = open ('fake_file.txt')
             picked_dir = str(QFileDialog.getExistingDirectory(self,
                          "Select Directory"))
         except Exception as e:
-            logging.error(e)
+            # logging.error(e)
             self.error_msg.setText('Unknown error: ' + str(e))
             self.error_msg.exec_()
 
@@ -342,7 +343,7 @@ class UploadWindow(QWidget):
                 else:
                     self.error_msg.setText('Failed to upload.\nCheck you network and try again, or contact developer.')
                     self.error_msg.exec_()
-                    logging.error(e)
+                    # logging.error(e)
 
         self.btn_upload.setStyleSheet("background-color: skyblue")
         self.btn_upload.setDisabled(False)
@@ -392,7 +393,8 @@ class Controller:
                 try:
                     file_dialog_result = self.selector.set_data_dir()
                 except Exception as e:
-                    logging.error(e)
+                    print('error')
+                    # logging.error(e)
 
             print('esacpe loop!')
             if file_dialog_result == 'Close':
@@ -421,7 +423,7 @@ class Controller:
         self.selector.show()
         self.main_window.close()
 
-    def show_tool(self, dir_path):
+    def show_tool(self, dir_path, review):
         if dir_path == 'cancel':
             self.show_main_window()
             self.selector.close()
@@ -429,7 +431,12 @@ class Controller:
 
         global startTime
         startTime = time.time()
-        self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+
+        if review:
+            print('hello!')
+            self.tool = LabelingTool(os.path.join(dir_path, 'labeled'), startTime)
+        else:
+            self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
         self.tool.window_switch_signal.connect(self.show_main_window)
         self.selector.close()
         self.tool.launch()

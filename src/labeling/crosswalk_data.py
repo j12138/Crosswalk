@@ -50,6 +50,7 @@ class LabelingStatus(object):
             'rb_1col': 1
             # 'slider_ratio': 60
         }
+        self.remarks = ''
 
 
 class CrosswalkData:
@@ -66,6 +67,7 @@ class CrosswalkData:
             'pit': 0.0,
             'roll': 0.0
         }
+        self.remarks = ''
         self.db = self.__get_db_file()
 
     def __get_db_file(self):
@@ -80,16 +82,6 @@ class CrosswalkData:
     def display_labels(self):
         for name in self.labels:
             print(name, self.labels[name])
-
-    def make_trackbar(self, winname):
-        for name in self.meta:
-            cv2.createTrackbar(name, winname, self.meta[name][0],
-                               self.meta[name][1], lambda x: x)
-        cv2.setTrackbarPos('zebra_ratio', winname, 60)
-
-    def input_manual_meta(self, winname):
-        for name in self.meta:
-            self.meta[name][2] = cv2.getTrackbarPos(name, winname)
 
     def input_labels(self, loc, ang, pit, roll):
         self.labels['loc'] = loc
@@ -147,6 +139,11 @@ class CrosswalkData:
         for name in status.widgets_status:
             status.widgets_status[name] = this_data[name]
 
+        if 'remarks' in this_data.keys():
+            status.remarks = this_data['remarks']
+        else:
+            print('비고 없음')
+
         return status
 
     def save_labeling_status(self, status):
@@ -159,6 +156,7 @@ class CrosswalkData:
         this_data['current_point'] = status.current_point
         this_data['all_points'] = status.all_points
         this_data['is_line_drawn'] = status.is_line_drawn
+        this_data['remarks'] = status.remarks
         for name in status.widgets_status:
             this_data[name] = status.widgets_status[name]
 

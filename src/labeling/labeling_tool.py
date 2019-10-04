@@ -11,7 +11,7 @@ import logging
 from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication, \
     QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, \
     QGridLayout, QLabel, QCheckBox, QRadioButton, QStyle, QStyleFactory, \
-    QTableWidget, QTableWidgetItem, QFileDialog
+    QTableWidget, QTableWidgetItem, QFileDialog, QLineEdit
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -25,6 +25,7 @@ fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 startTime = 0
 
+'''
 logging.basicConfig(filename=os.path.join(BASE_DIR, 'error_log.log'),
                     level=logging.WARNING,
                     format='[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
@@ -37,16 +38,7 @@ for line in check_list:
     check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
 
 print(check_img)
-
-
-check_list = open('./check_list.txt')
-check_img = []
-
-for line in check_list:
-    check_img.append(os.path.normpath(line.strip('\n').strip('Success: ')))
-
-print(check_img)
-
+'''
 
 class LabelingTool(QWidget):
     """
@@ -86,6 +78,8 @@ class LabelingTool(QWidget):
             'rb_2col': QRadioButton('2 Columns'),
             'rb_odd2col': QRadioButton('Odd 2 Columns')
         }
+        self.label_remarks = QLabel('Remarks (비고)')
+        self.textbox_remarks = QLineEdit()
         self.initUI()
 
     def initUI(self):
@@ -93,18 +87,19 @@ class LabelingTool(QWidget):
 
         # button setting
         but_done = QPushButton('Save')
-        but_done.setToolTip('Save labeling on DB')
+        but_done.setToolTip('Save labeling on DB\n(레이블링 내용을 DB에 저장한다)')
         but_done.setStyleSheet("background-color: skyblue")
         but_done.clicked.connect(self.__get_manual_meta)
         but_invalid = QPushButton('Invalid')
-        but_invalid.setToolTip('press if you cannot draw dots')
+        but_invalid.setToolTip('press if you cannot draw dots\n(레이블링 불가한 이미지로 표기)')
         but_invalid.setStyleSheet("background-color: red")
         but_invalid.clicked.connect(self.__set_invalid)
-        but_next = QPushButton('Next unlabeled')
-        but_prev = QPushButton('Prev unlabeled')
-        but_next.setToolTip('Move to next img to annotate')
-        but_next.clicked.connect(self.__next_unlabeled_img)
-        but_prev.clicked.connect(self.__prev_unlabeled_img)
+        # but_next = QPushButton('Next unlabeled')
+        # but_prev = QPushButton('Prev unlabeled')
+        # but_next.setToolTip('Move to next img to annotate')
+        # but_next.clicked.connect(self.__next_unlabeled_img)
+        # but_prev.clicked.connect(self.__prev_unlabeled_img)
+        self.save_status = QLabel()
 
         # Image show
         pixmap = QPixmap(os.path.join(BASE_DIR, 'qimage.png'))
@@ -131,47 +126,26 @@ class LabelingTool(QWidget):
         hbox_ratio = QHBoxLayout()
 
         vbox_meta.addWidget(self.widgets['cb_obscar'])
+        self.widgets['cb_obscar'].setToolTip('check if any cars are on crosswalk.\n(횡단보도 위에 차량이 있으면 체크합니다.)')
         vbox_meta.addWidget(self.widgets['cb_obshuman'])
+        self.widgets['cb_obshuman'].setToolTip('check if any pedestrians are on crosswalk.\n(횡단보도 위에 보행자가 있으면 체크합니다.)')
         vbox_meta.addWidget(self.widgets['cb_shadow'])
+        self.widgets['cb_shadow'].setToolTip('check if any shadows are on crosswalk.\n(횡단보도 위에 그림자가 있으면 체크합니다.)')
         vbox_meta.addWidget(self.widgets['cb_old'])
+        self.widgets['cb_old'].setToolTip('check if paintings are old.\n(횡단보도 칠이 심하게 벗겨진 경우에 체크합니다.)')
         vbox_meta.addStretch(2)
         vbox_meta.addWidget(self.widgets['rb_1col'])
+        self.widgets['rb_1col'].setToolTip('crosswalk of 1 column\n(1열 횡단보도)')
         vbox_meta.addWidget(self.widgets['rb_2col'])
+        self.widgets['rb_2col'].setToolTip('crosswalk of 1 columns\n(2열 횡단보도)')
         vbox_meta.addWidget(self.widgets['rb_odd2col'])
+        self.widgets['rb_odd2col'].setToolTip('crosswalk of 2 columns, with only one visible side and center line\n(한쪽 빗변과 중앙선만 보이는 2열 횡단보도))')
         vbox_meta.addStretch(2)
-        # vbox_meta.addWidget(label_ratio)
-        # vbox_meta.addWidget(self.widgets['slider_ratio'])
+        vbox_meta.addWidget(self.label_remarks)
+        self.label_remarks.setToolTip('any additional notes.\n(체크박스 외의 특이사항 간단하게 기록)')
+        vbox_meta.addWidget(self.textbox_remarks)
 
-        # for i in range(len(self.widgets['rb_ratio'])):
-        #     hbox_ratio.addWidget(self.widgets['rb_ratio'][i])
-
-        # gbox_ratio.setLayout(hbox_ratio)
-        # gbox_ratio.setFont(QFont("calibri", 9))
-        # vbox_meta.addWidget(gbox_ratio)
-
-        # slider tick labels
-        hbox_tick = QHBoxLayout()
-        label_ticks = [QLabel('0'), QLabel('20'), QLabel('40'),
-                       QLabel('60'), QLabel('80'), QLabel('100')]
-        tick_font = QFont("calibri", 8)
-
-        for i in range(len(label_ticks)):
-            if i > 0:
-                hbox_tick.addStretch(1)
-            label_ticks[i].setFont(tick_font)
-            hbox_tick.addWidget(label_ticks[i])
-
-        # vbox_meta.addLayout(hbox_tick)
-
-        vbox_meta.addStretch(1)
-        # vbox_meta.addWidget(self.widgets['cb_outrange'])
         vbox_meta.addStretch(4)
-
-        hbox_button1 = QHBoxLayout()
-        hbox_button1.addWidget(but_prev)
-        hbox_button1.addWidget(but_next)
-        vbox_meta.addLayout(hbox_button1)
-        vbox_meta.addStretch(1)
 
         hbox_button2 = QHBoxLayout()
         hbox_button2.addWidget(but_invalid)
@@ -184,7 +158,7 @@ class LabelingTool(QWidget):
         grid.addWidget(gbox_meta, 0, 1)
 
         self.setWindowTitle('Crosswalk labeling tool')
-        self.resize(700, 500)
+        self.resize(800, 600)
         self.put_window_on_center_of_screen()
         self.show()
 
@@ -197,13 +171,13 @@ class LabelingTool(QWidget):
             return
 
         if len(self.img_files) == 0:
+            print('hello?')
             self.close()
             return
 
         img_file = self.img_files[self.img_idx]
         print(img_file)
         self.data = cd.CrosswalkData(img_file)
-
 
         self.img_to_display = self.data.img.copy()
         img = self.img_to_display
@@ -212,8 +186,10 @@ class LabelingTool(QWidget):
         self.__draw_labeling_status()
 
         # TEST #
+        '''
         if os.path.normpath(img_file) in check_img:
             print('@@@ CATCH !')
+        '''
 
         self.update_img(img)
 
@@ -224,6 +200,8 @@ class LabelingTool(QWidget):
         self.move(qr.topLeft())
 
     def mousePressEvent(self, event):
+        self.textbox_remarks.clearFocus()
+
         if event.button() == Qt.LeftButton:
             img_pos = self.abs2img_pos(event.pos(), self.gbox_image,
                                        self.imgsize)
@@ -366,6 +344,9 @@ class LabelingTool(QWidget):
         if self.widgets['rb_odd2col'].isChecked():
             self.data.meta['column'][2] = 2.5
 
+        self.data.remarks = self.textbox_remarks.text()
+        print(self.textbox_remarks.text())
+
         '''
         self.data.meta['zebra_ratio'][2] = int(
             self.widgets['slider_ratio'].value() * 2)
@@ -431,19 +412,16 @@ class LabelingTool(QWidget):
     def update_img(self, img):
         """ Update img component of UI to current img to display.
         """
-        try:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            qimage = QImage(img, img.shape[1], img.shape[0],
-                            img.shape[1] * 3, QImage.Format_RGB888)
-            pixmap = QPixmap(qimage)
-            self.imgsize = pixmap.size()
-            # pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
-            self.label_img.setPixmap(pixmap)
-            self.gbox_image.setTitle(
-                'Image ( {} / {} )'.format(self.img_idx + 1,
-                                           len(self.img_files)))
-        except Exception as e:
-            logging.error(e)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        qimage = QImage(img, img.shape[1], img.shape[0],
+                        img.shape[1] * 3, QImage.Format_RGB888)
+        pixmap = QPixmap(qimage)
+        self.imgsize = pixmap.size()
+        # pixmap = pixmap.scaled(400, 450, Qt.KeepAspectRatio)
+        self.label_img.setPixmap(pixmap)
+        self.gbox_image.setTitle(
+            'Image ( {} / {} )'.format(self.img_idx + 1,
+                                        len(self.img_files)))
 
     def save_labeling_status(self):
         """ save current labeling status at DB file.
@@ -471,12 +449,14 @@ class LabelingTool(QWidget):
         else:
             self.status.widgets_status['rb_1col'] = 2.5
 
+        self.status.remarks = self.textbox_remarks.text()
         # self.status.widgets_status['slider_ratio'] = \
         #     self.__get_ratio_value()
 
         self.data.save_labeling_status(self.status)
 
     def __update_screen(self):
+        changed = False
         self.status = self.data.load_labeling_status()
         self.current_point = self.status.current_point
         self.all_points = self.status.all_points
@@ -501,6 +481,8 @@ class LabelingTool(QWidget):
             self.widgets['rb_2col'].setChecked(True)
         else:
             self.widgets['rb_odd2col'].setChecked(True)
+
+        self.textbox_remarks.setText(self.status.remarks)
 
         # self.__set_ratio_buttons()
 
@@ -559,6 +541,7 @@ class LabelingTool(QWidget):
         if len(self.img_files) == 0:
             msg = 'There are NO imgs to label!'
             close_msg = QMessageBox()
+            close_msg.setText(msg)
             close_msg.setStandardButtons(QMessageBox.Cancel)
             close_msg.setWindowTitle('Error')
             close_msg.exec_()
@@ -600,17 +583,15 @@ class DataSelector(QWidget):
     """
     PyQt UI widget for data selector
     """
-    window_switch_signal = pyqtSignal(str)
+    window_switch_signal = pyqtSignal(str, bool)
 
     def __init__(self):
-        print('__init__')
         QWidget.__init__(self)
         self.setWindowTitle('Data selector')
         self.followed_by_labeling_tool = False
         self.initUI()
 
     def set_data_dir(self):
-        print('set_data_dir')
         self.data_dir = self.__get_preprocessed_data_dir()
 
         if self.data_dir == '':
@@ -628,22 +609,27 @@ class DataSelector(QWidget):
         return picked_dir
 
     def initUI(self):
-        print('initUI?')
         self.tableWidget = QTableWidget(self)
         self.tableWidget.resize(415, 400)
         self.tableWidget.setRowCount(1)
         self.tableWidget.setColumnCount(2)
         # self.set_TableWidgetData()
 
-        self.startbutton = QPushButton('Select')
+        self.startbutton = QPushButton('Start to label')
+        self.startbutton.setToolTip('레이블링을 완료하지 않은 이미지에 대해 툴 실행')
+        self.startbutton.setStyleSheet("background-color: skyblue")
         self.startbutton.clicked.connect(self.start_labeling)
         self.toplabel = QLabel('Select dataset to label: ')
+        self.reviewbutton = QPushButton('Review (검수)')
+        self.reviewbutton.clicked.connect(self.start_review)
+        self.reviewbutton.setToolTip('이미 레이블링 완료한 이미지에 대해 툴 실행')
 
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
         main_layout.addWidget(self.toplabel)
         main_layout.addWidget(self.tableWidget)
         main_layout.addWidget(self.startbutton)
+        main_layout.addWidget(self.reviewbutton)
 
         # set Error Message Box
         self.error_msg = QMessageBox()
@@ -657,7 +643,12 @@ class DataSelector(QWidget):
     def start_labeling(self):
         current_row = self.tableWidget.currentItem().row()
         self.followed_by_labeling_tool = True
-        self.window_switch_signal.emit(self.child_dirs[current_row])
+        self.window_switch_signal.emit(self.child_dirs[current_row], False)
+
+    def start_review(self):
+        current_row = self.tableWidget.currentItem().row()
+        self.followed_by_labeling_tool = True
+        self.window_switch_signal.emit(self.child_dirs[current_row], True)
 
     def set_TableWidgetData(self):
         self.tableWidget.setHorizontalHeaderLabels(['dirname',
@@ -748,17 +739,25 @@ class LabelingController:
         self.selector.window_switch_signal.connect(self.show_tool)
         self.selector.show()
 
-    def show_tool(self, dir_path):
+    def set_validation_true(self):
+        self.validation = True
+
+    def show_tool(self, dir_path, review):
         print('show_tool')
         global startTime
         startTime = time.time()
-
-        if (self.validation):
-            self.tool = LabelingTool(os.path.join(dir_path, 'labeled'), startTime)
+        
+        if dir_path == 'cancel':
+            self.selector.close()
         else:
-            self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
-        self.selector.close()
-        self.tool.launch()
+            self.validation = review
+            if (self.validation):
+                
+                self.tool = LabelingTool(os.path.join(dir_path, 'labeled'), startTime)
+            else:
+                self.tool = LabelingTool(os.path.join(dir_path, 'preprocessed'), startTime)
+            self.selector.close()
+            self.tool.launch()
 
 
 def parse_args():
@@ -778,7 +777,7 @@ def launch_annotator(validation=False):
 
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
-    app.setFont(QFont("Calibri", 10))
+    app.setFont(QFont("맑은 고딕", 9))
 
     if validation:
         labeling_controller = LabelingController(validation=True)
@@ -793,7 +792,8 @@ def main(args):
     if (args.validate):
         launch_annotator(validation=True)
     else:
-        data_path = os.path.join(args.data_path, 'preprocessed')
+        launch_annotator(validation=False)
+        # data_path = os.path.join(args.data_path, 'preprocessed')
 
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))

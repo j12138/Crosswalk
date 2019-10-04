@@ -84,7 +84,6 @@ def augment(imgs,max_augs,affine=False,debug=False):
     return np.asarray(augmented)
 
 
-    
 class BatchGenerator:
     
     def __init__(self,X,y, batch_size,noaugs=False, num_aug=5,
@@ -120,4 +119,36 @@ class BatchGenerator:
         target = self.y[indecies]
         return imgs, target
     
-    
+    def __normalize_label(self, target):
+
+        for i in range(self.batch_size):
+            loc = target[i][0]
+            ang = target[i][1]
+
+            cut = False
+            
+            # clip loc
+            if loc >= 2.0:
+                loc = 2.0
+                cut = True
+            elif loc <= -2.0:
+                loc = -2.0
+                cut = True
+
+            # clip ang
+            if ang >= 60.0:
+                ang = 60.0
+                cut = True
+            elif ang <= -60.0:
+                ang = -60.0
+                cut = True
+
+            if cut:
+                print(target[i], loc, ang)
+            
+            loc = loc / 2.0
+            ang = ang / 60.0
+            target[i][0] = loc
+            target[i][1] = ang
+
+        return target

@@ -3,3 +3,6 @@
 [2019-07-26 17:13:00][ERROR][release_UI.py:422] [WinError 3] 지정된 경로를 찾을 수 없습니다: 'C:/Users/alal9/Crosswalk/src/labeling/test_datasets\\2019-07-12_dain_JAN16\\labeled'
 [2019-07-30 09:11:47][ERROR][release_UI.py:242] division by zero
 [2019-07-30 09:11:49][ERROR][release_UI.py:242] division by zero
+[2019-09-29 23:10:03][ERROR][release_UI.py:214] name 'PreprocessThread' is not defined
+[2019-09-29 23:10:07][ERROR][release_UI.py:214] name 'PreprocessThread' is not defined
+[2019-09-30 09:43:33][ERROR][release_UI.py:306] [Errno 2] No such file or directory: 'fake_file.txt'

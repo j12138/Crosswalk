@@ -1,10 +1,10 @@
 npy_log_file: './makenp_log.txt'
 data_dir: ./preprocessed_data/
-experiment_name: 'sep2019-4k'
-x_train: './npy/x_train.npy'
-y_train: './npy/y_train.npy'
-x_val: './npy/x_val.npy'
-y_val: './npy/y_val.npy'
+experiment_name: '2019-sep21-5k'
+x_train: './npy/x_train_190921.npy'
+y_train: './npy/y_train_190921.npy'
+x_val: './npy/x_val_190921.npy'
+y_val: './npy/y_val_190921.npy'
 num_gpus: 1
 network: 'MobileNetV2'
 width: 150

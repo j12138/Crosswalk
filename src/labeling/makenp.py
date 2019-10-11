@@ -121,7 +121,7 @@ class DBMS(object):
             # iteratively apply selected filters
             _filter = filter_list[filter_name]
 
-            filtered = {entry : filtered[entry] for entry in filtered if
+            filtered = {entry: filtered[entry] for entry in filtered if
                         (filtered[entry]['is_input_finished'] is True) and
                         (_filter(filtered[entry]) is True)}
 
@@ -138,10 +138,11 @@ class DBMS(object):
         :return: a Tuple of two key lists, one for train and the other for val.
         """
         assert 0.0 < ratio <= 1.0
-        key_list = list(self.entries.keys())
-        random.shuffle(key_list)
-        set_aside_cut_index = math.floor(len(self.entries) * ratio)
-        return key_list[set_aside_cut_index:], key_list[:set_aside_cut_index]
+        labeled_entry_keys = [key for key, entry in self.entries.items()
+                              if entry['is_input_finished'] is True]
+        random.shuffle(labeled_entry_keys)
+        cut_index = math.floor(len(labeled_entry_keys) * ratio)
+        return labeled_entry_keys[cut_index:], labeled_entry_keys[:cut_index]
 
     def make_npy(self, keys: List[str], width: int, height: int,
                  grayscale: bool, output_dir: str, filename_prefix=''):
@@ -163,7 +164,6 @@ class DBMS(object):
             try:  # is it valid img?
                 img = imread(entry['img_path'], mode='RGB')
             except Exception as e:
-                print(e)
                 fail_cnt += 1
                 continue
             xs.append(self.__process_img(img, width, height, grayscale))
@@ -173,7 +173,6 @@ class DBMS(object):
                 fail_cnt, len(keys)))
 
         # npy file name convention
-        save_prefix = os.path.join(output_dir, filename_prefix)
         x_name = os.path.join(output_dir, filename_prefix + '_x.npy')
         y_name = os.path.join(output_dir, filename_prefix + '_y.npy')
 
@@ -223,8 +222,8 @@ def make_npy_file(args):
         selected_filters = show_and_pick_filters()
         logger.info("Selected filters: " + str(selected_filters))
         keys = db.filter_data(selected_filters)
-        # db.make_npy(keys, args.width, args.height, args.grayscale,
-        #            'filter{}'.format(len(selected_filters)))
+        db.make_npy(keys, args.width, args.height, args.grayscale,
+                   'filter{}_{}'.format(len(selected_filters), now))
         db.make_npy(keys, args.width, args.height, args.grayscale,
                     args.output_dir)
     logger.info('Finished at ' + str(now))
@@ -232,12 +231,11 @@ def make_npy_file(args):
 
 def setup_logger(log_file_path: str):
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] : %(message)s')
-
+    logger.setLevel(logging.INFO)
     fh = logging.FileHandler(filename=log_file_path)
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
-
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(logging.INFO)
     sh.setFormatter(formatter)

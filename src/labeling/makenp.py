@@ -1,5 +1,3 @@
-#
-#
 import json
 import numpy as np
 import yaml
@@ -10,180 +8,77 @@ import datetime
 import glob
 import os
 import random
+import argparse
 import math
+import logging
 from typing import Tuple, List, Dict
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 
-config_file = os.path.join(BASE_DIR, 'config.yaml')
+now = datetime.datetime.now()
+logger = logging.getLogger('make_numpy')
 
 
-# coding=utf-8
-
-filterlist = {'Apple': lambda x: x['Make'] == 'Apple',
-              'Samsung': lambda x: x['Make'] == 'samsung',
-              'shadow': lambda x: x['shadow'] == 1,
-              'obstacle': lambda x: x['obs_car'] == 1 and x['obs_human'] == 1,
-              'car': lambda x: x['obs_car'] == 1,
-              'human': lambda x: x['obs_human'] == 1,
-              'onecol': lambda x: x['column'] == 1,
-              'twocol': lambda x: x['column'] == 2,
-              'odd2col': lambda x: x['column'] == 3,
-              'boundary': lambda x: abs(float(x['loc'])) > 0.8,
-              'old': lambda x: x['old'] == 1,
-              'random 0.8/0.2': None,
-              'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
-              'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0
-
-              }
+filter_list = {
+    'apple': lambda x: x['Make'] == 'Apple',
+    'samsung': lambda x: x['Make'] == 'samsung',
+    'shadow': lambda x: x['shadow'] == 1,
+    'obstacle': lambda x: x['obs_car'] == 1 and x['obs_human'] == 1,
+    'car': lambda x: x['obs_car'] == 1,
+    'human': lambda x: x['obs_human'] == 1,
+    'onecol': lambda x: x['column'] == 1,
+    'twocol': lambda x: x['column'] == 2,
+    'odd2col': lambda x: x['column'] == 3,
+    'boundary': lambda x: abs(float(x['loc'])) > 0.8,
+    'old': lambda x: x['old'] == 1,
+    'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
+    'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0
+}
 
 
-def load_yaml():
-    with open(config_file, 'r') as stream:
-        options = yaml.load(stream)
-    return options
-
-
-def collect_all_db(data_dir):
-    """ collect and combine all existing DBs in preprocessed_data folder.
-    :param data_dir: directory path of preprocessed data
-    :return: combined DB
-    """
-
-    total_db = {}
-    child_dirs = glob.glob(os.path.join(data_dir, '*'))
-
-    for dir in child_dirs:
-        db_file = os.path.join(dir, 'db.json')
-        try:
-            with open(db_file, 'r') as f:
-                loaded = json.load(f)
-        except Exception as e:
-            print('Failed to open database file {}: {}'.format(db_file, e))
-        else:
-            total_db = {**total_db, **loaded}
-
-    count = 0
-    for name in total_db:
-        count = count + 1
-
-    return total_db
-
-
-def merge_list(list):
-    merged = []
-    for elem in list:
-        merged = merged + elem
-    return merged
-
-
-def choose_process():
-    """ converational function for get user's choice of additional process.
-    :return: parameters for each process
-    """
-
-    print('\n------- additional process -------')
-    print('[1] Resize with fixed ratio')
-    resize_width = input('  width: ')
-    print('[2] Cut off upper img')
-    cut_height = input('  lower height: ')
-    print('[3] Grayscale')
-    grayscale = int(input('  Yes = 1: '))
-
-    if len(resize_width) > 0:
-        resize_width = int(resize_width)
-    if len(cut_height) > 0:
-        cut_height = int(cut_height)
-    try:
-        grayscale = int(grayscale)
-    except:
-        print('wrong input')
-
-    return resize_width, cut_height, grayscale
-
-
-def show_and_pick_filters(filterlist):
+def show_and_pick_filters():
     """ show pre-declared(AT TOP) filter lists and get user's choice.
-    :param filterlist: contains all filter for make npy file
     :return: list of picked filters
     """
-
-    picked = []
-    cnt = 0
     print('\n------- filter lists -------')
-
-    for fil in filterlist:
-        cnt = cnt + 1
-        print('[' + str(cnt) + '] ', fil)
+    for i, filter_name in enumerate(filter_list):
+        print('[{}] {}'.format(i, filter_name))
 
     print('----------------------------')
     print('select filters (ex: 1 2 3 4 5)')
-
     picked_num = input('└─ here: ')
-
-    picked_num_list = picked_num.split(' ')
-
-    filter_keys = list(filterlist.keys())
+    filter_ids = [int(i) for i in picked_num.split(' ')]
+    filter_keys = list(filter_list.keys())
     # print(filter_keys)
 
+    picked = []
     print('\n------- selected filters -------')
-    for num in picked_num_list:
-        key = filter_keys[int(num) - 1]
-        print('[' + num + ']', key)
+    for filter_id in filter_ids:
+        key = filter_keys[filter_id - 1]
+        print('[{}] {}'.format(filter_id, key))
         picked.append(key)
     print('--------------------------------\n')
 
     return picked
 
 
-#   This function is copy-pasted from preprocess.py. Adapt it appropriately in
-#   the context of this feature so that additional resizing, contrasting,
-#   gray-scaling, etc. can be done in this step. -- TJ
-
-def process(img, processes):
-    width, height, gray = processes
-    H, W = img.shape[:2]
-
-    # resizing
-    if width > 0:
-        img = scipy.misc.imresize(img, (int(width * 1.3333), width))
-        H, W = img.shape[:2]
-    # cut
-    if height > 0:
-        cutoff_upper = int((H - height) / 2)
-        if cutoff_upper < 0:
-            raise Exception('your height is shorter than resized height!')
-
-        img = img[cutoff_upper:cutoff_upper + height, :]
-    # adjust
-    if gray == 1:
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.equalizeHist(gray_img)
-        img = img[..., None]
-
-    return img
-
-
 class DBMS(object):
-    """
-    DB Management System class.
-    """
+    """ Database interface """
 
-    def __init__(self, data_dir, picked_filters, picked_process):
+    db_filename = 'db.json'
+
+    def __init__(self, data_dir):
         """
         :param data_dir: path for preprocessed data
-        :param picked_filters: filters choosen by user
-        :param pricked_process: additional processes choosen by user
         """
         self.entries = {}           # DB entries. Dictionary of dictionaries
         self.batch_dirs = glob.glob(os.path.join(data_dir, '*'))
-        self.filters = picked_filters  # keys
-        self.processes = picked_process
         self.query_list = {}
         self.val_query_list = None
 
-    def __load_db_in_batch(self, batch_path: str) -> Dict[Dict]:
+    @staticmethod
+    def __load_db_in_batch(batch_path: str) -> Dict[Dict]:
         """ A batch refers to a "batch" of dataset collected in a single
         burst. around 100 to a few hundreds of images are contained in a
         batch, typically.
@@ -193,16 +88,15 @@ class DBMS(object):
         :param batch_path: current preprocessed dataset directory
         :return: Dict of db entries, where each entry is a dictionary.
         """
-
-        db_file = os.path.join(batch_path, 'db.json')
+        db_file = os.path.join(batch_path, self.db_filename)
         try:
             with open(db_file, "r") as read_file:
                 # list of metadata dictionaries
                 entries = json.load(read_file)
-                for key, val in entries.items():
+                for key, entry in entries.items():
                     # recover the image path and add as a new column
-                    val['img_path'] = os.path.join(batch_path, 'labeled',
-                                                   val["filehash"])
+                    entry['img_path'] = os.path.join(batch_path, 'labeled',
+                                                     entry["filehash"])
                 return entries
         except Exception as e:
             print('Failed to open database file {}: {}'.format(db_file, e))
@@ -212,44 +106,23 @@ class DBMS(object):
         for batch_dir in self.batch_dirs:
             self.entries.update(self.__load_db_in_batch(batch_dir))
 
-    def query(self):
-        """ Collect filtered data at self.query_list. """
+    def filter_data(self, filter_names: List[str]) -> List[str]:
+        """ Collect filtered data at self.query_list.
 
-        print(self.filters)
+        :param filter_names: A list of filter names
+        :return: a list of keys for the DB entries that satisfy all the filter
+        conditions
+        """
+        filtered = copy.copy(self.entries)
+        for filter_name in filter_names:
+            # iteratively apply selected filters
+            _filter = filter_list[filter_name]
+            filtered = [entry for entry in filtered if
+                        _filter(entry) is True]
+        return filtered.keys()
 
-        if 'random 0.8/0.2' in self.filters:
-            if len(self.filters) > 1:
-                raise Exception('<random> options cannot be selected with others')
-
-            else:
-                self.query_random()
-                return
-
-        for item in self.entries:
-            # for unlabeled image, just skip
-            if not item['is_input_finished']:
-                continue
-
-            suc = True
-            try:
-                for filt in self.filters:
-                    suc = suc and filterlist[filt](item)
-
-                if suc:
-                    img_path = os.path.join(dir, 'labeled', item['filehash'])
-                    print('Success: ' + img_path)
-
-
-                    self.query_list[img_path] = (item['loc'], item['ang'])
-
-            except:
-                # print('Fail: ' + item['filehash'])
-                continue
-
-            # print(query_list)
-        print('Selected data: ', len(self.query_list))
-
-    def query_random(self, ratio: float = 0.2) -> Tuple[List, List]:
+    def get_train_val_keys(self, ratio: float = 0.2) \
+            -> Tuple[List[str], List[str]]:
         """ Randomly split the dataset into two (train/val) by the given ratio.
         The specified ratio is for the validation dataset.
 
@@ -262,97 +135,117 @@ class DBMS(object):
         set_aside_cut_index = math.floor(len(self.entries) * ratio)
         return key_list[set_aside_cut_index:], key_list[:set_aside_cut_index]
 
-        # TODO: remove the following class variables
-        print('Selected data: ', len(self.query_list))
-        print('Validation data: ', len(self.val_query_list))
+    def make_npy(self, keys: List[str], width: int, height: int,
+                 grayscale: bool, output_dir: str, filename_prefix: str):
+        """ Make npy files for training, from query_list
 
-    # def make_npy(self, key_list, filename):
+        :param keys: List of keys for the database entries
+        :param width: width of the output image
+        :param height: height of the output image. The proportion will be kept.
+        :param grayscale: True to turn enable grayscale image
+        :param output_dir: output directory
+        :param filename_prefix: The file name prefix
+        :return: None
+        """
+        xs, ys = [], []
+        fail_cnt = 0
 
-    def make_npy(self, validation=False):
-        """ Make npy files for training, from query_list """
-
-        x_train = []  # image array
-        y_train = []  # labels
-        cv2.namedWindow('tool')
-
-        if validation:
-            self.query_list = self.val_query_list
-
-        for item in self.query_list:
-            img_path = item
-
+        for key in keys:
+            entry = self.entries[key]
             try:  # is it valid img?
-                img = imread(img_path, mode='RGB')
-                cv2.imshow('tool', img)
-            except Exception:
-                # print('Fail: ' + hash)
+                img = imread(entry['img_path'], mode='RGB')
+            except Exception as e:
+                print(e)
+                fail_cnt += 1
                 continue
-
-            # print('Success: ' + hash)
-            label = [float(self.query_list[item][0]),
-                     float(self.query_list[item][1])]
-
-            # additional process (resize, cut, grayscale)
-            img = process(img, self.processes)
-            self.processes = self.processes[0], img.shape[0], self.processes[2]
-
-            x_train.append(img)
-            y_train.append(label)
-
-        cnt = len(x_train)
-        print('Packed data: ', cnt)
+            xs.append(self.__process_img(img, width, height, grayscale))
+            ys.append((entry['loc'], entry['ang']))
+        if fail_cnt > 0:
+            logger.warning('Failed to process {} out of {} entries'.format(
+                fail_cnt, len(keys)))
 
         # npy file name convention
-        nowDatetime = self.__write_log(cnt, validation)
-        save_prefix = os.path.join(BASE_DIR, 'npy', nowDatetime)
-        print(save_prefix)
-        np.save(save_prefix + '_X.npy', x_train)
-        np.save(save_prefix + '_Y.npy', y_train)
+        save_prefix = os.path.join(output_dir, filename_prefix)
+        x_name = os.path.join(output_dir, filename_prefix, '_x.npy')
+        y_name = os.path.join(output_dir, filename_prefix, '_y.npy')
+        logger.info("saving at " + x_name)
+        np.save(x_name, xs)
+        logger.info("saving at " + y_name)
+        np.save(y_name, ys)
 
-    def __write_log(self, num, validation):
-        """ write information of current npy packaging.
-        :param num: number of packed data
-        """
+    @staticmethod
+    def __process_img(img, width, height, grayscale):
+        h, w = img.shape[:2]
+        # resize
+        if width > 0:
+            img = scipy.misc.imresize(img, (int(width * 1.3333), width))
+            h, w = img.shape[:2]
+        # cut
+        if height > 0:
+            cutoff_upper = int((h - height) / 2)
+            if cutoff_upper < 0:
+                raise Exception('your height is shorter than resized height!')
+            img = img[cutoff_upper:cutoff_upper + height, :]
+        # adjust
+        if grayscale == 1:
+            gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = cv2.equalizeHist(gray_img)
+            img = img[..., None]
 
-        now = datetime.datetime.now()
-        nowDatetime = now.strftime('%Y-%m-%d__%H-%M-%S')
-
-        if validation:
-            nowDatetime = nowDatetime + '_val'
-
-        process_line = ''
-        for i in range(len(self.processes)):
-            process_line = process_line + '\t' + str(self.processes[i])
-        print(process_line)
-
-
-        with open(os.path.join(BASE_DIR, './makenp_log.txt'), "a") as f:
-
-            f.write(
-                nowDatetime + '\t' + str(num) + '\t' + str(self.filters)
-                + '\t' + str(self.processes) + '\n')
-
-        return nowDatetime
+        return img
 
 
-def make_npy_file(options, picked_filters, picked_process):
-    """ the actual 'main' function. Other modules that import this module shall
-    call this as the entry point. """
-    data_dir = './dataest/'
-    db = DBMS(data_dir, picked_filters, picked_process)
+def make_npy_file(args):
+    data_dir = os.path.join(BASE_DIR, args.dataset_dir)
 
-    data_dir = os.path.join(BASE_DIR, options['data_dir'])
-    db = DBMS(data_dir, picked_filters, picked_process)
-    db.query()
-    db.make_npy()
-    if db.val_query_list != None:
-        db.make_npy(validation=True)
+    db = DBMS(data_dir)
+    if args.cross_val:
+        logger.info('Generating train/test numpy files with a ratio'
+                    'of {}'.format(args.ratio))
+        train_keys, val_keys = db.get_train_val_keys(args.ratio)
+        db.make_npy(train_keys, args.width, args.height, args.grayscale,
+                    'train')
+        db.make_npy(val_keys, args.width, args.height, args.grayscale, 'val')
+    else:
+        selected_filters = show_and_pick_filters()
+        logger.info("Selected filters: " + str(selected_filters))
+        keys = db.filter_data(selected_filters)
+        db.make_npy(keys, args.width, args.height, args.grayscale,
+                    'filter{}'.format(len(selected_filters)))
+    logger.info('Finished at ' + str(now))
+
+
+def setup_logger(log_file_path: str):
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] : %(message)s')
+
+    fh = logging.FileHandler(filename=log_file_path)
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.INFO)
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+
 
 def main():
-    options = load_yaml()
-    picked_filters = show_and_pick_filters(filterlist)  # key
-    picked_process = choose_process()
-    make_npy_file(options, picked_filters, picked_process)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('dataset_dir', type=str, help="dataset directory")
+    parser.add_argument('output_dir', type=str, help="numpy output directory")
+    parser.add_argument('--width', '-w', type=int, default=150,
+                        help="image width")
+    parser.add_argument('--height', '-h', type=int, default=200,
+                        help="image height")
+    parser.add_argument('--grayscale', '-g', action='store_true',
+                        help="grayscale image")
+    parser.add_argument('--cross-val', '-c', action='store_true',
+                        help="Cross validation")
+    parser.add_argument('--ratio', '-r', type=int, default=0.2,
+                        help="Set-aside ratio")
+    args = parser.parse_args()
+    setup_logger(os.path.join(BASE_DIR, args.output_dir, str(now) + '.log'))
+    make_npy_file(args)
 
 
 if __name__ == "__main__":

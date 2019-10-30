@@ -16,7 +16,7 @@ from typing import Tuple, List, Dict
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 
-now = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
+now = datetime.datetime.now().strftime('%y-%m-%d-%H-%M')
 logger = logging.getLogger('make_numpy')
 
 
@@ -215,17 +215,15 @@ def make_npy_file(args):
                     'of {}'.format(args.ratio))
         train_keys, val_keys = db.get_train_val_keys(args.ratio)
         db.make_npy(train_keys, args.width, args.height, args.grayscale,
-                    args.output_dir, 'train')
+                    args.output_dir, now + '-train')
         db.make_npy(val_keys, args.width, args.height, args.grayscale,
-                    args.output_dir, 'val')
+                    args.output_dir, now + '-val')
     else:
         selected_filters = show_and_pick_filters()
         logger.info("Selected filters: " + str(selected_filters))
         keys = db.filter_data(selected_filters)
         db.make_npy(keys, args.width, args.height, args.grayscale,
-                   'filter{}_{}'.format(len(selected_filters), now))
-        db.make_npy(keys, args.width, args.height, args.grayscale,
-                    args.output_dir)
+                    args.output_dir, 'filter{}-{}'.format(len(selected_filters), now))
     logger.info('Finished at ' + str(now))
 
 

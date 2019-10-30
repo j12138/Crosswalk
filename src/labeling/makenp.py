@@ -166,10 +166,13 @@ class DBMS(object):
             except Exception as e:
                 fail_cnt += 1
                 continue
+            if 'loc' in entry and 'ang' in entry:
+                fail_cnt += 1
+                continue
             xs.append(self.__process_img(img, width, height, grayscale))
             ys.append((entry['loc'], entry['ang']))
         if fail_cnt > 0:
-            logger.warning('Failed to process {} out of {} entries'.format(
+            logger.error('Failed to process {} out of {} entries'.format(
                 fail_cnt, len(keys)))
 
         # npy file name convention

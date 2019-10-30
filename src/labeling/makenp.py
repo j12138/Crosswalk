@@ -166,7 +166,7 @@ class DBMS(object):
             except Exception as e:
                 fail_cnt += 1
                 continue
-            if 'loc' in entry and 'ang' in entry:
+            if not 'loc' in entry and 'ang' in entry:
                 fail_cnt += 1
                 continue
             xs.append(self.__process_img(img, width, height, grayscale))

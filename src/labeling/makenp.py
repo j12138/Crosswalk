@@ -3,7 +3,8 @@ import argparse
 import logging
 from typing import Tuple, List, Dict
 import datetime
-from database import DBMS
+import numpy as np
+from labeling.database import DBMS, get_filter_list
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
@@ -12,24 +13,7 @@ now = datetime.datetime.now().strftime('%y-%m-%d-%H-%M')
 logger = logging.getLogger('make_numpy')
 
 
-filter_list = {
-    'apple': lambda x: x['Make'] == 'Apple',
-    'samsung': lambda x: x['Make'] == 'samsung',
-    'shadow': lambda x: x['shadow'] == 1,
-    'obstacle': lambda x: x['obs_car'] == 1 and x['obs_human'] == 1,
-    'car': lambda x: x['obs_car'] == 1,
-    'human': lambda x: x['obs_human'] == 1,
-    'onecol': lambda x: x['column'] == 1,
-    'twocol': lambda x: x['column'] == 2,
-    'odd2col': lambda x: x['column'] == 3,
-    'boundary': lambda x: abs(float(x['loc'])) > 0.8,
-    'old': lambda x: x['old'] == 1,
-    'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
-    'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0
-}
-
-
-def show_and_pick_filters():
+def show_and_pick_filters(filter_list):
     """ show pre-declared(AT TOP) filter lists and get user's choice.
     :return: list of picked filters
     """
@@ -42,7 +26,7 @@ def show_and_pick_filters():
     print('select filters (ex: 1 2 3 4 5)')
     picked_num = input('└─ here: ')
     filter_ids = [int(i) for i in picked_num.split(' ')]
-    filter_keys = list(filter_list.keys())
+    filter_keys = list(filter7_list.keys())
     # print(filter_keys)
 
     picked = []
@@ -69,26 +53,43 @@ def setup_logger(log_file_path: str):
     logger.addHandler(sh)
 
 
+def make_npy(db, keys: List[str], width: int, height: int,
+             grayscale: bool, output_dir: str, filename_prefix=''):
+
+    xs, ys = db.get_npy(keys, width, height, grayscale)
+    
+    # npy file name convention
+    x_name = os.path.join(output_dir, filename_prefix + '_x.npy')
+    y_name = os.path.join(output_dir, filename_prefix + '_y.npy')
+
+    print(x_name)
+    logger.info("saving at " + x_name)
+    np.save(x_name, xs)
+    logger.info("saving at " + y_name)
+    np.save(y_name, ys)
+
+
 def make_npy_file(args):
     data_dir = os.path.join(BASE_DIR, args.dataset_dir)
 
     db = DBMS(data_dir)
     db.load_database()
+    filter_list = get_filter_list()
 
     if args.cross_val:
         logger.info('Generating train/test numpy files with a ratio'
                     'of {}'.format(args.ratio))
         train_keys, val_keys = db.get_train_val_keys(args.ratio)
-        db.make_npy(train_keys, args.width, args.height, args.grayscale,
-                    args.output_dir, now + '-train')
-        db.make_npy(val_keys, args.width, args.height, args.grayscale,
-                    args.output_dir, now + '-val')
+        make_npy(db, train_keys, args.width, args.height, args.grayscale,
+                 args.output_dir, now + '-train')
+        make_npy(db, val_keys, args.width, args.height, args.grayscale,
+                 args.output_dir, now + '-val')
     else:
-        selected_filters = show_and_pick_filters()
+        selected_filters = show_and_pick_filters(filter_list)
         logger.info("Selected filters: " + str(selected_filters))
         keys = db.filter_data(selected_filters)
-        db.make_npy(keys, args.width, args.height, args.grayscale,
-                    args.output_dir, 'filter{}-{}'.format(len(selected_filters), now))
+        make_npy(db, keys, args.width, args.height, args.grayscale,
+                 args.output_dir, 'filter{}-{}'.format(len(selected_filters), now))
     logger.info('Finished at ' + str(now))
 
 

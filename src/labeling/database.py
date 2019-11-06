@@ -1,6 +1,6 @@
 import json
+import pandas as pd
 import numpy as np
-import yaml
 import scipy
 import cv2
 import matplotlib
@@ -20,6 +20,7 @@ ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 
 now = datetime.datetime.now().strftime('%y-%m-%d-%H-%M')
 makenp_logger = logging.getLogger('make_numpy')
+stats_logger = logging.getLogger('DB_stats')
 
 
 filter_list = {
@@ -37,6 +38,10 @@ filter_list = {
     'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
     'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0
 }
+
+
+def get_filter_list():
+    return filter_list
 
 
 class DBMS(object):
@@ -81,6 +86,7 @@ class DBMS(object):
         for batch_dir in self.batch_dirs:
             self.entries.update(self.__load_db_in_batch(batch_dir))
 
+
     def filter_data(self, filter_names: List[str]) -> List[str]:
         """ Collect filtered data at self.query_list.
 
@@ -119,8 +125,8 @@ class DBMS(object):
         cut_index = math.floor(len(labeled_entry_keys) * ratio)
         return labeled_entry_keys[cut_index:], labeled_entry_keys[:cut_index]
 
-    def make_npy(self, keys: List[str], width: int, height: int,
-                 grayscale: bool, output_dir: str, filename_prefix=''):
+    def get_npy(self, keys: List[str], width: int, height: int,
+                grayscale: bool):
         """ Make npy files for training, from query_list
 
         :param keys: List of keys for the database entries
@@ -138,10 +144,11 @@ class DBMS(object):
             entry = self.entries[key]
             try:  # is it valid img?
                 img = imread(entry['img_path'], mode='RGB')
+                assert len(img.shape) >= 2
             except Exception as e:
                 fail_cnt += 1
                 continue
-            if not 'loc' in entry and 'ang' in entry:
+            if not ('loc' in entry and 'ang' in entry):
                 fail_cnt += 1
                 continue
             xs.append(self.__process_img(img, width, height, grayscale))
@@ -150,15 +157,132 @@ class DBMS(object):
             makenp_logger.error('Failed to process {} out of {} entries'.format(
                 fail_cnt, len(keys)))
 
-        # npy file name convention
-        x_name = os.path.join(output_dir, filename_prefix + '_x.npy')
-        y_name = os.path.join(output_dir, filename_prefix + '_y.npy')
+        return xs, ys
 
-        print(x_name)
-        makenp_logger.info("saving at " + x_name)
-        np.save(x_name, xs)
-        makenp_logger.info("saving at " + y_name)
-        np.save(y_name, ys)
+    def show_statistics(self, cron=False):
+        now = datetime.datetime.now()
+        nowDatetime = now.strftime('%Y-%m-%d')
+
+        df = pd.DataFrame.from_dict(self.entries.values())
+
+        columns = ['date', 'total', 'labeled', 'invalid', 'obs_car',
+                   'obs_human', 'shadow', 'old', '1col', '2col', 'odd2col']
+        label_range = {'loc': [-2.5, 2.5], 'ang': [-90, 90],
+                       'pit': [-0.25, 1.25], 'roll': [-30, 30]}
+        labels = ['loc', 'ang', 'pit', 'roll']
+
+        stats = pd.DataFrame(index=range(1), columns=columns)
+        stats['date'] = nowDatetime
+
+        stats['total'] = df.shape[0]
+        stats['labeled'] = df[df['is_input_finished']].shape[0]
+        stats['invalid'] = df[df['invalid'] == 1].shape[0]
+        # horizontal = df[df['horizontal'] == 1].shape[0]
+        stats['obs_car'] = df[df['obs_car'] == 1].shape[0]
+        stats['obs_human'] = df[df['obs_human'] == 1].shape[0]
+        stats['shadow'] = df[df['shadow'] == 1].shape[0]
+        stats['old'] = df[df['old'] == 1].shape[0]
+        stats['1col'] = df[df['column'] == 1].shape[0]
+        stats['2col'] = df[df['column'] == 2].shape[0]
+        stats['odd2col'] = df[df['column'] == 2.5].shape[0]
+
+        for label in labels:
+            interval = (label_range[label][1] - label_range[label][0]) / 10.0
+
+            for i in range(10):
+                bucket = label + '_' + str(i)
+                columns.append(bucket)
+                b_range = [label_range[label][0] + i * interval,
+                           label_range[label][0] + (i + 1) * interval]
+
+                test = (df[label] >= b_range[0]) & (df[label] < b_range[1])
+                stats[bucket] = df[test].shape[0]
+
+        df_stats = pd.DataFrame(stats)
+
+        if cron:
+            with open('trend.csv', 'a', newline='') as f:
+                df_stats.to_csv(f, header=False)
+
+            self.show_label_scatter_plot(cron)
+
+            with open('trend.csv', 'r') as f:
+                df_trend = pd.read_csv(f)
+                df_trend[['date', 'labeled']].plot.bar(x='date', y='labeled',
+                                                       rot=0)
+
+                figure_path = os.path.join('figure', 'num_labeled.png')
+                plt.savefig(figure_path)
+
+        else:
+            print(df_stats)
+
+        pass
+
+    def show_label_scatter_plot(self, cron):
+        """ show scatter plots for computed labels.
+        2 plots: loc - ang / pit - roll
+        """
+        matplotlib.use('Agg')
+
+        loc = []
+        ang = []
+        pit = []
+        roll = []
+        cnt = 0
+
+        for item in self.entries.values():
+            try:
+                if item['invalid'] == 0:
+                    loc.append(item['loc'])
+                    ang.append(item['ang'])
+
+                    pit.append(item['pit'] - 0.5)
+                    roll.append(item['roll'])
+            except Exception as e:
+                continue
+
+        '''
+        print('loc', max(loc), min(loc))
+        print('ang', max(ang), min(ang))
+        print('pit', max(pit), min(pit))
+        print('roll', max(roll), min(roll))
+        '''
+
+        plt.figure(figsize=(20, 8))
+        # loc, ang
+        plt.subplot(121)
+        plt.scatter(loc, ang, s=3)
+        plt.xlim((-2.5, 2.5))
+        plt.ylim((-90, 90))
+        plt.xlabel('loc')
+        plt.ylabel('ang ($^{\circ}$)')
+        plt.title('location ─ angle')
+
+        # pit, roll
+        plt.subplot(122)
+
+        plt.scatter(pit, roll, s=3)
+        plt.xlim((-0.75, 0.75))
+        plt.ylim((-30, 30))
+
+        # plt.axis(option='auto')
+        plt.xlabel('pit')
+        plt.ylabel('roll ($^{\circ}$)')
+        plt.title('pitch ─ roll')
+
+        if cron:
+            now = datetime.datetime.now()
+            nowDatetime = now.strftime('%Y-%m-%d')
+
+            if not os.path.exists(os.path.join(BASE_DIR, 'figure')):
+                os.mkdir(os.path.join(BASE_DIR, 'figure'))
+
+            figure_path = os.path.join('figure', 'label_' + nowDatetime + '.png')
+            plt.savefig(figure_path)
+        else:
+            plt.savefig('stats_label_figure.png')
+            plt.show()
 
     @staticmethod
     def __process_img(img, width, height, grayscale):
@@ -193,63 +317,8 @@ class DBMS(object):
         bar = '=' * blocks + '.' * (25 - blocks) + ' [ ' + str(target) +\
             ' / ' + str(total) + ' ]'
 
-    def show_label_scatter_plot(self, cron=False):
-        """ show scatter plots for computed labels.
-            2 plots: loc - ang / pit - roll
-        """
 
-        matplotlib.use('Agg')
-
-        loc = []
-        ang = []
-        pit = []
-        roll = []
-        cnt = 0
-
-        for item in db:
-            try:
-                if item['invalid'] == 0:
-                    loc.append(item['loc'])
-                    ang.append(item['ang'])
-
-                    pit.append(item['pit'] - 0.5)
-                    roll.append(item['roll'])
-            except:
-                continue
-
-        plt.figure(figsize=(20, 8))
-        # loc, ang
-        plt.subplot(121)
-        plt.scatter(loc, ang, s=3)
-        plt.xlim((-2.5, 2.5))
-        plt.ylim((-90, 90))
-        plt.xlabel('loc')
-        plt.ylabel('ang ($^{\circ}$)')
-        plt.title('location ─ angle')
-
-        # pit, roll
-        plt.subplot(122)
-
-        plt.scatter(pit, roll, s=3)
-        plt.xlim((-0.75, 0.75))
-        plt.ylim((-30, 30))
-
-        # plt.axis(option='auto')
-        plt.xlabel('pit')
-        plt.ylabel('roll ($^{\circ}$)')
-        plt.title('pitch ─ roll')
-
-        if cron:
-            now = datetime.datetime.now()
-            nowDatetime = now.strftime('%Y-%m-%d')
-            figure_path = os.path.join('figure', 'label_' + nowDatetime + '.png')
-            plt.savefig(figure_path)
-        else:
-            plt.savefig('stats_label_figure.png')
-            plt.show()
-
-
-def setup_logger(log_file_path: str):
+def setup_logger(logger, log_file_path: str):
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] : %(message)s')
     logger.setLevel(logging.INFO)
     fh = logging.FileHandler(filename=log_file_path)
@@ -268,15 +337,25 @@ def show_statistics(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset_dir', type=str, help="dataset directory")
-    parser.add_argument('--stats', '-s', action='store_true',
-                        help="Database statistics")
-    parser.add_argument('--cron', '-c', action="store_true")
-    
+    # parser.add_argument('dataset_dir', type=str, help="dataset directory")
+    parser.add_argument('--stats', '-s', action='store_true')
+    parser.add_argument('--stats_visualize', '-sv', action='store_true')
+    parser.add_argument('--stats_cron', '-sc', action="store_true")
+
     args = parser.parse_args()
+    data_dir = os.path.join(BASE_DIR, 'dataset')
+    db = DBMS(data_dir)
+    db.load_database()
 
     if args.stats:
-        show_statistics(args)
+        setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
+        db.show_statistics()
+    elif args.stats_cron:
+        setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
+        db.show_statistics(args.stats_cron)
+    elif args.stats_visualize:
+        pass
+
 
 if __name__ == "__main__":
     main()

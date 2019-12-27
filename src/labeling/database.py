@@ -83,9 +83,9 @@ class DBMS(object):
 
     def load_database(self) -> None:
         """ Load the whole database throughout all the batches """
+
         for batch_dir in self.batch_dirs:
             self.entries.update(self.__load_db_in_batch(batch_dir))
-
 
     def filter_data(self, filter_names: List[str]) -> List[str]:
         """ Collect filtered data at self.query_list.
@@ -95,7 +95,6 @@ class DBMS(object):
         conditions
         """
         filtered = copy.copy(self.entries)
-        print(len(filtered))
 
         for filter_name in filter_names:
 
@@ -105,8 +104,6 @@ class DBMS(object):
             filtered = {entry: filtered[entry] for entry in filtered if
                         (filtered[entry]['is_input_finished'] is True) and
                         (_filter(filtered[entry]) is True)}
-
-            print(len(filtered))
 
         return filtered.keys()
 
@@ -284,6 +281,39 @@ class DBMS(object):
             plt.savefig('stats_label_figure.png')
             plt.show()
 
+    def pick_out_outlier(self):
+        outlier_keys = list(self.filter_data(['right_top', 'left_bottom']))
+        #outlier_keys.extend(list(self.filter_data(['apple'])))
+        # print(outlier_keys)
+
+        outlier_addr = []
+
+        with open(os.path.join(BASE_DIR, 'outlier_addr.txt'), "w") as f:
+
+            for key in outlier_keys:
+                batch_name = self.entries[key]['img_path'].split('\\')[2]
+                outlier_addr.append((key, batch_name))
+                f.write(key + ',' + batch_name + '\n')
+
+        return outlier_addr
+
+    def correct_labeling_order(self):
+        for item in self.entries.values():
+            if item['is_input_finished'] and \
+                (item['column'] == 1 or item['column'] == 2):
+                all_points = item['all_points']
+                new_points = [[0, 0]] * 4
+                
+                if all_points[0] > all_points[2]:
+                    print('hi')
+                    new_points[0] = all_points[2]
+                    new_points[1] = all_points[3]
+                    new_points[2] = all_points[0]
+                    new_points[3] = all_points[1]
+
+                    print(all_points, new_points)
+        return
+
     @staticmethod
     def __process_img(img, width, height, grayscale):
         h, w = img.shape[:2]
@@ -339,22 +369,24 @@ def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('dataset_dir', type=str, help="dataset directory")
     parser.add_argument('--stats', '-s', action='store_true')
-    parser.add_argument('--stats_visualize', '-sv', action='store_true')
     parser.add_argument('--stats_cron', '-sc', action="store_true")
+    parser.add_argument('--outlier', '-o', action="store_true")
 
     args = parser.parse_args()
-    data_dir = os.path.join(BASE_DIR, 'dataset')
+    data_dir = os.path.join('.', 'dataset')
     db = DBMS(data_dir)
     db.load_database()
 
     if args.stats:
-        setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
+        # setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
         db.show_statistics()
     elif args.stats_cron:
-        setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
+        # setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
         db.show_statistics(args.stats_cron)
-    elif args.stats_visualize:
-        pass
+    elif args.outlier:
+        db.pick_out_outlier()
+    else:
+        db.correct_labeling_order()
 
 
 if __name__ == "__main__":

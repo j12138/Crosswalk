@@ -44,6 +44,33 @@ def get_filter_list():
     return filter_list
 
 
+def show_and_pick_filters(filter_list):
+    """ show pre-declared(AT TOP) filter lists and get user's choice.
+    :return: list of picked filters
+    """
+    print('\n------- filter lists -------')
+    print(enumerate(filter_list))
+    for i, filter_name in enumerate(filter_list):
+        print('[{}] {}'.format(i + 1, filter_name))
+
+    print('----------------------------')
+    print('select filters (ex: 1 2 3 4 5)')
+    picked_num = input('└─ here: ')
+    filter_ids = [int(i) for i in picked_num.split(' ')]
+    filter_keys = list(filter_list.keys())
+    # print(filter_keys)
+
+    picked = []
+    print('\n------- selected filters -------')
+    for filter_id in filter_ids:
+        key = filter_keys[filter_id - 1]
+        print('[{}] {}'.format(filter_id, key))
+        picked.append(key)
+    print('--------------------------------\n')
+
+    return picked
+
+
 class DBMS(object):
     """ Database interface """
 
@@ -281,38 +308,43 @@ class DBMS(object):
             plt.savefig('stats_label_figure.png')
             plt.show()
 
-    def pick_out_outlier(self):
-        outlier_keys = list(self.filter_data(['right_top', 'left_bottom']))
-        #outlier_keys.extend(list(self.filter_data(['apple'])))
+    def pick_out_filtered(self, filters, OUT=False):
+        print(filters)
+        outlier_keys = list(self.filter_data(filters))
+        # outlier_keys.extend(list(self.filter_data(['apple'])))
         # print(outlier_keys)
 
-        outlier_addr = []
+        filtered_addr = []
 
         with open(os.path.join(BASE_DIR, 'outlier_addr.txt'), "w") as f:
 
             for key in outlier_keys:
                 batch_name = self.entries[key]['img_path'].split('\\')[2]
-                outlier_addr.append((key, batch_name))
+                filtered_addr.append((key, batch_name))
                 f.write(key + ',' + batch_name + '\n')
 
-        return outlier_addr
+        return filtered_addr
 
     def correct_labeling_order(self):
         for item in self.entries.values():
-            if item['is_input_finished'] and \
-                (item['column'] == 1 or item['column'] == 2):
-                all_points = item['all_points']
-                new_points = [[0, 0]] * 4
-                
-                if all_points[0] > all_points[2]:
-                    print('hi')
-                    new_points[0] = all_points[2]
-                    new_points[1] = all_points[3]
-                    new_points[2] = all_points[0]
-                    new_points[3] = all_points[1]
-
-                    print(all_points, new_points)
+            self.__correct_points_order(item)
         return
+
+    def __correct_points_order(self, db_item):
+        if db_item['is_input_finished'] and \
+            (db_item['column'] == 1 or db_item['column'] == 2):
+            all_points = db_item['all_points']
+            new_points = [[0, 0]] * 4
+            
+            if all_points[0] > all_points[2]:
+                new_points[0] = all_points[2]
+                new_points[1] = all_points[3]
+                new_points[2] = all_points[0]
+                new_points[3] = all_points[1]
+
+                print(all_points, new_points)
+
+        return new_points
 
     @staticmethod
     def __process_img(img, width, height, grayscale):
@@ -361,16 +393,13 @@ def setup_logger(logger, log_file_path: str):
     logger.addHandler(sh)
 
 
-def show_statistics(args):
-    return
-
-
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('dataset_dir', type=str, help="dataset directory")
     parser.add_argument('--stats', '-s', action='store_true')
-    parser.add_argument('--stats_cron', '-sc', action="store_true")
+    parser.add_argument('--stats-cron', '-sc', action="store_true")
     parser.add_argument('--outlier', '-o', action="store_true")
+    parser.add_argument('--filter', '-f', action="store_true")
 
     args = parser.parse_args()
     data_dir = os.path.join('.', 'dataset')
@@ -384,9 +413,15 @@ def main():
         # setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
         db.show_statistics(args.stats_cron)
     elif args.outlier:
-        db.pick_out_outlier()
+        outlier_filters = ['right_top', 'left_bottom']
+        db.pick_out_filtered(outlier_filters, True)
+        # db.correct_labeling_order()
+    elif args.filter:
+        picked_filters = show_and_pick_filters(filter_list)
+        db.pick_out_filtered(picked_filters)
     else:
-        db.correct_labeling_order()
+        pass
+        # db.correct_labeling_order()
 
 
 if __name__ == "__main__":

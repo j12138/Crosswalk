@@ -5,12 +5,9 @@ import glob
 import logging
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-import makenp, stats
-
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
-
 
 
 config_file = 'server_config.yaml'

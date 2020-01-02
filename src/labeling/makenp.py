@@ -4,40 +4,14 @@ import logging
 from typing import Tuple, List, Dict
 import datetime
 import numpy as np
-from labeling.database import DBMS, get_filter_list
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from labeling import database
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 
 now = datetime.datetime.now().strftime('%y-%m-%d-%H-%M')
 logger = logging.getLogger('make_numpy')
-
-
-def show_and_pick_filters(filter_list):
-    """ show pre-declared(AT TOP) filter lists and get user's choice.
-    :return: list of picked filters
-    """
-    print('\n------- filter lists -------')
-    print(enumerate(filter_list))
-    for i, filter_name in enumerate(filter_list):
-        print('[{}] {}'.format(i + 1, filter_name))
-
-    print('----------------------------')
-    print('select filters (ex: 1 2 3 4 5)')
-    picked_num = input('└─ here: ')
-    filter_ids = [int(i) for i in picked_num.split(' ')]
-    filter_keys = list(filter7_list.keys())
-    # print(filter_keys)
-
-    picked = []
-    print('\n------- selected filters -------')
-    for filter_id in filter_ids:
-        key = filter_keys[filter_id - 1]
-        print('[{}] {}'.format(filter_id, key))
-        picked.append(key)
-    print('--------------------------------\n')
-
-    return picked
 
 
 def setup_logger(log_file_path: str):
@@ -85,7 +59,7 @@ def make_npy_file(args):
         make_npy(db, val_keys, args.width, args.height, args.grayscale,
                  args.output_dir, now + '-val')
     else:
-        selected_filters = show_and_pick_filters(filter_list)
+        selected_filters = database.show_and_pick_filters(filter_list)
         logger.info("Selected filters: " + str(selected_filters))
         keys = db.filter_data(selected_filters)
         make_npy(db, keys, args.width, args.height, args.grayscale,

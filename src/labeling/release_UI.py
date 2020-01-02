@@ -8,9 +8,10 @@ from PyQt5.QtWidgets import QMessageBox, QApplication, \
     QFileDialog, QLineEdit, QProgressBar
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, pyqtSignal, QEventLoop, QTimer, QThread, QWaitCondition, QMutex
-from labeling_tool import LabelingTool, DataSelector
-from preprocess import PreprocessThread
-import server
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from labeling.labeling_tool import LabelingTool, DataSelector
+from labeling.preprocess import PreprocessThread
+from labeling import server
 
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "lib"))
 

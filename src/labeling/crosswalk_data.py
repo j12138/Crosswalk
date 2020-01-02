@@ -1,8 +1,6 @@
 # A pseudo-code for managing crosswalk data (and its metadata)
 
 import cv2
-import csv
-import hashlib
 import json
 import yaml
 import os
@@ -89,11 +87,6 @@ class CrosswalkData:
         self.labels['ang'] = ang
         self.labels['pit'] = pit
         self.labels['roll'] = roll
-
-    def write_on_csv(self):
-        with open('annotation.csv', 'a', newline='') as csvfile:
-            mywriter = csv.writer(csvfile)
-            mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
         with open(self.db, 'r+') as db_json:

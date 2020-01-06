@@ -4,7 +4,7 @@
 
 import argparse
 import cv2
-import os, sys, glob
+import os, sys, glob, traceback
 import json
 import time
 import logging
@@ -318,7 +318,8 @@ class LabelingTool(QWidget):
         try:
             self.__draw_line_and_compute_label()
         except Exception as e:
-            print('Failed to compute labels :{}'.format(e))
+            # move to next image (use D instead of →)at(e))
+            traceback.print_exc()
             self.close()
 
         self.update_img(self.img_to_display)

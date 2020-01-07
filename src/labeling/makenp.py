@@ -5,7 +5,7 @@ from typing import Tuple, List, Dict
 import datetime
 import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from labeling import database
+from database import DBMS, get_filter_list, show_and_pick_filters
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
@@ -31,7 +31,7 @@ def make_npy(db, keys: List[str], width: int, height: int,
              grayscale: bool, output_dir: str, filename_prefix=''):
 
     xs, ys = db.get_npy(keys, width, height, grayscale)
-    
+
     # npy file name convention
     x_name = os.path.join(output_dir, filename_prefix + '_x.npy')
     y_name = os.path.join(output_dir, filename_prefix + '_y.npy')
@@ -69,8 +69,10 @@ def make_npy_file(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset_dir', type=str, help="dataset directory")
-    parser.add_argument('output_dir', type=str, help="numpy output directory")
+    parser.add_argument('dataset_dir', type=str, help="dataset directory", \
+                        default='dataset')
+    parser.add_argument('output_dir', type=str, help="numpy output directory", \
+                        default='npy')
     parser.add_argument('--width', '-w', type=int, default=150,
                         help="image width")
     parser.add_argument('--height', '-H', type=int, default=200,
@@ -88,4 +90,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -44,6 +44,36 @@ def get_filter_list():
     return filter_list
 
 
+def show_and_pick_filters(filter_list):
+    """ show pre-declared(AT TOP) filter lists and get user's choice.
+    :return: list of picked filters
+    """
+    print('\n------- filter lists -------')
+    print(enumerate(filter_list))
+    for i, filter_name in enumerate(filter_list):
+        print('[{}] {}'.format(i + 1, filter_name))
+
+    print('----------------------------')
+    print('- You can get certain data group which meets the selected filters')
+    print('- Multiple filters are allowed with blank(space) intervals')
+    print('select filters (ex: 1 2 3 4 5)')
+    
+    picked_num = input('* here: ')
+    filter_ids = [int(i) for i in picked_num.split(' ')]
+    filter_keys = list(filter_list.keys())
+    # print(filter_keys)
+
+    picked = []
+    print('\n------- selected filters -------')
+    for filter_id in filter_ids:
+        key = filter_keys[filter_id - 1]
+        print('[{}] {}'.format(filter_id, key))
+        picked.append(key)
+    print('--------------------------------\n')
+
+    return picked
+
+
 class DBMS(object):
     """ Database interface """
 
@@ -64,11 +94,13 @@ class DBMS(object):
         batch, typically.
         This function loads the dataset database stored in the given batch
         path directory.
-
         :param batch_path: current preprocessed dataset directory
         :return: Dict of db entries, where each entry is a dictionary.
         """
         db_file = os.path.join(batch_path, self.db_filename)
+        if not os.path.isfile(db_file):
+            makenp_logger.error('No such db file: ' + db_file)
+            return
         try:
             with open(db_file, "r") as read_file:
                 # list of metadata dictionaries
@@ -83,30 +115,40 @@ class DBMS(object):
 
     def load_database(self) -> None:
         """ Load the whole database throughout all the batches """
-        for batch_dir in self.batch_dirs:
-            self.entries.update(self.__load_db_in_batch(batch_dir))
 
+        for batch_dir in self.batch_dirs:
+            batch_db = self.__load_db_in_batch(batch_dir)
+            if batch_db:
+                self.entries.update(batch_db)
 
     def filter_data(self, filter_names: List[str]) -> List[str]:
         """ Collect filtered data at self.query_list.
-
         :param filter_names: A list of filter names
         :return: a list of keys for the DB entries that satisfy all the filter
         conditions
         """
-        filtered = copy.copy(self.entries)
-        print(len(filtered))
+        filtered = {}
 
-        for filter_name in filter_names:
+        # iteratively apply selected filters
+        
+        '''
+        filtered = {entry: filtered[entry] for entry in filtered if
+                    (filtered[entry]['is_input_finished'] is True) and
+                    (_filter(filtered[entry]) is True)}
+        '''
 
-            # iteratively apply selected filters
-            _filter = filter_list[filter_name]
-
-            filtered = {entry: filtered[entry] for entry in filtered if
-                        (filtered[entry]['is_input_finished'] is True) and
-                        (_filter(filtered[entry]) is True)}
-
-            print(len(filtered))
+        for entry in self.entries:
+            check = self.entries[entry]['is_input_finished']
+            for filter_name in filter_names:
+                _filter = filter_list[filter_name]
+                try:
+                    check = check and _filter(self.entries[entry])
+                except Exception as e:
+                    makenp_logger.error(self.entries[entry]['img_path'])
+                    continue
+            
+            if check:
+                filtered[entry] = self.entries[entry]
 
         return filtered.keys()
 
@@ -114,7 +156,6 @@ class DBMS(object):
             -> Tuple[List[str], List[str]]:
         """ Randomly split the dataset into two (train/val) by the given ratio.
         The specified ratio is for the validation dataset.
-
         :param ratio: the ratio of the whole data to set aside for validation
         :return: a Tuple of two key lists, one for train and the other for val.
         """
@@ -128,7 +169,6 @@ class DBMS(object):
     def get_npy(self, keys: List[str], width: int, height: int,
                 grayscale: bool):
         """ Make npy files for training, from query_list
-
         :param keys: List of keys for the database entries
         :param width: width of the output image
         :param height: height of the output image. The proportion will be kept.
@@ -284,6 +324,44 @@ class DBMS(object):
             plt.savefig('stats_label_figure.png')
             plt.show()
 
+    def pick_out_filtered(self, filters, OUT=False):
+        print(filters)
+        outlier_keys = list(self.filter_data(filters))
+        # outlier_keys.extend(list(self.filter_data(['apple'])))
+        # print(outlier_keys)
+
+        filtered_addr = []
+
+        with open(os.path.join(BASE_DIR, 'outlier_addr.txt'), "w") as f:
+
+            for key in outlier_keys:
+                batch_name = self.entries[key]['img_path'].split('\\')[2]
+                filtered_addr.append((key, batch_name))
+                f.write(key + ',' + batch_name + '\n')
+
+        return filtered_addr
+
+    def correct_labeling_order(self):
+        for item in self.entries.values():
+            self.__correct_points_order(item)
+        return
+
+    def __correct_points_order(self, db_item):
+        if db_item['is_input_finished'] and \
+            (db_item['column'] == 1 or db_item['column'] == 2):
+            all_points = db_item['all_points']
+            new_points = [[0, 0]] * 4
+            
+            if all_points[0] > all_points[2]:
+                new_points[0] = all_points[2]
+                new_points[1] = all_points[3]
+                new_points[2] = all_points[0]
+                new_points[3] = all_points[1]
+
+                print(all_points, new_points)
+
+        return new_points
+
     @staticmethod
     def __process_img(img, width, height, grayscale):
         h, w = img.shape[:2]
@@ -331,30 +409,35 @@ def setup_logger(logger, log_file_path: str):
     logger.addHandler(sh)
 
 
-def show_statistics(args):
-    return
-
-
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('dataset_dir', type=str, help="dataset directory")
     parser.add_argument('--stats', '-s', action='store_true')
-    parser.add_argument('--stats_visualize', '-sv', action='store_true')
-    parser.add_argument('--stats_cron', '-sc', action="store_true")
+    parser.add_argument('--stats-cron', '-sc', action="store_true")
+    parser.add_argument('--outlier', '-o', action="store_true")
+    parser.add_argument('--filter', '-f', action="store_true")
 
     args = parser.parse_args()
-    data_dir = os.path.join(BASE_DIR, 'dataset')
+    data_dir = os.path.join('.', 'dataset')
     db = DBMS(data_dir)
     db.load_database()
 
     if args.stats:
-        setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
+        # setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
         db.show_statistics()
     elif args.stats_cron:
-        setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
+        # setup_logger(stats_logger, os.path.join(BASE_DIR, str(now) + '.log'))
         db.show_statistics(args.stats_cron)
-    elif args.stats_visualize:
+    elif args.outlier:
+        outlier_filters = ['right_top', 'left_bottom']
+        db.pick_out_filtered(outlier_filters, True)
+        # db.correct_labeling_order()
+    elif args.filter:
+        picked_filters = show_and_pick_filters(filter_list)
+        db.pick_out_filtered(picked_filters)
+    else:
         pass
+        # db.correct_labeling_order()
 
 
 if __name__ == "__main__":

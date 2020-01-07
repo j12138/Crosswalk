@@ -150,6 +150,12 @@ def find_side_point(p1, p2, p3, p4, image_width, image_height):
     new_p3y = (image_height - p3[1]) * 24 / 38 * image_height / p3[1]
     # print("new_p3y :", new_p3y)
     a = end_line[0]
+
+    # Handle div-zero exception
+    if a == 0:
+        print("div-zero case GETCHAAA!")
+        return [2 * p3[0] - p1[0], p1[1]]
+
     b = end_line[1]
     H = image_height
     line1 = [12 * a * math.pow(H, 2) / (-19 * math.pow(a * p3[0] + b, 2)),

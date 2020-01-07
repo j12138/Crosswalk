@@ -54,7 +54,10 @@ def show_and_pick_filters(filter_list):
         print('[{}] {}'.format(i + 1, filter_name))
 
     print('----------------------------')
+    print('- You can get certain data group which meets the selected filters')
+    print('- Multiple filters are allowed with blank(space) intervals')
     print('select filters (ex: 1 2 3 4 5)')
+    
     picked_num = input('* here: ')
     filter_ids = [int(i) for i in picked_num.split(' ')]
     filter_keys = list(filter_list.keys())

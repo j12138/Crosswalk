@@ -1,8 +1,6 @@
 # A pseudo-code for managing crosswalk data (and its metadata)
 
 import cv2
-import csv
-import hashlib
 import json
 import yaml
 import os
@@ -22,10 +20,10 @@ def loadyaml():
                'manualmeta': {'obs_car': [0, 1, 0], 'obs_human': [0, 1, 0],
                'shadow': [0, 1, 0], 'column': [1, 2, 1],
                'zebra_ratio': [0, 100, 60], 'out_of_range': [0, 1, 0],
-               'old': [0, 1, 0], 'invalid': [0, 0, 0]},
+               'old': [0, 1, 0], 'invalid': [0, 0, 0], 'corner-case': [0, 0, 0 ]},
                'widgets': {'cb_obscar': False, 'cb_obshuman': False,
                'cb_shadow': False, 'cb_old': False, 'cb_outrange': False,
-               'rb_1col': True, 'slider_ratio': 60}}
+               'rb_1col': True, 'slider_ratio': 60, 'cb_corner': False}}
 
     return options
 
@@ -47,8 +45,9 @@ class LabelingStatus(object):
             'cb_shadow': False,
             'cb_old': False,
             # 'cb_outrange': False,
-            'rb_1col': 1
+            'rb_1col': 1,
             # 'slider_ratio': 60
+            'cb_corner': False
         }
         self.remarks = ''
 
@@ -56,11 +55,11 @@ class LabelingStatus(object):
 class CrosswalkData:
 
     def __init__(self, img_file):
-        options = loadyaml()
+        self.options = loadyaml()
         self.img_file = img_file
         self.hashname = self.__parse_img_name()
         self.img = cv2.imread(img_file)
-        self.meta = options['manualmeta']
+        self.meta = self.options['manualmeta']
         self.labels = {
             'loc': 0.0,
             'ang': 0.0,
@@ -88,11 +87,6 @@ class CrosswalkData:
         self.labels['ang'] = ang
         self.labels['pit'] = pit
         self.labels['roll'] = roll
-
-    def write_on_csv(self):
-        with open('annotation.csv', 'a', newline='') as csvfile:
-            mywriter = csv.writer(csvfile)
-            mywriter.writerow([self.img_file, self.labels['loc'], self.labels['ang']])
 
     def write_on_db(self):
         with open(self.db, 'r+') as db_json:
@@ -137,7 +131,11 @@ class CrosswalkData:
 
         status.is_line_drawn = this_data['is_line_drawn']
         for name in status.widgets_status:
-            status.widgets_status[name] = this_data[name]
+            try:
+                status.widgets_status[name] = this_data[name]
+            except Exception as e:
+                this_data[name] = self.options['widgets'][name]
+                status.widgets_status[name] = this_data[name]
 
         if 'remarks' in this_data.keys():
             status.remarks = this_data['remarks']

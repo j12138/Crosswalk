@@ -115,7 +115,6 @@ class DBMS(object):
 
     def load_database(self) -> None:
         """ Load the whole database throughout all the batches """
-
         for batch_dir in self.batch_dirs:
             batch_db = self.__load_db_in_batch(batch_dir)
             if batch_db:
@@ -127,6 +126,7 @@ class DBMS(object):
         :return: a list of keys for the DB entries that satisfy all the filter
         conditions
         """
+
         filtered = {}
 
         # iteratively apply selected filters

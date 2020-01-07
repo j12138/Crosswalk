@@ -16,13 +16,14 @@ from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
 # sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-# sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-import compute_label_lib as cl
-import crosswalk_data as cd
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from labeling import compute_label_lib as cl
 
 
 fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join('.', 'dataset')
+config_file = os.path.join(BASE_DIR, 'config.yaml')
 startTime = 0
 
 '''
@@ -40,6 +41,50 @@ for line in check_list:
 print(check_img)
 '''
 
+
+def loadyaml():
+    options = {'db_file': './Crosswalk_Database.json',
+               'npy_log_file': './makenp_log.txt',
+               'data_dir': './preprocessed_data/',
+               'preprocess_width': 150, 'preprocess_height': 120,
+               'exifmeta': {'ImageWidth': None, 'ImageLength': None,
+               'Make': None, 'Model': None, 'GPSInfo': None,
+               'DateTimeOriginal': None, 'BrightnessValue': None},
+               'manualmeta': {'obs_car': [0, 1, 0], 'obs_human': [0, 1, 0],
+               'shadow': [0, 1, 0], 'column': [1, 2, 1],
+               'zebra_ratio': [0, 100, 60], 'out_of_range': [0, 1, 0],
+               'old': [0, 1, 0], 'invalid': [0, 0, 0], 'corner-case': [0, 0, 0 ]},
+               'widgets': {'cb_obscar': False, 'cb_obshuman': False,
+               'cb_shadow': False, 'cb_old': False, 'cb_outrange': False,
+               'rb_1col': True, 'slider_ratio': 60, 'cb_corner': False}}
+
+    return options
+
+
+class LabelingStatus(object):
+    """
+    An entity class that contains labeling state information for each input
+    image.
+    """
+
+    def __init__(self):
+        self.is_input_finished = False
+        self.current_point = [0, (0, 0)]
+        self.all_points = [(0, 0)] * 6
+        self.is_line_drawn = [False, False, False]
+        self.widgets_status = {
+            'cb_obscar': False,
+            'cb_obshuman': False,
+            'cb_shadow': False,
+            'cb_old': False,
+            # 'cb_outrange': False,
+            'rb_1col': 1,
+            # 'slider_ratio': 60
+            'cb_corner': False
+        }
+        self.remarks = ''
+
+
 class LabelingTool(QWidget):
     """
     PyQt UI tool for labeling
@@ -52,11 +97,16 @@ class LabelingTool(QWidget):
         """
         super().__init__()
         self.img_dir = img_dir
-        self.img_files = glob.glob(self.img_dir + '/*')
+
+        # handle outlier detection
+        if img_dir == 'OUT':
+            self.img_files = self.__collect_outliers()
+        else:
+            self.img_files = glob.glob(self.img_dir + '/*')
         self.img_idx = 0
         self.start_time = start_time
 
-        self.status = cd.LabelingStatus()
+        self.status = LabelingStatus()
 
         # labeling status members
         self.is_input_finished = False
@@ -76,7 +126,8 @@ class LabelingTool(QWidget):
             # 'cb_outrange': QCheckBox('out_of_range'),
             'rb_1col': QRadioButton('1 Column'),
             'rb_2col': QRadioButton('2 Columns'),
-            'rb_odd2col': QRadioButton('Odd 2 Columns')
+            'rb_odd2col': QRadioButton('Odd 2 Columns'),
+            'cb_corner': QCheckBox('corner-case')
         }
         self.label_remarks = QLabel('Remarks (비고)')
         self.textbox_remarks = QLineEdit()
@@ -94,11 +145,11 @@ class LabelingTool(QWidget):
         but_invalid.setToolTip('press if you cannot draw dots\n(레이블링 불가한 이미지로 표기)')
         but_invalid.setStyleSheet("background-color: red")
         but_invalid.clicked.connect(self.__set_invalid)
-        # but_next = QPushButton('Next unlabeled')
-        # but_prev = QPushButton('Prev unlabeled')
-        # but_next.setToolTip('Move to next img to annotate')
-        # but_next.clicked.connect(self.__next_unlabeled_img)
-        # but_prev.clicked.connect(self.__prev_unlabeled_img)
+        but_next = QPushButton('Next unsaved')
+        but_prev = QPushButton('Prev unsaved')
+        but_next.setToolTip('Move to next img to save')
+        but_next.clicked.connect(self.__next_unlabeled_img)
+        but_prev.clicked.connect(self.__prev_unlabeled_img)
         self.save_status = QLabel()
 
         # Image show
@@ -122,8 +173,8 @@ class LabelingTool(QWidget):
 
         gbox_meta = QGroupBox("Metadata")
         vbox_meta = QVBoxLayout()
-        gbox_ratio = QGroupBox("zebra_ratio (%)")
-        hbox_ratio = QHBoxLayout()
+        # gbox_ratio = QGroupBox("zebra_ratio (%)")
+        # hbox_ratio = QHBoxLayout()
 
         vbox_meta.addWidget(self.widgets['cb_obscar'])
         self.widgets['cb_obscar'].setToolTip('check if any cars are on crosswalk.\n(횡단보도 위에 차량이 있으면 체크합니다.)')
@@ -144,13 +195,21 @@ class LabelingTool(QWidget):
         vbox_meta.addWidget(self.label_remarks)
         self.label_remarks.setToolTip('any additional notes.\n(체크박스 외의 특이사항 간단하게 기록)')
         vbox_meta.addWidget(self.textbox_remarks)
+        vbox_meta.addStretch(1)
+        vbox_meta.addWidget(self.widgets['cb_corner'])
+        self.widgets['cb_corner'].setToolTip('cannot be used for training \n(학습 데이터로 쓰기 어려운 사진)')
 
         vbox_meta.addStretch(4)
+
+        hbox_button1 = QHBoxLayout()
+        hbox_button1.addWidget(but_prev)
+        hbox_button1.addWidget(but_next)
 
         hbox_button2 = QHBoxLayout()
         hbox_button2.addWidget(but_invalid)
         hbox_button2.addWidget(but_done)
 
+        vbox_meta.addLayout(hbox_button1)
         vbox_meta.addLayout(hbox_button2)
         gbox_meta.setLayout(vbox_meta)
 
@@ -166,19 +225,19 @@ class LabelingTool(QWidget):
         """ Renew the UI by current img to label. """
 
         # finished expoloring all imgs
-        if self.img_idx >= len(self.img_files):
-            self.close()
-            return
 
         if len(self.img_files) == 0:
             print('hello?')
             self.close()
             return
 
+        if self.img_idx >= len(self.img_files):
+            self.img_idx = self.img_idx - 1
+            return
+
         img_file = self.img_files[self.img_idx]
         print(img_file)
-        self.data = cd.CrosswalkData(img_file)
-
+        self.data = CrosswalkData(img_file)
         self.img_to_display = self.data.img.copy()
         img = self.img_to_display
         self.update_img(img)
@@ -192,6 +251,21 @@ class LabelingTool(QWidget):
         '''
 
         self.update_img(img)
+
+    def __collect_outliers(self):
+        outlier_files = []
+
+        with open('outlier_addr.txt', "r") as f:
+            lines = f.readlines()
+
+            for addr in lines:
+                hashname, dir = addr.strip().split(',')
+                # print(hashname, dir)
+                file_path = os.path.join(DATA_PATH, dir, 'labeled', hashname)
+                outlier_files.append(file_path)
+
+        print(outlier_files)
+        return outlier_files
 
     def put_window_on_center_of_screen(self):
         qr = self.frameGeometry()
@@ -269,10 +343,21 @@ class LabelingTool(QWidget):
         if event.key() == Qt.Key_Return:
             self.__get_manual_meta()
 
-    def __draw_dot(self, pos):
+    def __draw_dot(self, idx, pos):
         ratio = float(self.imgsize.width()) / 300.0
+        font_size = 0.45 * ratio
         dot_size = int(3 * ratio)
         cv2.circle(self.img_to_display, pos, dot_size, (255, 0, 0), -1)
+
+        cv2.putText(self.img_to_display, str(idx),
+                    (pos[0] + 10, pos[1] + 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_size,
+                    (255, 255, 255), round(4 * ratio))
+
+        cv2.putText(self.img_to_display, str(idx),
+                    (pos[0] + 10, pos[1] + 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_size,
+                    (0, 0, 0), round(1.5 * ratio))
 
     def __draw_line_and_compute_label(self):
         ratio = float(self.imgsize.width()) / 300.0
@@ -285,7 +370,7 @@ class LabelingTool(QWidget):
 
         if self.current_point[0] >= 4 and not self.is_line_drawn[1]:
             cv2.line(self.img_to_display, self.all_points[2],
-                     self.all_points[3], (0, 0, 255), line_thickness)
+                     self.all_points[3], (0, 255, 0), line_thickness)
             self.is_line_drawn[1] = True
 
         if self.current_point[0] >= 6 and not self.is_line_drawn[2]:
@@ -313,7 +398,7 @@ class LabelingTool(QWidget):
 
     def __draw_labeling_status(self):
         for i in range(self.current_point[0]):
-            self.__draw_dot(self.all_points[i])
+            self.__draw_dot(i + 1, self.all_points[i])
 
         try:
             self.__draw_line_and_compute_label()
@@ -347,6 +432,8 @@ class LabelingTool(QWidget):
 
         self.data.remarks = self.textbox_remarks.text()
         print(self.textbox_remarks.text())
+        self.data.meta['corner-case'][2] = int(
+            self.widgets['cb_corner'].isChecked())
 
         '''
         self.data.meta['zebra_ratio'][2] = int(
@@ -451,6 +538,8 @@ class LabelingTool(QWidget):
             self.status.widgets_status['rb_1col'] = 2.5
 
         self.status.remarks = self.textbox_remarks.text()
+        self.status.widgets_status['cb_corner'] = \
+            self.widgets['cb_corner'].isChecked()
         # self.status.widgets_status['slider_ratio'] = \
         #     self.__get_ratio_value()
 
@@ -484,6 +573,8 @@ class LabelingTool(QWidget):
             self.widgets['rb_odd2col'].setChecked(True)
 
         self.textbox_remarks.setText(self.status.remarks)
+        self.widgets['cb_corner'].setChecked(
+            self.status.widgets_status['cb_corner'])
 
         # self.__set_ratio_buttons()
 
@@ -541,6 +632,10 @@ class LabelingTool(QWidget):
 
         if len(self.img_files) == 0:
             msg = 'There are NO imgs to label!'
+
+            print(self.img_dir)
+            print(self.img_files)
+
             close_msg = QMessageBox()
             close_msg.setText(msg)
             close_msg.setStandardButtons(QMessageBox.Cancel)
@@ -562,8 +657,9 @@ class LabelingTool(QWidget):
             return
 
         self.save_labeling_status()
-        save_path = os.path.join(self.img_dir, '..', 'labeled')
-        self.__move_done_imgs(save_path)
+        if self.img_dir != 'OUT':
+            save_path = os.path.join(self.img_dir, '..', 'labeled')
+            self.__move_done_imgs(save_path)
 
         print('{} images: {} m'.format(len(self.img_files),
                                        round((time.time() - self.start_time) / 60, 2)))
@@ -725,6 +821,117 @@ class DataSelector(QWidget):
         return super().closeEvent(a0)
 
 
+class CrosswalkData:
+
+    def __init__(self, img_file):
+        self.options = loadyaml()
+        self.img_file = img_file
+        self.hashname = self.__parse_img_name()
+        self.img = cv2.imread(img_file)
+        self.meta = self.options['manualmeta']
+        self.labels = {
+            'loc': 0.0,
+            'ang': 0.0,
+            'pit': 0.0,
+            'roll': 0.0
+        }
+        self.remarks = ''
+        self.db = self.__get_db_file()
+
+    def __get_db_file(self):
+        data_path = os.path.abspath(self.img_file + "/../../")
+        db_path = os.path.join(data_path, 'db.json')
+        return db_path
+
+    def display_manual_meta(self):
+        for name in self.meta:
+            print(name, self.meta[name][2])
+
+    def display_labels(self):
+        for name in self.labels:
+            print(name, self.labels[name])
+
+    def input_labels(self, loc, ang, pit, roll):
+        self.labels['loc'] = loc
+        self.labels['ang'] = ang
+        self.labels['pit'] = pit
+        self.labels['roll'] = roll
+
+    def write_on_db(self):
+        with open(self.db, 'r+') as db_json:
+            db = json.load(db_json)
+
+        try:
+            for name in self.meta:
+                db[self.hashname][name] = self.meta[name][2]
+
+            for label in self.labels:
+                db[self.hashname][label] = self.labels[label]
+        except Exception as e:
+            print('{}: {}'.format(e, self.hashname))
+            return
+
+        with open(self.db, "w") as db_json:
+            json.dump(db, db_json)
+
+    def set_invalid(self):
+        for name in self.meta:
+            self.meta[name][2] = -1
+
+        self.meta['invalid'][2] = 1
+
+    def __parse_img_name(self):
+        # print(self.img_file)
+        img_name = os.path.split(self.img_file)[-1]
+        # print(img_name)
+        return img_name
+
+    def load_labeling_status(self):
+        status = LabelingStatus()
+
+        with open(self.db, 'r+') as db_json:
+            this_data = json.load(db_json)[self.hashname]
+
+        status.is_input_finished = this_data['is_input_finished']
+        status.current_point = [this_data['current_point'][0],
+                                tuple(this_data['current_point'][1])]
+        for i in range(6):
+            status.all_points[i] = tuple(this_data['all_points'][i])
+
+        status.is_line_drawn = this_data['is_line_drawn']
+        for name in status.widgets_status:
+            try:
+                status.widgets_status[name] = this_data[name]
+            except Exception as e:
+                this_data[name] = self.options['widgets'][name]
+                status.widgets_status[name] = this_data[name]
+
+        if 'remarks' in this_data.keys():
+            status.remarks = this_data['remarks']
+        else:
+            print('비고 없음')
+
+        return status
+
+    def save_labeling_status(self, status):
+        # print(status.widgets_status['rb_1col'])
+        with open(self.db, 'r+') as db_json:
+            db = json.load(db_json)
+
+        this_data = db[self.hashname]
+        this_data['is_input_finished'] = status.is_input_finished
+        this_data['current_point'] = status.current_point
+        this_data['all_points'] = status.all_points
+        this_data['is_line_drawn'] = status.is_line_drawn
+        this_data['remarks'] = status.remarks
+        for name in status.widgets_status:
+            this_data[name] = status.widgets_status[name]
+
+        db[self.hashname] = this_data
+        with open(self.db, "w") as db_json:
+            json.dump(db, db_json)
+
+
 class LabelingController:
     """
     Controller class for switching windows
@@ -763,10 +970,10 @@ class LabelingController:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--validate', action="store_true")
+    parser.add_argument('-o', '--outlier', action="store_true")
     parser.add_argument('-s', '--select', action="store_true")
-    parser.add_argument('data_path', help='Path of folder containing images',
-                        default='', type=str)
+    #parser.add_argument('data_path', help='Path of folder containing images',
+    #                    default='', type=str)
     return parser.parse_args()
 
 
@@ -790,17 +997,16 @@ def launch_annotator(validation=False):
 
 
 def main(args):
-    if (args.validate):
-        launch_annotator(validation=True)
+    if not args.outlier:
+        launch_annotator()
+        sys.exit(0)
     else:
-        launch_annotator(validation=False)
-        # data_path = os.path.join(args.data_path, 'preprocessed')
-
-    app = QApplication(sys.argv)
-    app.setStyle(QStyleFactory.create('Fusion'))
-    app.setFont(QFont("Calibri", 10))
-    tool = LabelingTool(data_path, startTime)
-    tool.launch()
+        app = QApplication(sys.argv)
+        app.setStyle(QStyleFactory.create('Fusion'))
+        app.setFont(QFont("Calibri", 10))
+        tool = LabelingTool('OUT', startTime)
+        tool.launch()
+        sys.exit(app.exec_())
 
 
 if __name__ == "__main__":

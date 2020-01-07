@@ -59,7 +59,7 @@ def make_npy_file(args):
         make_npy(db, val_keys, args.width, args.height, args.grayscale,
                  args.output_dir, now + '-val')
     else:
-        selected_filters = show_and_pick_filters(filter_list)
+        selected_filters = database.show_and_pick_filters(filter_list)
         logger.info("Selected filters: " + str(selected_filters))
         keys = db.filter_data(selected_filters)
         make_npy(db, keys, args.width, args.height, args.grayscale,

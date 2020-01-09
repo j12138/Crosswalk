@@ -1,4 +1,4 @@
-import json
+import json, yaml
 import pandas as pd
 import numpy as np
 import scipy
@@ -14,6 +14,8 @@ import argparse
 import math
 import logging
 from typing import Tuple, List, Dict
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from ml.evaluate import model_evaluate
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
@@ -36,7 +38,8 @@ filter_list = {
     'boundary': lambda x: abs(float(x['loc'])) > 0.8,
     'old': lambda x: x['old'] == 1,
     'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
-    'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0
+    'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0,
+    'one': lambda x: x['filehash'] == 'f69ee7506c2a379e3fc51a04f5cc0540'
 }
 
 
@@ -150,6 +153,8 @@ class DBMS(object):
             if check:
                 filtered[entry] = self.entries[entry]
 
+        print('Filtered data: {}'.format(len(filtered)))
+
         return filtered.keys()
 
     def get_train_val_keys(self, ratio: float = 0.2) \
@@ -167,7 +172,7 @@ class DBMS(object):
         return labeled_entry_keys[cut_index:], labeled_entry_keys[:cut_index]
 
     def get_npy(self, keys: List[str], width: int, height: int,
-                grayscale: bool):
+                grayscale: bool, normalize=False):
         """ Make npy files for training, from query_list
         :param keys: List of keys for the database entries
         :param width: width of the output image
@@ -178,6 +183,7 @@ class DBMS(object):
         :return: None
         """
         xs, ys = [], []
+        packed_keys = []
         fail_cnt = 0
 
         for key in keys:
@@ -192,12 +198,20 @@ class DBMS(object):
                 fail_cnt += 1
                 continue
             xs.append(self.__process_img(img, width, height, grayscale))
-            ys.append((entry['loc'], entry['ang']))
+            if normalize:
+                # clip (optional)
+                n_loc = entry['loc'] / 2.0
+                n_ang = entry['ang'] / 60.0
+                ys.append((n_loc, n_ang))
+            else:
+                ys.append((entry['loc'], entry['ang']))
+            packed_keys.append(key)
+
         if fail_cnt > 0:
             makenp_logger.error('Failed to process {} out of {} entries'.format(
                 fail_cnt, len(keys)))
 
-        return xs, ys
+        return xs, ys, packed_keys
 
     def show_statistics(self, cron=False):
         now = datetime.datetime.now()
@@ -335,7 +349,9 @@ class DBMS(object):
         with open(os.path.join(BASE_DIR, 'outlier_addr.txt'), "w") as f:
 
             for key in outlier_keys:
-                batch_name = self.entries[key]['img_path'].split('\\')[2]
+                batch_name = self.entries[key]['img_path'].split('\\')[-3]
+
+                print(self.entries[key]['img_path'])
                 filtered_addr.append((key, batch_name))
                 f.write(key + ',' + batch_name + '\n')
 
@@ -361,6 +377,50 @@ class DBMS(object):
                 print(all_points, new_points)
 
         return new_points
+
+    def model_evaluation(self, model_path):
+        # 0. load model configuration
+        config_file = os.path.join(model_path, 'config.yaml')
+        with open(config_file, 'r') as stream:
+            options = yaml.load(stream)
+
+        # 1. make all DB to np array (with normalization)
+        keys = list(self.entries.keys())  # all keys in DB
+        xs, ys, keys = self.get_npy(keys, options['width'], options['height'],
+                              options['grayscale'], normalize=True)
+
+        # 2. evaluation(from evaluation.py)
+        '''
+        xs = xs[:2]
+        ys = ys[:2]
+        keys = keys[:2]
+        '''
+        predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
+        # print(predict, eval)
+
+        # 3. make out file (csv/excell)
+        total_eval = []
+        columns = ['hashname', 'in_loc', 'in_ang', 'out_loc', 'out_ang',
+                    'loss', 'mean_absolute_error', 'column', 'obs_car',
+                    'obs_human', 'shadow', 'old', 'pit', 'roll', 'remarks']
+
+        for i in range(len(keys)):
+            hash = keys[i]
+            data = self.entries[hash]
+            item = [hash, ys[i][0] * 2.0, ys[i][1] * 60.0,
+                    predict[i][0], predict[i][1],
+                    eval[i][0], eval[i][1], data['column'], data['obs_car'],
+                    data['obs_human'], data['shadow'], data['old'],
+                    data['pit'], data['roll'], data['remarks']]
+            total_eval.append(item)
+
+        df = pd.DataFrame(total_eval, columns=columns)
+        # print(df)
+
+        df.to_excel(os.path.join(BASE_DIR, 'model_evaluation.xlsx'))
+
+        return
+
 
     @staticmethod
     def __process_img(img, width, height, grayscale):
@@ -416,9 +476,12 @@ def main():
     parser.add_argument('--stats-cron', '-sc', action="store_true")
     parser.add_argument('--outlier', '-o', action="store_true")
     parser.add_argument('--filter', '-f', action="store_true")
+    parser.add_argument('--model-eval', '-e', type=str,
+                        help="get model evaluation w.r.t. whole DB \n" +
+                        "model directory path should be passed")
 
     args = parser.parse_args()
-    data_dir = os.path.join('.', 'dataset')
+    data_dir = os.path.join(BASE_DIR, 'dataset')
     db = DBMS(data_dir)
     db.load_database()
 
@@ -435,6 +498,9 @@ def main():
     elif args.filter:
         picked_filters = show_and_pick_filters(filter_list)
         db.pick_out_filtered(picked_filters)
+    elif args.model_eval:
+        print('-- model evaluation start --')
+        db.model_evaluation(args.model_eval)
     else:
         pass
         # db.correct_labeling_order()

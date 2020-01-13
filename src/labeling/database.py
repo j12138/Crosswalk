@@ -213,7 +213,7 @@ class DBMS(object):
 
         return xs, ys, packed_keys
 
-    def show_statistics(self, cron=False):
+    def show_statistics(self, cron=False, visualize=False):
         now = datetime.datetime.now()
         nowDatetime = now.strftime('%Y-%m-%d')
 
@@ -271,7 +271,11 @@ class DBMS(object):
         else:
             print(df_stats)
 
-        pass
+        if visualize:
+            matplotlib.use('Agg')
+
+            df_stats.plot.pie(autopct='%.2f%%')
+        return
 
     def show_label_scatter_plot(self, cron):
         """ show scatter plots for computed labels.
@@ -415,9 +419,29 @@ class DBMS(object):
             total_eval.append(item)
 
         df = pd.DataFrame(total_eval, columns=columns)
-        # print(df)
+        df['diff_loc'] = abs(df['in_loc'] - df['out_loc'])
+        df['diff_ang'] = abs(df['in_ang'] - df['out_ang'])
 
         df.to_excel(os.path.join(BASE_DIR, 'model_evaluation.xlsx'))
+
+        # correlation analysis
+        df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),
+                                'diff_ang': df.corrwith(df.diff_ang)})
+        print(df_corr)
+
+        # visualization
+        plot_cols = ['in_loc', 'in_ang']
+
+        n_col = len(plot_cols)
+        fig, axes = plt.subplots(nrows=2, ncols=n_col)
+        figsize = (len(plot_cols)*4, 2*4)
+        
+        for i in range(n_col):
+            df.plot.scatter(plot_cols[i], 'diff_loc', s=2, ax=axes[0][i], figsize=figsize)
+            df.plot.scatter(plot_cols[i], 'diff_ang', s=2, ax=axes[1][i], figsize=figsize)
+        #df.plot.scatter('in_loc', 'diff_loc', s=3, ax=axes[0], figsize=(10,5))
+        #df.plot.scatter('in_ang', 'diff_ang', s=3, ax=axes[1], figsize=(10,5))
+        plt.show()
 
         return
 
@@ -474,6 +498,7 @@ def main():
     # parser.add_argument('dataset_dir', type=str, help="dataset directory")
     parser.add_argument('--stats', '-s', action='store_true')
     parser.add_argument('--stats-cron', '-sc', action="store_true")
+    parser.add_argument('--stats-visualize', '-sv', action="store_true")
     parser.add_argument('--outlier', '-o', action="store_true")
     parser.add_argument('--filter', '-f', action="store_true")
     parser.add_argument('--model-eval', '-e', type=str,
@@ -501,6 +526,8 @@ def main():
     elif args.model_eval:
         print('-- model evaluation start --')
         db.model_evaluation(args.model_eval)
+    elif args.stats_visualize:
+        db.show_statistics(visualize=True)
     else:
         pass
         # db.correct_labeling_order()

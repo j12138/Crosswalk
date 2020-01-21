@@ -1,8 +1,8 @@
-import json, yaml
+import json, yaml, csv
 import pandas as pd
 import numpy as np
 import scipy
-import cv2
+import cv2, hashlib
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy.misc import imread
@@ -16,6 +16,7 @@ import logging
 from typing import Tuple, List, Dict
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from ml.evaluate import model_evaluate
+from labeling.compute_label_lib import compute_all_labels
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
@@ -26,20 +27,25 @@ stats_logger = logging.getLogger('DB_stats')
 
 
 filter_list = {
-    'apple': lambda x: x['Make'] == 'Apple',
-    'samsung': lambda x: x['Make'] == 'samsung',
+    'all': lambda x: True,
     'shadow': lambda x: x['shadow'] == 1,
     'obstacle': lambda x: x['obs_car'] == 1 and x['obs_human'] == 1,
     'car': lambda x: x['obs_car'] == 1,
     'human': lambda x: x['obs_human'] == 1,
     'onecol': lambda x: x['column'] == 1,
     'twocol': lambda x: x['column'] == 2,
-    'odd2col': lambda x: x['column'] == 3,
-    'boundary': lambda x: abs(float(x['loc'])) > 0.8,
+    'odd2col': lambda x: x['column'] == 2.5,
     'old': lambda x: x['old'] == 1,
-    'right_top': lambda x: x['loc'] >= 0.3 and x['ang'] >= 10.0,
-    'left_bottom': lambda x: x['loc'] <= -0.2 and x['ang'] <= -30.0,
-    'one': lambda x: x['filehash'] == 'f69ee7506c2a379e3fc51a04f5cc0540'
+    'right_top': lambda x: x['loc'] >= 0.5 and x['ang'] >= 20.0,
+    'left_bottom': lambda x: x['loc'] <= -0.5 and x['ang'] <= -10.0,
+    'loc_out': lambda x: x['loc'] >= 8.0 and x['loc'] <= 100.0,
+    'ang_out': lambda x: x['ang'] >= 70.0 or x['ang'] <= -70.0,
+    'good_eval': lambda df: df[df['diff_loc'] <= 1.0][df['diff_loc'] >= -1.0][df['in_loc'] <= 1.5][df['in_loc'] >= -1.5],
+    'custom': lambda x: x['filehash'] in ['a6622cd6744626e4f7bd3a431670d935'],
+    'except_left_bot': lambda x: x['loc'] > -0.5 or x['ang'] > -20,
+    'except_right_top': lambda x: x['loc'] < 1.0 or x['ang'] < 20,
+    'clip_loc': lambda x: x['loc'] <= 2.0 and x['loc'] >= -2.0,
+    'except_corner': lambda x: x['corner-case'] == 0 and x['invalid'] == 0
 }
 
 
@@ -105,23 +111,91 @@ class DBMS(object):
             makenp_logger.error('No such db file: ' + db_file)
             return
         try:
+            new_entries = {}
             with open(db_file, "r") as read_file:
                 # list of metadata dictionaries
                 entries = json.load(read_file)
-                for key, entry in entries.items():
-                    # recover the image path and add as a new column
-                    entry['img_path'] = os.path.join(batch_path, 'labeled',
-                                                     entry["filehash"])
-                return entries
+                id_num = 0
+
+                for key in entries:
+                    '''
+                    id_num += 1
+                    entry = entries[key].copy()
+                    # re-hashing
+                    new_string = os.path.basename(batch_path) + str(id_num)
+                    new_hash = str(hashlib.md5(new_string.encode()).hexdigest())
+                    img_path = batch_path
+                    
+                    '''
+                    if os.path.isfile(os.path.join(batch_path, 'labeled', key)):
+                        img_path = os.path.join(batch_path, 'labeled')
+                    elif os.path.isfile(os.path.join(batch_path, 'preprocessed', key)):
+                        img_path = os.path.join(batch_path, 'preprocessed')
+                    else:
+                        img_path = ''
+                        print('No img file found! :', batch_path, key)
+                        
+                    entries[key]['img_path'] = os.path.join(img_path, key)
+
+                    '''
+                    if not 'invalid' in entries[key].keys():
+                        entries[key]['invalid'] = 0 
+
+                    if not 'corner-case' in entries[key].keys():
+                        entries[key]['corner-case'] = 0 
+                    '''
+                    '''
+                    os.rename(os.path.join(img_path, key), os.path.join(img_path, new_hash))
+
+                    entry['id'] = id_num
+                    entry['filehash'] = new_hash
+                    entry['img_path'] = os.path.join(img_path, new_hash)
+                    new_entries[new_hash] = entry
+                    '''
+            with open(db_file, "w") as write_file:
+                json.dump(entries, write_file)
+            
+
+            return entries
         except Exception as e:
             print('Failed to open database file {}: {}'.format(db_file, e))
 
     def load_database(self) -> None:
         """ Load the whole database throughout all the batches """
-        for batch_dir in self.batch_dirs:
-            batch_db = self.__load_db_in_batch(batch_dir)
-            if batch_db:
-                self.entries.update(batch_db)
+        cnt = 0
+
+        with open('DB_batch_stats.csv', 'w', newline='') as f:
+            for batch_dir in self.batch_dirs:
+                batch_db = {}
+                batch_db = self.__load_db_in_batch(batch_dir)
+
+                if batch_db:
+                    '''
+                    for key, entry in batch_db.items():
+                        iter_key = key
+                        while iter_key in self.entries:
+                            print(self.entries[key]['img_path'], ' > ', entry['img_path'])
+                            batch_db[iter_key + 'z'] = batch_db.pop(iter_key)
+                            iter_key = iter_key + 'z'
+                    '''
+
+                    cnt = cnt + len(batch_db)
+                    prev = len(self.entries)
+                    self.entries.update(batch_db)
+                    now = len(self.entries)
+                    
+                    if (now - prev) < len(batch_db):
+                       print('!something overlapped')
+
+                else:
+                    print('db error')
+
+                num_img = len(glob.glob(os.path.join(batch_dir, 'labeled', '*')))
+                wr = csv.writer(f)
+                wr.writerow([os.path.basename(batch_dir), num_img, len(batch_db)])
+
+        print(len(self.entries), cnt)
+                
 
     def filter_data(self, filter_names: List[str]) -> List[str]:
         """ Collect filtered data at self.query_list.
@@ -133,31 +207,31 @@ class DBMS(object):
         filtered = {}
 
         # iteratively apply selected filters
-        
         '''
         filtered = {entry: filtered[entry] for entry in filtered if
                     (filtered[entry]['is_input_finished'] is True) and
                     (_filter(filtered[entry]) is True)}
         '''
 
-        for entry in self.entries:
-            check = self.entries[entry]['is_input_finished']
+        for key in self.entries:
+            check = self.entries[key]['invalid'] == 0
             for filter_name in filter_names:
                 _filter = filter_list[filter_name]
                 try:
-                    check = check and _filter(self.entries[entry])
+                    check = check and _filter(self.entries[key])
                 except Exception as e:
-                    makenp_logger.error(self.entries[entry]['img_path'])
+                    makenp_logger.error(self.entries[key]['img_path'])
+                    check = False
                     continue
             
             if check:
-                filtered[entry] = self.entries[entry]
+                filtered[key] = self.entries[key]
 
         print('Filtered data: {}'.format(len(filtered)))
 
         return filtered.keys()
 
-    def get_train_val_keys(self, ratio: float = 0.2) \
+    def get_train_val_keys(self, keys = None, ratio: float = 0.2) \
             -> Tuple[List[str], List[str]]:
         """ Randomly split the dataset into two (train/val) by the given ratio.
         The specified ratio is for the validation dataset.
@@ -165,11 +239,31 @@ class DBMS(object):
         :return: a Tuple of two key lists, one for train and the other for val.
         """
         assert 0.0 < ratio <= 1.0
-        labeled_entry_keys = [key for key, entry in self.entries.items()
+        if keys == None:
+            labeled_entry_keys = [key for key, entry in self.entries.items()
                               if entry['is_input_finished'] is True]
+        else:
+            labeled_entry_keys = [key for key in keys
+                              if self.entries[key]['is_input_finished'] is True]
         random.shuffle(labeled_entry_keys)
         cut_index = math.floor(len(labeled_entry_keys) * ratio)
         return labeled_entry_keys[cut_index:], labeled_entry_keys[:cut_index]
+
+    def get_good_eval_keys(self, eval_df):
+
+        good_eval = list(filter_list['good_eval'](eval_df)['hashname'])
+        print(len(good_eval))
+
+        # self.model_evaluation('./ml/trainings/2020-jan7/', 0.1, custom_keys=good_eval)
+        xs, ys, keys = self.get_npy(good_eval, 150, 199, False)
+        now = datetime.datetime.now()
+        filename_prefix = now.strftime('%Y-%m-%d') + '_good_eval'
+        x_name = os.path.join(BASE_DIR, 'npy', filename_prefix + '_x.npy')
+        y_name = os.path.join(BASE_DIR, 'npy', filename_prefix + '_y.npy')
+
+        np.save(x_name, xs)
+        np.save(y_name, ys)
+        return
 
     def get_npy(self, keys: List[str], width: int, height: int,
                 grayscale: bool, normalize=False):
@@ -216,6 +310,7 @@ class DBMS(object):
     def show_statistics(self, cron=False, visualize=False):
         now = datetime.datetime.now()
         nowDatetime = now.strftime('%Y-%m-%d')
+        trend_file = os.path.join(BASE_DIR, 'trend.csv')
 
         df = pd.DataFrame.from_dict(self.entries.values())
 
@@ -255,17 +350,17 @@ class DBMS(object):
         df_stats = pd.DataFrame(stats)
 
         if cron:
-            with open('trend.csv', 'a', newline='') as f:
+            with open(trend_file, 'a', newline='') as f:
                 df_stats.to_csv(f, header=False)
 
             self.show_label_scatter_plot(cron)
 
-            with open('trend.csv', 'r') as f:
+            with open(trend_file, 'r') as f:
                 df_trend = pd.read_csv(f)
                 df_trend[['date', 'labeled']].plot.bar(x='date', y='labeled',
                                                        rot=0)
 
-                figure_path = os.path.join('figure', 'num_labeled.png')
+                figure_path = os.path.join(BASE_DIR, 'figure', 'num_labeled.png')
                 plt.savefig(figure_path)
 
         else:
@@ -273,8 +368,6 @@ class DBMS(object):
 
         if visualize:
             matplotlib.use('Agg')
-
-            df_stats.plot.pie(autopct='%.2f%%')
         return
 
     def show_label_scatter_plot(self, cron):
@@ -310,8 +403,8 @@ class DBMS(object):
         plt.figure(figsize=(20, 8))
         # loc, ang
         plt.subplot(121)
-        plt.scatter(loc, ang, s=3)
-        plt.xlim((-2.5, 2.5))
+        plt.scatter(loc, ang, s=2)
+        #plt.xlim((-2.5, 2.5))
         plt.ylim((-90, 90))
         plt.xlabel('loc')
         plt.ylabel('ang ($^{\circ}$)')
@@ -320,7 +413,7 @@ class DBMS(object):
         # pit, roll
         plt.subplot(122)
 
-        plt.scatter(pit, roll, s=3)
+        plt.scatter(pit, roll, s=2)
         plt.xlim((-0.75, 0.75))
         plt.ylim((-30, 30))
 
@@ -336,10 +429,11 @@ class DBMS(object):
             if not os.path.exists(os.path.join(BASE_DIR, 'figure')):
                 os.mkdir(os.path.join(BASE_DIR, 'figure'))
 
-            figure_path = os.path.join('figure', 'label_' + nowDatetime + '.png')
+            figure_path = os.path.join(BASE_DIR, 'figure', 'label_' + nowDatetime + '.png')
             plt.savefig(figure_path)
         else:
-            plt.savefig('stats_label_figure.png')
+            figure_path = os.path.join(BASE_DIR, 'figure', 'label_' + nowDatetime + '.png')
+            plt.savefig(figure_path)
             plt.show()
 
     def pick_out_filtered(self, filters, OUT=False):
@@ -355,7 +449,7 @@ class DBMS(object):
             for key in outlier_keys:
                 batch_name = self.entries[key]['img_path'].split('\\')[-3]
 
-                print(self.entries[key]['img_path'])
+                #print(self.entries[key]['img_path'])
                 filtered_addr.append((key, batch_name))
                 f.write(key + ',' + batch_name + '\n')
 
@@ -382,23 +476,27 @@ class DBMS(object):
 
         return new_points
 
-    def model_evaluation(self, model_path):
+    def model_evaluation(self, model_path, ratio=0.0, custom_keys=None):
         # 0. load model configuration
         config_file = os.path.join(model_path, 'config.yaml')
         with open(config_file, 'r') as stream:
             options = yaml.load(stream)
 
         # 1. make all DB to np array (with normalization)
-        keys = list(self.entries.keys())  # all keys in DB
+        keys = self.filter_data(['except_corner'])
+        print('except_corner', len(keys))
+
+        if ratio > 0:
+            assert 0.0 < ratio <= 1.0
+            keys = self.get_train_val_keys(keys=keys, ratio=ratio)[1]
+        else:
+            keys = list(self.entries.keys())  # all keys in DB
+        if custom_keys is not None:
+            keys = custom_keys
         xs, ys, keys = self.get_npy(keys, options['width'], options['height'],
                               options['grayscale'], normalize=True)
 
         # 2. evaluation(from evaluation.py)
-        '''
-        xs = xs[:2]
-        ys = ys[:2]
-        keys = keys[:2]
-        '''
         predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
         # print(predict, eval)
 
@@ -406,7 +504,7 @@ class DBMS(object):
         total_eval = []
         columns = ['hashname', 'in_loc', 'in_ang', 'out_loc', 'out_ang',
                     'loss', 'mean_absolute_error', 'column', 'obs_car',
-                    'obs_human', 'shadow', 'old', 'pit', 'roll', 'remarks']
+                    'obs_human', 'shadow', 'old', 'pit', 'roll']
 
         for i in range(len(keys)):
             hash = keys[i]
@@ -415,36 +513,63 @@ class DBMS(object):
                     predict[i][0], predict[i][1],
                     eval[i][0], eval[i][1], data['column'], data['obs_car'],
                     data['obs_human'], data['shadow'], data['old'],
-                    data['pit'], data['roll'], data['remarks']]
+                    data['pit'], data['roll']]
             total_eval.append(item)
 
         df = pd.DataFrame(total_eval, columns=columns)
-        df['diff_loc'] = abs(df['in_loc'] - df['out_loc'])
-        df['diff_ang'] = abs(df['in_ang'] - df['out_ang'])
+        df['diff_loc'] = df['out_loc'] - df['in_loc']
+        df['diff_ang'] = df['out_ang'] - df['in_ang']
+        df['abs_diff_loc'] = abs(df['out_loc'] - df['in_loc'])
+        df['abs_diff_ang'] = abs(df['out_ang'] - df['in_ang'])
 
         df.to_excel(os.path.join(BASE_DIR, 'model_evaluation.xlsx'))
 
+        # filter outlier
+        outliers = df[df['diff_loc'] >= 1.0]['hashname']
+        with open(os.path.join(BASE_DIR, 'eval_outlier_over1.txt'), "w") as f:
+            for key in outliers:
+                img_path = self.entries[key]['img_path']
+                batch_name = self.__get_batch_name(img_path)
+                f.write(key + ',' + batch_name + '\n')
+
+        outliers = df[df['diff_loc'] < -1.0]['hashname']
+        with open(os.path.join(BASE_DIR, 'eval_outlier_under-1.txt'), "w") as f:
+            for key in outliers:
+                img_path = self.entries[key]['img_path']
+                batch_name = self.__get_batch_name(img_path)
+                f.write(key + ',' + batch_name + '\n')
+
         # correlation analysis
         df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),
-                                'diff_ang': df.corrwith(df.diff_ang)})
+                                'diff_ang': df.corrwith(df.diff_ang),
+                                'abs_diff_loc': df.corrwith(df.abs_diff_loc),
+                                'abs_diff_ang': df.corrwith(df.abs_diff_ang)})
         print(df_corr)
 
         # visualization
+        matplotlib.use('Agg')
         plot_cols = ['in_loc', 'in_ang']
 
         n_col = len(plot_cols)
-        fig, axes = plt.subplots(nrows=2, ncols=n_col)
-        figsize = (len(plot_cols)*4, 2*4)
+        fig, axes = plt.subplots(nrows=2, ncols=3)
+        figsize = (12, 8)
         
         for i in range(n_col):
-            df.plot.scatter(plot_cols[i], 'diff_loc', s=2, ax=axes[0][i], figsize=figsize)
-            df.plot.scatter(plot_cols[i], 'diff_ang', s=2, ax=axes[1][i], figsize=figsize)
+            df.plot.scatter(plot_cols[i], 'diff_loc', s=1, ax=axes[0][i], figsize=figsize)
+            df.plot.scatter(plot_cols[i], 'diff_ang', s=1, ax=axes[1][i], figsize=figsize)
+        df.plot.scatter('in_loc', 'out_loc', s=1, ax=axes[0][2], figsize=figsize)
+        df.plot.scatter('in_ang', 'out_ang', s=1, ax=axes[1][2], figsize=figsize)
+
         #df.plot.scatter('in_loc', 'diff_loc', s=3, ax=axes[0], figsize=(10,5))
         #df.plot.scatter('in_ang', 'diff_ang', s=3, ax=axes[1], figsize=(10,5))
+        fig.savefig('model_evaluation.png')
         plt.show()
 
-        return
+        return df
 
+    @staticmethod
+    def __get_batch_name(img_path):
+        return img_path.split('\\')[-3]
 
     @staticmethod
     def __process_img(img, width, height, grayscale):
@@ -504,9 +629,14 @@ def main():
     parser.add_argument('--model-eval', '-e', type=str,
                         help="get model evaluation w.r.t. whole DB \n" +
                         "model directory path should be passed")
+    parser.add_argument('--eval-part', '-p', type=float)
+    parser.add_argument('--good_eval', '-ge', type=str,
+                        help="get npy with data which have good evaluation value\n" +
+                            "conditions are hard-coded")
 
     args = parser.parse_args()
-    data_dir = os.path.join(BASE_DIR, 'dataset')
+    # data_dir = os.path.join(BASE_DIR, 'dataset')
+    data_dir = 'F:\\dataset'
     db = DBMS(data_dir)
     db.load_database()
 
@@ -525,7 +655,16 @@ def main():
         db.pick_out_filtered(picked_filters)
     elif args.model_eval:
         print('-- model evaluation start --')
-        db.model_evaluation(args.model_eval)
+        if args.eval_part:
+            db.model_evaluation(args.model_eval, args.eval_part)
+        else:
+            db.model_evaluation(args.model_eval)
+    elif args.good_eval:
+        if args.eval_part:
+            eval_df = db.model_evaluation(args.good_eval, args.eval_part)
+        else:
+            eval_df = db.model_evaluation(args.good_eval)
+        db.get_good_eval_keys(eval_df)
     elif args.stats_visualize:
         db.show_statistics(visualize=True)
     else:

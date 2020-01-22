@@ -9,11 +9,11 @@ Model inspired by the end-to-end NVIDIA
    
 """
 
-
-from keras.models import Sequential
-from keras.layers import Conv2D, Dense,Dropout
-from keras.layers import Activation, Flatten, BatchNormalization
-from keras.regularizers import l2
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, Dense,Dropout
+from tensorflow.keras.layers import Activation, Flatten, BatchNormalization
+from tensorflow.keras.regularizers import l2
 
 
 def SimpleModel(input_shape=(300,240,3), weight_penalty=0.0001, momentum=.9):
@@ -40,23 +40,23 @@ def SimpleModel(input_shape=(300,240,3), weight_penalty=0.0001, momentum=.9):
         kernel_regularizer=l2(weight_penalty)))
     model.add(BatchNormalization(momentum=momentum))
     model.add(Activation('elu'))
-    model.add(Conv2D(64, (3, 3), padding="valid", use_bias=False,
+    model.add(Conv2D(96, (3, 3), padding="valid", use_bias=False,
         kernel_regularizer=l2(weight_penalty)))
     model.add(BatchNormalization(momentum=momentum))
     model.add(Activation('elu'))
     model.add(Flatten())
     model.add(Dropout(0.3))
-    model.add(Dense(100, activation='elu', kernel_initializer='he_normal',
+    model.add(Dense(128, activation='elu', kernel_initializer='he_normal',
         bias_regularizer=l2(weight_penalty),
         kernel_regularizer=l2(weight_penalty)))
-    model.add(Dense(50, activation='elu', kernel_initializer='he_normal',
+    model.add(Dense(64, activation='elu', kernel_initializer='he_normal',
         bias_regularizer=l2(weight_penalty),
         kernel_regularizer=l2(weight_penalty)))
-    model.add(Dense(10, activation='elu',
+    model.add(Dense(32, activation='elu',
         kernel_initializer='he_normal',
         bias_regularizer=l2(weight_penalty),
         kernel_regularizer=l2(weight_penalty)))
-    model.add(Dense(2, activation='softsign', kernel_initializer='he_normal')) 
+    model.add(Dense(2, activation='tanh', kernel_initializer='he_normal')) 
     return model
 
 if __name__ == '__main__':

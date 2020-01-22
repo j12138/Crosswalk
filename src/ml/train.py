@@ -6,14 +6,17 @@ Jan 2019
 
 import tensorflow as tf
 import numpy as np
-from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger, LearningRateScheduler
-from keras.optimizers import SGD, Adam
+import tensorflow.keras
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger, LearningRateScheduler
+from tensorflow.python.keras.utils.data_utils import Sequence
+from tensorflow.keras.optimizers import SGD, Adam
 import yaml
 import os
 from shutil import copyfile
 
 import argparse
 from Models.Simplified import SimpleModel
+from Models.MobileNetV2 import MobileNetV2
 from Models.loss import smoothL1
 from Generator.augmentation import BatchGenerator
 
@@ -23,6 +26,18 @@ labeling_dir = os.path.join(ROOT_DIR, 'src', 'labeling')
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 train_npy_idx = -1
 
+
+def mae0(y_true, y_pred):
+    return tensorflow.keras.losses.mae(y_true[:,0], y_pred[:,0])
+
+def mae1(y_true, y_pred):
+    return tensorflow.keras.losses.mae(y_true[:,1], y_pred[:,1])
+
+def mse0(y_true, y_pred):
+    return tensorflow.keras.losses.mse(y_true[:,0], y_pred[:,0])
+
+def mse1(y_true, y_pred):
+    return tensorflow.keras.losses.mse(y_true[:,1], y_pred[:,1])
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -133,6 +148,8 @@ val_gen = BatchGenerator(x_val, y_val, batch_size, noaugs=True, height=height,
 
 model = SimpleModel(input_shape=(height,width,channel), momentum=batch_momentum,
         weight_penalty=weight_decay)
+#model = MobileNetV2(input_shape=(height,width,channel), momentum=batch_momentum,
+#        weight_penalty=weight_decay)
 model.summary() 
 
 if optimizer == 'SGD':
@@ -141,13 +158,15 @@ if optimizer == 'SGD':
 if optimizer == 'Adam':
     optim = Adam(lr=learning_rate)
     # smoothL1
-model.compile(loss=smoothL1, optimizer=optim, metrics=['mae'])
+model.compile(loss=smoothL1, optimizer=optim,
+        metrics=['mae', mae0, mae1, 'mse', mse0, mse1])
 
 tensorboard = TensorBoard(log_dir='./trainings/'+experiment_name,
-        histogram_freq=0, write_graph=True, write_images=False)
+        histogram_freq=0, write_graph=True, write_images=False,
+        embeddings_freq=10)
 checkpoint = ModelCheckpoint('./trainings/'+experiment_name+'/'+network+'.h5',
-                             monitor='val_mean_absolute_error', verbose=1,
-                             save_best_only=True, mode='min', period=1)
+                             monitor='val_mae', verbose=1, save_best_only=True,
+                             mode='min')
 csv_logger = CSVLogger('./trainings/'+experiment_name+'/training_log.csv')
 callbacks = [tensorboard, checkpoint, csv_logger]
 
@@ -170,5 +189,6 @@ model.fit_generator(train_gen,
                     validation_data=val_gen,
                     validation_steps=5,
                     epochs=nb_epoch,
+                    workers=2,
                     callbacks=callbacks)
 

@@ -1,11 +1,14 @@
 
+from tensorflow.keras.utils import Sequence
+
 from imgaug import augmenters as iaa
 import numpy as np
 import cv2
 
 #Apply various augmentations from imgaug
 def blur():
-    blurer=[iaa.GaussianBlur((0, 3.0)),iaa.AverageBlur(k=(2, 7)),iaa.MedianBlur(k=(3, 11))]
+    blurer=[iaa.GaussianBlur((0, 1.0)),iaa.AverageBlur(k=(1, 3)),iaa.MedianBlur(k=(1, 3))]
+    #blurer=[iaa.GaussianBlur((0, 3.0)),iaa.AverageBlur(k=(2, 7)),iaa.MedianBlur(k=(3, 11))]
     return blurer[np.random.randint(0,3)]
 
 #Dropout may not be appropriate, so its not currently used
@@ -20,7 +23,7 @@ def contrast():
     return iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5)
 
 def greyscale():
-    return iaa.Grayscale(alpha=(0.0, 1.0))
+    return iaa.Grayscale(alpha=(0.0, 0.5))
 
 def invert():
     return iaa.Invert(0.05, per_channel=True)
@@ -38,7 +41,7 @@ def sharpen():
     return iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5))
 
 def emboss(): 
-    return iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0))
+    return iaa.Emboss(alpha=(0, 1.0), strength=(0, 0.5))
    
 def translate():
     return iaa.Affine(translate_percent={"x": (0.0, 0.0), "y": (-0.03, 0.03)},mode='edge')
@@ -70,7 +73,8 @@ def augment(imgs,max_augs,affine=False,debug=False):
         num_aug=np.random.randint(0,max_augs+1)
         #set of augmentations to use
         #add(),multiply(),
-        augs=[blur(),noise(),contrast(),greyscale(),invert(),hue(),sharpen(),emboss()]
+        augs=[add(),blur(),contrast(),greyscale(),hue(),emboss()]
+        #augs=[greyscale(),]
         #apply augmentations
         seq=iaa.Sequential(list(np.random.choice(augs,num_aug)))
         aug_img=seq.augment_image(img)
@@ -84,9 +88,9 @@ def augment(imgs,max_augs,affine=False,debug=False):
     return np.asarray(augmented)
 
 
-class BatchGenerator:
+class BatchGenerator(Sequence):
     
-    def __init__(self,X,y, batch_size,noaugs=False, num_aug=5,
+    def __init__(self,X,y, batch_size,noaugs=False, num_aug=3,
             affine=False,height=None, width=None):
         self.X=X
         self.y=y
@@ -99,6 +103,33 @@ class BatchGenerator:
         
     def __iter__(self):
         return self
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, indices):
+        #batch_x = self.X[idx * self.batch_size:(idx + 1) * self.batch_size]
+        #batch_y = self.y[idx * self.batch_size:(idx + 1) * self.batch_size]
+        #return batch_x / 255.0, batch_y
+        indecies = np.random.randint(0,self.X.shape[0],self.batch_size)
+        
+        if self.noaugs:
+            images = self.X[indecies]/255.0
+            target = self.y[indecies]
+
+            for i in range(self.batch_size):
+                target[i][1] /= 90.0
+            
+           # print(target[1])
+
+            return images, target
+
+        imgs = augment(self.X[indecies],self.num_aug,self.affine)/255.0
+        
+        target = self.y[indecies]
+        for i in range(self.batch_size):
+            target[i][1] /= 90.0
+        return imgs, target
 
     def __next__(self):
         indecies = np.random.randint(0,self.X.shape[0],self.batch_size)
@@ -117,6 +148,8 @@ class BatchGenerator:
         imgs = augment(self.X[indecies],self.num_aug,self.affine)/255.0
         
         target = self.y[indecies]
+        for i in range(self.batch_size):
+            target[i][1] /= 90.0
         return imgs, target
     
     def __normalize_label(self, target):

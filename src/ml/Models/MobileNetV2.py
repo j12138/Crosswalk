@@ -12,12 +12,12 @@ This model is the variant in table 2 of the paper
 """
 
 
-from keras.models import Model
-from keras.layers import Input, Conv2D, GlobalAveragePooling2D, Dropout
-from keras.layers import Activation, add, Dense
-from keras.layers import DepthwiseConv2D, BatchNormalization
-from keras.regularizers import l2 
-from keras import backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv2D, GlobalAveragePooling2D, Dropout
+from tensorflow.keras.layers import Activation, add, Dense
+from tensorflow.keras.layers import DepthwiseConv2D, BatchNormalization
+from tensorflow.keras.regularizers import l2 
+from tensorflow.keras import backend as K
 
 
 def conv_block(inputs, filters, kernel, strides,name,featuremap='',weight_penalty=0.0,momentum=.9):
@@ -137,7 +137,7 @@ def MobileNetV2(input_shape=(224,224,3),weight_penalty=0.0001,momentum=.9):
     x=Dense(100, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
     x=Dense(50, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
     x=Dense(10, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
-    x=Dense(2,activation='sigmoid',kernel_initializer='he_normal')(x)
+    x=Dense(2,activation='tanh',kernel_initializer='he_normal')(x)
     model = Model(img_input, x, name='MobileNetV2')
     return model
 

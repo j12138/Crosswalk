@@ -1,8 +1,7 @@
 npy_log_file: './makenp_log.txt'
 data_dir: ./preprocessed_data/
-experiment_name: '2020-jan21-aug'
-x_train: './npy/2020-01-20_good_eval_x.npy'
-y_train: './npy/2020-01-20_good_eval_y.npy'
+x_train: './npy/2020-01-23_good_eval_train_x.npy'
+y_train: './npy/2020-01-23_good_eval_train_y.npy'
 x_val: './npy/20-01-14-10-54-val_x.npy'
 y_val: './npy/20-01-14-10-54-val_y.npy'
 num_gpus: 1
@@ -20,5 +19,5 @@ epochs_until_drop: 20
 optimizer: 'Adam'
 batch_momentum: .9 
 weight_decay: 0.0001
-augmentation: True
+augmentation: False
 affine_augs: False

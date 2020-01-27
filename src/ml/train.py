@@ -19,6 +19,8 @@ from Models.Simplified import SimpleModel
 from Models.MobileNetV2 import MobileNetV2
 from Models.loss import smoothL1
 from Generator.augmentation import BatchGenerator
+import wandb
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
@@ -41,6 +43,7 @@ def mse1(y_true, y_pred):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('exp_name', type=str)
     args = parser.parse_args()
     return args
 
@@ -88,7 +91,11 @@ def select_npy_data(npy_log_file, picked_train_npy):
     return x_npy, y_npy, img_spec, int(picked_num)
 
 
+args = parse_args()
 opt = loadyaml(config_file)
+
+wandb.init(project="crosswalk", name=args.exp_name, id=args.exp_name,
+           config=config, sync_tensorboard=True)
 
 print('Training Configuration')
 print(yaml.dump(opt, default_flow_style=False, default_style=''))
@@ -109,73 +116,77 @@ channel = 1 if grayscale else 3
 
 print("width: ", width, ", height: ", height)
 
-experiment_name = opt['experiment_name']
-num_gpus = opt['num_gpus']
-network = opt['network']
+exp_name = args.exp_name
 nb_epoch = opt['epochs']
 batch_size = opt['batch_size']
 learning_rate = opt['learning_rate']
 sgd_momentum = opt['sgd_momentum']
 step_decay = opt['step_decay']
-drop_factor = opt['drop_factor']
 epochs_until_drop = opt['epochs_until_drop']
-optimizer = opt['optimizer']
-batch_momentum = opt['batch_momentum']
-weight_decay = opt['weight_decay']
-augmentation = opt['augmentation']
-affine_augs = opt['affine_augs']
 
 
 # Make directories if needed
 if not os.path.exists('./trainings/'):
     os.makedirs('./trainings/')
 
-if not os.path.exists('./trainings/'+experiment_name):
-    os.makedirs('./trainings/'+experiment_name)
+if not os.path.exists('./trainings/'+exp_name):
+    os.makedirs('./trainings/'+exp_name)
 
-copyfile(config_file, './trainings/'+experiment_name+'/'+os.path.basename(config_file))
+copyfile(config_file, './trainings/'+exp_name+'/'+os.path.basename(config_file))
 
 
 # Build data generators if applying augmentation
-if augmentation:
+if opt['augmentation']:
     train_gen = BatchGenerator(x_train, y_train, batch_size,
-                affine=affine_augs, height=height, width=width)
+                affine=opt['affine_augs'], height=height, width=width)
 else:
     train_gen = BatchGenerator(x_train, y_train, batch_size, noaugs=True,
             height=height, width=width)
+
 val_gen = BatchGenerator(x_val, y_val, batch_size, noaugs=True, height=height,
         width=width)
 
-model = SimpleModel(input_shape=(height,width,channel), momentum=batch_momentum,
-        weight_penalty=weight_decay)
-#model = MobileNetV2(input_shape=(height,width,channel), momentum=batch_momentum,
-#        weight_penalty=weight_decay)
+# Initialize a model
+model = None
+if opt['network'].lower() == 'simplified':
+    model = SimpleModel(input_shape=(height, width, channel),
+                        momentum=opt['batch_momentum'],
+                        weight_penalty=opt['weight_decay'])
+elif opt['network'].lower() = 'mobilenetv2':
+    model = MobileNetV2(input_shape=(height, width, channel),
+                        momentum=opt['batch_momentum'],
+                        weight_penalty=opt['weight_decay'])
+else:
+    raise Exception("Network", opt['network'], "is undefined.")
 model.summary() 
 
-if optimizer == 'SGD':
+if opt['optimizer'] == 'SGD':
     optim = SGD(lr=learning_rate, momentum=sgd_momentum, nesterov=True)
     # , clipnorm=1.)
-if optimizer == 'Adam':
+if opt['optimizer'] == 'Adam':
     optim = Adam(lr=learning_rate)
     # smoothL1
 model.compile(loss=smoothL1, optimizer=optim,
         metrics=['mae', mae0, mae1, 'mse', mse0, mse1])
 
-tensorboard = TensorBoard(log_dir='./trainings/'+experiment_name,
+tensorboard = TensorBoard(log_dir='./trainings/'+exp_name,
         histogram_freq=0, write_graph=True, write_images=False,
         embeddings_freq=10)
-checkpoint = ModelCheckpoint('./trainings/'+experiment_name+'/'+network+'.h5',
+model_path = os.path.join('.', 'trainings', exp_name, opt['network'] + '.h5')
+checkpoint = ModelCheckpoint(model_path, monitor='val_mae', verbose=1,
+                             save_best_only=True, mode='min')
+checkpoint2 = ModelCheckpoint(os.path.join(wandb.run_dir, opt['network'] + '.h5'),
                              monitor='val_mae', verbose=1, save_best_only=True,
                              mode='min')
-csv_logger = CSVLogger('./trainings/'+experiment_name+'/training_log.csv')
-callbacks = [tensorboard, checkpoint, csv_logger]
+csv_logger = CSVLogger('./trainings/'+exp_name+'/training_log.csv')
+callbacks = [tensorboard, checkpoint, checkpoint2, csv_logger]
 
 if step_decay:
     # Decay function for the learning rate
 
     def step_decay(epoch):
         initial_lrate = learning_rate
-        drop = drop_factor
+        drop = opt['drop_factor']
         epochs_drop = epochs_until_drop
         lrate = initial_lrate * np.power(drop, np.floor((1+epoch)/epochs_drop))
         print('Current Learning Rate is '+str(lrate))
@@ -188,7 +199,7 @@ model.fit_generator(train_gen,
                     steps_per_epoch=int(np.floor(len(x_train)/batch_size)),
                     validation_data=val_gen,
                     validation_steps=5,
-                    epochs=nb_epoch,
+                    epochs=opt['nb_epoch'],
                     workers=2,
                     callbacks=callbacks)
 

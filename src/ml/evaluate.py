@@ -1,4 +1,5 @@
 from keras.models import load_model, Model
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -8,7 +9,6 @@ import cv2
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from ml.Models.loss import smoothL1
-
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -69,7 +69,7 @@ def model_evaluate(xs, ys, model_path, verbose=False):
         print("There are no h5 model file")
         return
 
-    model = load_model(model_file, custom_objects={'smoothL1': smoothL1})
+    model = tf.keras.models.load_model(model_file, custom_objects={'smoothL1': smoothL1})
     
     predicts = []
     cnt = 0
@@ -83,7 +83,6 @@ def model_evaluate(xs, ys, model_path, verbose=False):
             
     predicts = np.squeeze(np.asarray(predicts))
     # print(len(xs), len(ys), len(predicts))
-    # print(model.metrics_names)
 
     evals = []
     for i in range(len(xs)):

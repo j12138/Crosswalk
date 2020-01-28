@@ -37,11 +37,11 @@ filter_list = {
     'odd2col': lambda x: x['column'] == 2.5,
     'old': lambda x: x['old'] == 1,
     'right_top': lambda x: x['loc'] >= 0.5 and x['ang'] >= 20.0,
-    'left_bottom': lambda x: x['loc'] <= -0.5 and x['ang'] <= -10.0,
+    'left_bottom': lambda x: x['loc'] <= -0.8 and x['ang'] <= -20.0,
     'loc_out': lambda x: x['loc'] >= 8.0 and x['loc'] <= 100.0,
     'ang_out': lambda x: x['ang'] >= 70.0 or x['ang'] <= -70.0,
     'good_eval': lambda df: df[df['diff_loc'] <= 1.0][df['diff_loc'] >= -1.0][df['in_loc'] <= 1.5][df['in_loc'] >= -1.5],
-    'custom': lambda x: x['filehash'] in ['a6622cd6744626e4f7bd3a431670d935'],
+    'custom': lambda x: x['filehash'] in ['4a0ca30e6da6eda9bddd52eccfcad541'],
     'except_left_bot': lambda x: x['loc'] > -0.5 or x['ang'] > -20,
     'except_right_top': lambda x: x['loc'] < 1.0 or x['ang'] < 20,
     'clip_loc': lambda x: x['loc'] <= 2.0 and x['loc'] >= -2.0,
@@ -255,14 +255,25 @@ class DBMS(object):
         print(len(good_eval))
 
         # self.model_evaluation('./ml/trainings/2020-jan7/', 0.1, custom_keys=good_eval)
-        xs, ys, keys = self.get_npy(good_eval, 150, 199, False)
+        train_key, val_key = self.get_train_val_keys(keys=good_eval, ratio=0.05)
+
+        xs, ys, keys = self.get_npy(train_key, 150, 199, False)
         now = datetime.datetime.now()
-        filename_prefix = now.strftime('%Y-%m-%d') + '_good_eval'
+
+        filename_prefix = now.strftime('%Y-%m-%d') + '_good_eval_train'
         x_name = os.path.join(BASE_DIR, 'npy', filename_prefix + '_x.npy')
         y_name = os.path.join(BASE_DIR, 'npy', filename_prefix + '_y.npy')
-
         np.save(x_name, xs)
         np.save(y_name, ys)
+
+        xs, ys, keys = self.get_npy(val_key, 150, 199, False)
+
+        filename_prefix = now.strftime('%Y-%m-%d') + '_good_eval_val'
+        x_name = os.path.join(BASE_DIR, 'npy', filename_prefix + '_x.npy')
+        y_name = os.path.join(BASE_DIR, 'npy', filename_prefix + '_y.npy')
+        np.save(x_name, xs)
+        np.save(y_name, ys)
+
         return
 
     def get_npy(self, keys: List[str], width: int, height: int,
@@ -286,6 +297,7 @@ class DBMS(object):
                 img = imread(entry['img_path'], mode='RGB')
                 assert len(img.shape) >= 2
             except Exception as e:
+                print(e)
                 fail_cnt += 1
                 continue
             if not ('loc' in entry and 'ang' in entry):

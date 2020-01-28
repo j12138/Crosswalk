@@ -33,6 +33,7 @@ def make_npy(db, keys: List[str], width: int, height: int,
     xs, ys, packed_keys = db.get_npy(keys, width, height, grayscale)
 
     # npy file name convention
+    output_dir = os.path.join(BASE_DIR, output_dir)
     x_name = os.path.join(output_dir, filename_prefix + '_x.npy')
     y_name = os.path.join(output_dir, filename_prefix + '_y.npy')
 

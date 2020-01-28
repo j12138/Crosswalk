@@ -260,7 +260,7 @@ class LabelingTool(QWidget):
     def __collect_outliers(self):
         outlier_files = []
 
-        with open(os.path.join(BASE_DIR, 'eval_outlier_over1.txt'), "r") as f:
+        with open(os.path.join(BASE_DIR, 'outlier_addr.txt'), "r") as f:
             lines = f.readlines()
 
             for addr in lines:

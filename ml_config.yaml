@@ -9,7 +9,7 @@ network: 'Simplified'
 width: 150
 height: 199
 grayscale: False
-epochs: 100
+epochs: 120
 batch_size: 32
 learning_rate: 0.00002
 sgd_momentum: .9

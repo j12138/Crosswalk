@@ -19,13 +19,14 @@ from Models.Simplified import SimpleModel
 from Models.MobileNetV2 import MobileNetV2
 from Models.loss import smoothL1
 from Generator.augmentation import BatchGenerator
+from datetime import datetime
 import wandb
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(BASE_DIR, "..", "..")
 labeling_dir = os.path.join(ROOT_DIR, 'src', 'labeling')
-config_file = os.path.join(BASE_DIR, 'config.yaml')
+config_file = os.path.join('.', 'ml_config.yaml')
 train_npy_idx = -1
 
 
@@ -43,7 +44,21 @@ def mse1(y_true, y_pred):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('exp_name', type=str)
+    expname = datetime.strftime(datetime.now(), '%y%m%d-%H%M%S')
+    parser.add_argument('--exp_name', type=str, default=expname)
+    parser.add_argument('--network', type=str)
+    parser.add_argument('--optimizer', type=str)
+    parser.add_argument('--epochs', type=int)
+    parser.add_argument('--batch_size', type=int)
+    parser.add_argument('--learning_rate', type=float)
+    parser.add_argument('--sgd_momentum', type=float)
+    parser.add_argument('--step_decay', type=bool)
+    parser.add_argument('--drop_factor', type=float)
+    parser.add_argument('--epochs_until_drop', type=int)
+    parser.add_argument('--batch_momentum', type=float)
+    parser.add_argument('--weight_decay', type=float)
+    parser.add_argument('--augmentation', type=bool)
+    parser.add_argument('--affine_augs', type=str)
     args = parser.parse_args()
     return args
 
@@ -92,10 +107,14 @@ def select_npy_data(npy_log_file, picked_train_npy):
 
 
 args = parse_args()
+args_dict = vars(args)
 opt = loadyaml(config_file)
+for key in opt:
+    if key in args_dict and args_dict[key] is not None:
+        opt[key] = args_dict[key]
 
-wandb.init(project="crosswalk", name=args.exp_name, id=args.exp_name,
-           config=opt, sync_tensorboard=True)
+wandb.init(project="crosswalk", name=args.exp_name, config=opt,
+           sync_tensorboard=True)
 
 print('Training Configuration')
 print(yaml.dump(opt, default_flow_style=False, default_style=''))
@@ -128,10 +147,13 @@ epochs_until_drop = opt['epochs_until_drop']
 if not os.path.exists('./trainings/'):
     os.makedirs('./trainings/')
 
-if not os.path.exists('./trainings/'+exp_name):
-    os.makedirs('./trainings/'+exp_name)
+if not os.path.exists(os.path.join('.', 'trainings', exp_name)):
+    os.makedirs(os.path.join('.', 'trainings', exp_name))
 
-copyfile(config_file, './trainings/'+exp_name+'/'+os.path.basename(config_file))
+config_file_dst = os.path.join('.', 'trainings', exp_name,
+                               os.path.basename(config_file))
+copyfile(config_file, config_file_dst)
+wandb.save(config_file_dst)
 
 
 # Build data generators if applying augmentation
@@ -173,14 +195,11 @@ tensorboard = TensorBoard(log_dir=os.path.join('.', 'trainings', exp_name),
                           update_freq='epoch',
                           write_images=True, embeddings_freq=10)
 
-model_path = os.path.join('.', 'trainings', exp_name + '.h5')
+model_path = os.path.join('.', 'trainings', exp_name, exp_name + '.h5')
 checkpoint = ModelCheckpoint(model_path, monitor='val_mae', verbose=1,
                              save_best_only=True, mode='min')
-checkpoint2 = ModelCheckpoint(os.path.join(wandb.run.dir, exp_name + '.h5'),
-                              monitor='val_mae', verbose=1, save_best_only=True,
-                              mode='min')
-csv_logger = CSVLogger('./trainings/'+exp_name+'/training_log.csv')
-callbacks = [tensorboard, checkpoint, checkpoint2, csv_logger]
+csv_logger = CSVLogger(os.path.join('.', 'trainings', exp_name, 'training_log.csv'))
+callbacks = [tensorboard, checkpoint, csv_logger]
 
 if step_decay:
     # Decay function for the learning rate
@@ -206,6 +225,7 @@ model.fit_generator(train_gen,
                     callbacks=callbacks)
 
 converted = tf.lite.TFLiteConverter.from_keras_model(model).convert()
-open(os.path.join('.', 'trainings', exp_name + '.tflite'), "wb").write(converted)
-open(os.path.join(wandb.run.dir, exp_name + '.tflite'), 'wb').write(converted)
+open(os.path.join('.', 'trainings', exp_name, exp_name + '.tflite'), "wb").write(converted)
+wandb.save('trainings')
+#open(os.path.join(wandb.run.dir, exp_name + '.tflite'), 'wb').write(converted)
 

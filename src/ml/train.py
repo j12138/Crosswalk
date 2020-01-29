@@ -168,15 +168,17 @@ if opt['optimizer'] == 'Adam':
 model.compile(loss=smoothL1, optimizer=optim,
         metrics=['mae', mae0, mae1, 'mse', mse0, mse1])
 
-tensorboard = TensorBoard(log_dir='./trainings/'+exp_name,
-        histogram_freq=0, write_graph=True, write_images=False,
-        embeddings_freq=10)
-model_path = os.path.join('.', 'trainings', exp_name, opt['network'] + '.h5')
+tensorboard = TensorBoard(log_dir=os.path.join('.', 'trainings', exp_name),
+                          histogram_freq=10, write_graph=True,
+                          update_freq='epoch',
+                          write_images=True, embeddings_freq=10)
+
+model_path = os.path.join('.', 'trainings', exp_name + '.h5')
 checkpoint = ModelCheckpoint(model_path, monitor='val_mae', verbose=1,
                              save_best_only=True, mode='min')
-checkpoint2 = ModelCheckpoint(os.path.join(wandb.run.dir, opt['network'] + '.h5'),
-                             monitor='val_mae', verbose=1, save_best_only=True,
-                             mode='min')
+checkpoint2 = ModelCheckpoint(os.path.join(wandb.run.dir, exp_name + '.h5'),
+                              monitor='val_mae', verbose=1, save_best_only=True,
+                              mode='min')
 csv_logger = CSVLogger('./trainings/'+exp_name+'/training_log.csv')
 callbacks = [tensorboard, checkpoint, checkpoint2, csv_logger]
 
@@ -199,6 +201,11 @@ model.fit_generator(train_gen,
                     validation_data=val_gen,
                     validation_steps=5,
                     epochs=opt['epochs'],
+                    use_multiprocessing=True,
                     workers=2,
                     callbacks=callbacks)
+
+converted = tf.lite.TFLiteConverter.from_keras_model(model).convert()
+open(os.path.join('.', 'trainings', exp_name + '.tflite'), "wb").write(converted)
+open(os.path.join(wandb.run.dir, exp_name + '.tflite'), 'wb').write(converted)
 

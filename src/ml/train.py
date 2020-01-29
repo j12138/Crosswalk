@@ -95,7 +95,7 @@ args = parse_args()
 opt = loadyaml(config_file)
 
 wandb.init(project="crosswalk", name=args.exp_name, id=args.exp_name,
-           config=config, sync_tensorboard=True)
+           config=opt, sync_tensorboard=True)
 
 print('Training Configuration')
 print(yaml.dump(opt, default_flow_style=False, default_style=''))
@@ -117,7 +117,6 @@ channel = 1 if grayscale else 3
 print("width: ", width, ", height: ", height)
 
 exp_name = args.exp_name
-nb_epoch = opt['epochs']
 batch_size = opt['batch_size']
 learning_rate = opt['learning_rate']
 sgd_momentum = opt['sgd_momentum']
@@ -152,7 +151,7 @@ if opt['network'].lower() == 'simplified':
     model = SimpleModel(input_shape=(height, width, channel),
                         momentum=opt['batch_momentum'],
                         weight_penalty=opt['weight_decay'])
-elif opt['network'].lower() = 'mobilenetv2':
+elif opt['network'].lower() == 'mobilenetv2':
     model = MobileNetV2(input_shape=(height, width, channel),
                         momentum=opt['batch_momentum'],
                         weight_penalty=opt['weight_decay'])
@@ -175,7 +174,7 @@ tensorboard = TensorBoard(log_dir='./trainings/'+exp_name,
 model_path = os.path.join('.', 'trainings', exp_name, opt['network'] + '.h5')
 checkpoint = ModelCheckpoint(model_path, monitor='val_mae', verbose=1,
                              save_best_only=True, mode='min')
-checkpoint2 = ModelCheckpoint(os.path.join(wandb.run_dir, opt['network'] + '.h5'),
+checkpoint2 = ModelCheckpoint(os.path.join(wandb.run.dir, opt['network'] + '.h5'),
                              monitor='val_mae', verbose=1, save_best_only=True,
                              mode='min')
 csv_logger = CSVLogger('./trainings/'+exp_name+'/training_log.csv')
@@ -199,7 +198,7 @@ model.fit_generator(train_gen,
                     steps_per_epoch=int(np.floor(len(x_train)/batch_size)),
                     validation_data=val_gen,
                     validation_steps=5,
-                    epochs=opt['nb_epoch'],
+                    epochs=opt['epochs'],
                     workers=2,
                     callbacks=callbacks)
 

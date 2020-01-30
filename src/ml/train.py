@@ -179,7 +179,7 @@ elif opt['network'].lower() == 'mobilenetv2':
                         weight_penalty=opt['weight_decay'])
 else:
     raise Exception("Network", opt['network'], "is undefined.")
-model.summary() 
+#model.summary() 
 
 if opt['optimizer'] == 'SGD':
     optim = SGD(lr=learning_rate, momentum=sgd_momentum, nesterov=True)
@@ -191,8 +191,7 @@ model.compile(loss=smoothL1, optimizer=optim,
         metrics=['mae', mae0, mae1, 'mse', mse0, mse1])
 
 tensorboard = TensorBoard(log_dir=os.path.join('.', 'trainings', exp_name),
-                          histogram_freq=10, write_graph=True,
-                          update_freq='epoch',
+                          write_graph=True, update_freq='epoch',
                           write_images=True, embeddings_freq=10)
 
 model_path = os.path.join('.', 'trainings', exp_name, exp_name + '.h5')
@@ -209,7 +208,7 @@ if step_decay:
         drop = opt['drop_factor']
         epochs_drop = epochs_until_drop
         lrate = initial_lrate * np.power(drop, np.floor((1+epoch)/epochs_drop))
-        print('Current Learning Rate is '+str(lrate))
+        print('\nCurrent Learning Rate is {}\n'.format(lrate))
         return lrate
 
     lrate = LearningRateScheduler(step_decay, verbose=True)

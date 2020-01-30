@@ -8,11 +8,9 @@ parameters:
   #  distribution: int_uniform
   #  min: 50
   #  max: 200
-  network:
-    distribution: categorical
-    values:
-      - Simplified
-      - MobileNetV2
+  #network:
+  #  distribution: categorical
+  #  values: - Simplified
   batch_size:
     distribution: int_uniform
     min: 16
@@ -21,10 +19,10 @@ parameters:
     distribution: uniform
     min: 0.1
     max: 0.9
-  sgd_momentum:
-    distribution: uniform
-    min: 0.45
-    max: 1.8
+    #  sgd_momentum:
+    #    distribution: uniform
+    #    min: 0.45
+    #    max: 1.8
   weight_decay:
     distribution: uniform
     min: 0.00005
@@ -33,11 +31,8 @@ parameters:
     distribution: uniform
     min: 0.000005
     max: 0.00004
-  batch_momentum:
-    distribution: uniform
-    min: 0.45
-    max: 1.8
   epochs_until_drop:
     distribution: int_uniform
     min: 10
     max: 50
+#  batch_momentum: distribution: uniform min: 0.45 max: 1.8

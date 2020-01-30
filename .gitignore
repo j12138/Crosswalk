@@ -11,6 +11,9 @@ src/labeling/build/
 src/labeling/dist/
 src/labeling/dist_old/
 *.log
+trainings
+wandb/
+train.py
 
 
 # TODO: store the dataset in Git LFS (large file storage)

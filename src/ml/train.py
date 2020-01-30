@@ -36,12 +36,6 @@ def mae0(y_true, y_pred):
 def mae1(y_true, y_pred):
     return tensorflow.keras.losses.mae(y_true[:,1], y_pred[:,1])
 
-def mse0(y_true, y_pred):
-    return tensorflow.keras.losses.mse(y_true[:,0], y_pred[:,0])
-
-def mse1(y_true, y_pred):
-    return tensorflow.keras.losses.mse(y_true[:,1], y_pred[:,1])
-
 def parse_args():
     parser = argparse.ArgumentParser()
     expname = datetime.strftime(datetime.now(), '%y%m%d-%H%M%S')
@@ -125,6 +119,7 @@ x_train = np.load(opt['x_train'])
 y_train = np.load(opt['y_train'])
 x_val = np.load(opt['x_val'])
 y_val = np.load(opt['y_val'])
+print('# train: {}, # val: {}'.format(len(x_train), len(x_val)))
 
 width, height, grayscale = opt['width'], opt['height'], opt['grayscale']
 if width <= 0:
@@ -188,7 +183,7 @@ if opt['optimizer'] == 'Adam':
     optim = Adam(lr=learning_rate)
     # smoothL1
 model.compile(loss=smoothL1, optimizer=optim,
-        metrics=['mae', mae0, mae1, 'mse', mse0, mse1])
+        metrics=['msle', 'mae', mae0, mae1])
 
 tensorboard = TensorBoard(log_dir=os.path.join('.', 'trainings', exp_name),
                           write_graph=True, update_freq='epoch',
@@ -217,7 +212,7 @@ if step_decay:
 model.fit_generator(train_gen,
                     steps_per_epoch=int(np.floor(len(x_train)/batch_size)),
                     validation_data=val_gen,
-                    validation_steps=5,
+                    validation_steps=int(np.floor(len(x_val)/batch_size)),
                     epochs=opt['epochs'],
                     use_multiprocessing=True,
                     workers=2,
@@ -225,6 +220,6 @@ model.fit_generator(train_gen,
 
 converted = tf.lite.TFLiteConverter.from_keras_model(model).convert()
 open(os.path.join('.', 'trainings', exp_name, exp_name + '.tflite'), "wb").write(converted)
-wandb.save('trainings')
+wandb.save(os.path.join('trainings', exp_name))
 #open(os.path.join(wandb.run.dir, exp_name + '.tflite'), 'wb').write(converted)
 

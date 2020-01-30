@@ -13,6 +13,7 @@ import random
 import argparse
 import math
 import logging
+from tqdm import tqdm
 from typing import Tuple, List, Dict
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from ml.evaluate import model_evaluate
@@ -188,7 +189,7 @@ class DBMS(object):
                        print('!something overlapped')
 
                 else:
-                    print('db error')
+                    print('db error:', batch_dir)
 
                 num_img = len(glob.glob(os.path.join(batch_dir, 'labeled', '*')))
                 wr = csv.writer(f)
@@ -291,7 +292,8 @@ class DBMS(object):
         packed_keys = []
         fail_cnt = 0
 
-        for key in keys:
+        for i in tqdm(range(len(keys))):
+            key = keys[i]
             entry = self.entries[key]
             try:  # is it valid img?
                 img = imread(entry['img_path'], mode='RGB')
@@ -488,13 +490,38 @@ class DBMS(object):
 
         return new_points
 
-    def model_evaluation(self, model_path, ratio=0.0, custom_keys=None):
+    def evaluate_model(self, model_path, ratio=0.0, custom_keys=None):
         # 0. load model configuration
         config_file = os.path.join(model_path, 'config.yaml')
         with open(config_file, 'r') as stream:
             options = yaml.load(stream)
 
         # 1. make all DB to np array (with normalization)
+        xs, ys, keys = self.__make_all_db_npy(ratio, custom_keys, options)
+
+        # 2. evaluation(from evaluation.py)
+        predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
+
+        # 3. make out file (csv/excell)
+        df = self.__make_dataframe_from_evaluation(ys, predict, eval, keys)
+        df.to_excel(os.path.join(BASE_DIR, 'model_evaluation.xlsx'))
+
+        # filter outlier
+        self.__filter_evaluation_outlier(df)
+
+        # correlation analysis
+        df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),
+                                'diff_ang': df.corrwith(df.diff_ang),
+                                'abs_diff_loc': df.corrwith(df.abs_diff_loc),
+                                'abs_diff_ang': df.corrwith(df.abs_diff_ang)})
+        print(df_corr)
+
+        # visualization
+        self.__save_evaluation_plot(df)
+
+        return df
+
+    def __make_all_db_npy(self, ratio, custom_keys, options):
         keys = self.filter_data(['except_corner'])
         print('except_corner', len(keys))
 
@@ -507,12 +534,10 @@ class DBMS(object):
             keys = custom_keys
         xs, ys, keys = self.get_npy(keys, options['width'], options['height'],
                               options['grayscale'], normalize=True)
+        
+        return xs, ys, keys
 
-        # 2. evaluation(from evaluation.py)
-        predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
-        # print(predict, eval)
-
-        # 3. make out file (csv/excell)
+    def __make_dataframe_from_evaluation(self, ys, predict, eval, keys):
         total_eval = []
         columns = ['hashname', 'in_loc', 'in_ang', 'out_loc', 'out_ang',
                     'loss', 'mean_absolute_error', 'column', 'obs_car',
@@ -534,9 +559,9 @@ class DBMS(object):
         df['abs_diff_loc'] = abs(df['out_loc'] - df['in_loc'])
         df['abs_diff_ang'] = abs(df['out_ang'] - df['in_ang'])
 
-        df.to_excel(os.path.join(BASE_DIR, 'model_evaluation.xlsx'))
+        return df
 
-        # filter outlier
+    def __filter_evaluation_outlier(self, df):
         outliers = df[df['diff_loc'] >= 1.0]['hashname']
         with open(os.path.join(BASE_DIR, 'eval_outlier_over1.txt'), "w") as f:
             for key in outliers:
@@ -551,14 +576,7 @@ class DBMS(object):
                 batch_name = self.__get_batch_name(img_path)
                 f.write(key + ',' + batch_name + '\n')
 
-        # correlation analysis
-        df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),
-                                'diff_ang': df.corrwith(df.diff_ang),
-                                'abs_diff_loc': df.corrwith(df.abs_diff_loc),
-                                'abs_diff_ang': df.corrwith(df.abs_diff_ang)})
-        print(df_corr)
-
-        # visualization
+    def __save_evaluation_plot(self, df):
         matplotlib.use('Agg')
         plot_cols = ['in_loc', 'in_ang']
 
@@ -572,12 +590,35 @@ class DBMS(object):
         df.plot.scatter('in_loc', 'out_loc', s=1, ax=axes[0][2], figsize=figsize)
         df.plot.scatter('in_ang', 'out_ang', s=1, ax=axes[1][2], figsize=figsize)
 
-        #df.plot.scatter('in_loc', 'diff_loc', s=3, ax=axes[0], figsize=(10,5))
-        #df.plot.scatter('in_ang', 'diff_ang', s=3, ax=axes[1], figsize=(10,5))
         fig.savefig('model_evaluation.png')
-        plt.show()
 
-        return df
+    def make_evaluation_plot(self, xs, ys, model_path):
+        predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
+        
+        total_eval = []
+        columns = ['in_loc', 'in_ang', 'out_loc', 'out_ang']
+        for i in range(len(ys)):
+            item = [ys[i][0] * 2.0, ys[i][1] * 60.0,
+                    predict[i][0], predict[i][1]]
+            total_eval.append(item)
+        df = pd.DataFrame(total_eval, columns=columns)
+        df['diff_loc'] = df['out_loc'] - df['in_loc']
+        df['diff_ang'] = df['out_ang'] - df['in_ang']
+
+        matplotlib.use('Agg')
+        plot_cols = ['in_loc', 'in_ang']
+
+        n_col = len(plot_cols)
+        fig, axes = plt.subplots(nrows=2, ncols=3)
+        figsize = (12, 8)
+        
+        for i in range(n_col):
+            df.plot.scatter(plot_cols[i], 'diff_loc', s=1, ax=axes[0][i], figsize=figsize)
+            df.plot.scatter(plot_cols[i], 'diff_ang', s=1, ax=axes[1][i], figsize=figsize)
+        df.plot.scatter('in_loc', 'out_loc', s=1, ax=axes[0][2], figsize=figsize)
+        df.plot.scatter('in_ang', 'out_ang', s=1, ax=axes[1][2], figsize=figsize)
+
+        fig.savefig('evaluation_from_val.png')
 
     @staticmethod
     def __get_batch_name(img_path):
@@ -668,14 +709,14 @@ def main():
     elif args.model_eval:
         print('-- model evaluation start --')
         if args.eval_part:
-            db.model_evaluation(args.model_eval, args.eval_part)
+            db.evaluate_model(args.model_eval, args.eval_part)
         else:
-            db.model_evaluation(args.model_eval)
+            db.evaluate_model(args.model_eval)
     elif args.good_eval:
         if args.eval_part:
-            eval_df = db.model_evaluation(args.good_eval, args.eval_part)
+            eval_df = db.evaluate_model(args.good_eval, args.eval_part)
         else:
-            eval_df = db.model_evaluation(args.good_eval)
+            eval_df = db.evaluate_model(args.good_eval)
         db.get_good_eval_keys(eval_df)
     elif args.stats_visualize:
         db.show_statistics(visualize=True)

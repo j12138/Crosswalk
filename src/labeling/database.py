@@ -16,7 +16,7 @@ import logging
 from tqdm import tqdm
 from typing import Tuple, List, Dict
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from ml.evaluate import model_evaluate
+from ml.evaluate import predict_by_model, load_model
 from labeling.compute_label_lib import compute_all_labels
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -490,24 +490,30 @@ class DBMS(object):
 
         return new_points
 
-    def evaluate_model(self, model_path, ratio=0.0, custom_keys=None):
-        # 0. load model configuration
-        config_file = os.path.join(model_path, 'config.yaml')
-        with open(config_file, 'r') as stream:
-            options = yaml.load(stream)
+    def evaluate_model(self, model, options, ratio=0.0, custom_keys=None, xs=None, ys=None):
+        export = False
 
-        # 1. make all DB to np array (with normalization)
-        xs, ys, keys = self.__make_all_db_npy(ratio, custom_keys, options)
+        if (xs != None) and (ys != None):
+            export = True
+            keys = None
+        else:
+            # 1. make all DB to np array (with normalization)
+            xs, ys, keys = self.__make_all_db_npy(ratio, custom_keys, options)
 
         # 2. evaluation(from evaluation.py)
-        predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
+        predict = predict_by_model(np.asarray(xs), np.asarray(ys), model)
 
         # 3. make out file (csv/excell)
-        df = self.__make_dataframe_from_evaluation(ys, predict, eval, keys)
-        df.to_excel(os.path.join(BASE_DIR, 'model_evaluation.xlsx'))
+        df = self.__make_dataframe_from_evaluation(ys, predict, keys, export)
+        if export:
+            excel_name = 'train_eval_' + now + '.xlsx'
+        else:
+            excel_name = 'model_eval_' + now + '.xlsx'
+        df.to_excel(os.path.join(BASE_DIR, excel_name))
 
         # filter outlier
-        self.__filter_evaluation_outlier(df)
+        if not export:
+            self.__filter_evaluation_outlier(df)
 
         # correlation analysis
         df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),
@@ -537,18 +543,26 @@ class DBMS(object):
         
         return xs, ys, keys
 
-    def __make_dataframe_from_evaluation(self, ys, predict, eval, keys):
+    def __make_dataframe_from_evaluation(self, ys, predict, keys, export=False):
         total_eval = []
-        columns = ['hashname', 'in_loc', 'in_ang', 'out_loc', 'out_ang',
-                    'loss', 'mean_absolute_error', 'column', 'obs_car',
-                    'obs_human', 'shadow', 'old', 'pit', 'roll']
+        if export:
+            columns = ['in_loc', 'in_ang', 'out_loc', 'out_ang']
+        else:
+            columns = ['hashname', 'in_loc', 'in_ang', 'out_loc', 'out_ang',
+                        'column', 'obs_car',
+                        'obs_human', 'shadow', 'old', 'pit', 'roll']
 
-        for i in range(len(keys)):
+        for i in range(len(ys)):
+            if export:
+                item = [ys[i][0] * 2.0, ys[i][1] * 60.0,
+                    predict[i][0], predict[i][1]]
+                total_eval.append(item)
+                continue
             hash = keys[i]
             data = self.entries[hash]
             item = [hash, ys[i][0] * 2.0, ys[i][1] * 60.0,
                     predict[i][0], predict[i][1],
-                    eval[i][0], eval[i][1], data['column'], data['obs_car'],
+                    data['column'], data['obs_car'],
                     data['obs_human'], data['shadow'], data['old'],
                     data['pit'], data['roll']]
             total_eval.append(item)
@@ -590,10 +604,10 @@ class DBMS(object):
         df.plot.scatter('in_loc', 'out_loc', s=1, ax=axes[0][2], figsize=figsize)
         df.plot.scatter('in_ang', 'out_ang', s=1, ax=axes[1][2], figsize=figsize)
 
-        fig.savefig('model_evaluation.png')
+        fig.savefig(os.path.join(BASE_DIR, 'model_eval_' + now + '_.png'))
 
     def make_evaluation_plot(self, xs, ys, model_path):
-        predict, eval = model_evaluate(np.asarray(xs), np.asarray(ys), model_path)
+        predict = predict_by_model(np.asarray(xs), np.asarray(ys), model_path)
         
         total_eval = []
         columns = ['in_loc', 'in_ang', 'out_loc', 'out_ang']
@@ -674,6 +688,7 @@ def setup_logger(logger, log_file_path: str):
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('dataset_dir', type=str, help="dataset directory")
+    parser.add_argument('data_dir', type=str)
     parser.add_argument('--stats', '-s', action='store_true')
     parser.add_argument('--stats-cron', '-sc', action="store_true")
     parser.add_argument('--stats-visualize', '-sv', action="store_true")
@@ -708,10 +723,15 @@ def main():
         db.pick_out_filtered(picked_filters)
     elif args.model_eval:
         print('-- model evaluation start --')
+        config_file = os.path.join(args.model_eval, 'config.yaml')
+        with open(config_file, 'r') as stream:
+            options = yaml.load(stream)
+        model = load_model(args.model_eval)
+
         if args.eval_part:
-            db.evaluate_model(args.model_eval, args.eval_part)
+            db.evaluate_model(model, options, args.eval_part)
         else:
-            db.evaluate_model(args.model_eval)
+            db.evaluate_model(model, s)
     elif args.good_eval:
         if args.eval_part:
             eval_df = db.evaluate_model(args.good_eval, args.eval_part)

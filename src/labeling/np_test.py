@@ -15,10 +15,23 @@ def check_npy(x_npy, y_npy):
     :return: None
     """
     X = np.load(x_npy)
+    Y = np.load(y_npy)
     cv2.namedWindow('np_test')
     print('total: ', len(X))
 
-    for img in X:
+    for i in range(len(X)):
+        img = X[i]
+        labels = Y[i]
+        print(labels)
+
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        cv2.putText(img, str(labels[0]) + ' ' + str(labels[1]),
+                    (10, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                    (255, 255, 255), 3)
+        cv2.putText(img, str(labels[0]) + ' ' + str(labels[1]),
+                    (10, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                    (255, 0, 0), 1)
+
         h, w = img.shape[:2]
         print(w, h)
 
@@ -34,7 +47,7 @@ def main():
     args = parser.parse_args()
 
     x_npy = args.npy_path
-    y_npy = x_npy[:-6] + 'y.npy'
+    y_npy = x_npy[:-5] + 'y.npy'
     check_npy(x_npy, y_npy)
 
 

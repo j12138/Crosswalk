@@ -84,6 +84,44 @@ def show_and_pick_filters(filter_list):
     return picked
 
 
+def display_selected(x, y, yp, dims, filename):           
+    """ Display selected input images in a grid.
+    :param xs: prioritized inputs                                         
+    :param ys: predictions                                                      
+    :param dims: tuple of length 2 with (#row, #column) for images grid        
+    """                                                                        
+
+    assert len(dims) == 2                                                      
+    assert len(x) >= dims[0] * dims[1] and len(x) == len(y) == len(yp)
+                                                                                
+    # Annotate                                                                 
+    imgs = copy.copy(x[:dims[0] * dims[1]])                                    
+    FONT = cv2.FONT_HERSHEY_SIMPLEX
+    for i in range(dims[0] * dims[1]):                                         
+        text = "P: {:1.3f}, {:1.3f}".format(yp[i][0], yp[i][1])   
+        cv2.putText(imgs[i], text, (10,15), FONT, 0.4, (180,0,0), 2,            
+                2) 
+        cv2.putText(imgs[i], text, (10,15), FONT, 0.4, (255,255,255), 1,            
+                2) 
+        text = "T: {:1.3f}, {:1.3f}".format(y[i][0], y[i][1])              
+        cv2.putText(imgs[i], text, (10,30), FONT, 0.4, (180,0,0), 2,            
+                2)
+        cv2.putText(imgs[i], text, (10,30), FONT, 0.4, (255,255,255), 1,            
+                2)
+                
+    # Stack                                                                    
+    stacked = []                                                               
+    for i in range(10):                                                        
+        # horizontally                                                         
+        try:                                                                   
+            row = np.concatenate(imgs[dims[1]*i:dims[1]*(i+1)], axis=1)        
+            stacked.append(row)                                                
+        except:                                                                
+            break                                                              
+    img = np.concatenate(stacked, axis=0)   # vertically                       
+    cv2.imwrite(filename + '_' + now + '.png', img)
+
+
 class DBMS(object):
     """ Database interface """
 
@@ -512,8 +550,11 @@ class DBMS(object):
         df.to_excel(os.path.join(BASE_DIR, excel_name))
 
         # filter outlier
-        if not export:
-            self.__filter_evaluation_outlier(df)
+        outlier_idx = self.__filter_evaluation_outlier(df)
+        x_out = [xs[i] for i in outlier_idx]
+        y_out = [ys[i] for i in outlier_idx]
+        yp_out = [predict[i] for i in outlier_idx]
+        display_selected(x_out, y_out, yp_out, [2, 2], 'grid')
 
         # correlation analysis
         df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),
@@ -576,19 +617,29 @@ class DBMS(object):
         return df
 
     def __filter_evaluation_outlier(self, df):
-        outliers = df[df['diff_loc'] >= 1.0]['hashname']
+        # outliers = df[df['diff_loc'] >= 1.0]['hashname']
+        print('bbbbb')
+        over1 = list(df[df['diff_loc'] >= 1.0].index)
+        under1 = list(df[df['diff_loc'] <= -1.0].index)
+        outlier_idx = over1 + under1
+        # print(outlier_idx)
+        '''
         with open(os.path.join(BASE_DIR, 'eval_outlier_over1.txt'), "w") as f:
             for key in outliers:
                 img_path = self.entries[key]['img_path']
                 batch_name = self.__get_batch_name(img_path)
                 f.write(key + ',' + batch_name + '\n')
+        '''
+        return outlier_idx
 
-        outliers = df[df['diff_loc'] < -1.0]['hashname']
+        # outliers = df[df['diff_loc'] < -1.0]['hashname']
+        '''
         with open(os.path.join(BASE_DIR, 'eval_outlier_under-1.txt'), "w") as f:
             for key in outliers:
                 img_path = self.entries[key]['img_path']
                 batch_name = self.__get_batch_name(img_path)
                 f.write(key + ',' + batch_name + '\n')
+        '''
 
     def __save_evaluation_plot(self, df):
         matplotlib.use('Agg')
@@ -731,7 +782,7 @@ def main():
         if args.eval_part:
             db.evaluate_model(model, options, args.eval_part)
         else:
-            db.evaluate_model(model, s)
+            db.evaluate_model(model, options)
     elif args.good_eval:
         if args.eval_part:
             eval_df = db.evaluate_model(args.good_eval, args.eval_part)

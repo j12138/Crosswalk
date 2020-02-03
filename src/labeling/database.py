@@ -47,7 +47,8 @@ filter_list = {
     'except_right_top': lambda x: x['loc'] < 1.0 or x['ang'] < 20,
     'clip_loc': lambda x: x['loc'] <= 2.0 and x['loc'] >= -2.0,
     'except_corner': lambda x: x['corner-case'] == 0 and x['invalid'] == 0,
-    'high_roll': lambda x: x['roll'] >= 30 and x['roll'] < 90,
+    'corner_invalid': lambda x: x['corner-case'] == 1 or x['invalid'] == 1,
+    'high_roll': lambda x: x['roll'] >= 40 and x['roll'] < 50,
     'except_high_roll': lambda x: x['roll'] <= 30
 }
 
@@ -354,7 +355,7 @@ class DBMS(object):
                 fail_cnt += 1
                 continue
             xs.append(self.__process_img(img, width, height, grayscale))
-            is_2col = int(entry['column'] == 2)
+            is_2col = int(entry['column'] != 1)
             if normalize:
                 # clip (optional)
                 n_loc = entry['loc'] / 2.0

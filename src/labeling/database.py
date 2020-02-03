@@ -46,7 +46,8 @@ filter_list = {
     'except_left_bot': lambda x: x['loc'] > -0.5 or x['ang'] > -20,
     'except_right_top': lambda x: x['loc'] < 1.0 or x['ang'] < 20,
     'clip_loc': lambda x: x['loc'] <= 2.0 and x['loc'] >= -2.0,
-    'except_corner': lambda x: x['corner-case'] == 0 and x['invalid'] == 0
+    'except_corner': lambda x: x['corner-case'] == 0 and x['invalid'] == 0,
+    'except_high_roll': lambda x: x['roll'] <= 30
 }
 
 
@@ -329,6 +330,7 @@ class DBMS(object):
         xs, ys = [], []
         packed_keys = []
         fail_cnt = 0
+        keys = list(keys)
 
         for i in tqdm(range(len(keys))):
             key = keys[i]
@@ -344,19 +346,21 @@ class DBMS(object):
                 fail_cnt += 1
                 continue
             xs.append(self.__process_img(img, width, height, grayscale))
+            is_2col = int(entry['column'] == 2)
             if normalize:
                 # clip (optional)
                 n_loc = entry['loc'] / 2.0
                 n_ang = entry['ang'] / 60.0
-                ys.append((n_loc, n_ang))
+                ys.append((n_loc, n_ang, is_2col))
             else:
-                ys.append((entry['loc'], entry['ang']))
+                ys.append((entry['loc'], entry['ang'], is_2col))
             packed_keys.append(key)
 
         if fail_cnt > 0:
             makenp_logger.error('Failed to process {} out of {} entries'.format(
                 fail_cnt, len(keys)))
 
+        print(ys)
         return xs, ys, packed_keys
 
     def show_statistics(self, cron=False, visualize=False):

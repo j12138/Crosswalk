@@ -16,3 +16,5 @@ src/labeling/dist_old/
 # TODO: store the dataset in Git LFS (large file storage)
 dataset
 makenp_log.txt
+*.npy
+src/DB_batch_stats.csv

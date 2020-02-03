@@ -47,6 +47,7 @@ filter_list = {
     'except_right_top': lambda x: x['loc'] < 1.0 or x['ang'] < 20,
     'clip_loc': lambda x: x['loc'] <= 2.0 and x['loc'] >= -2.0,
     'except_corner': lambda x: x['corner-case'] == 0 and x['invalid'] == 0,
+    'high_roll': lambda x: x['roll'] >= 30 and x['roll'] < 90,
     'except_high_roll': lambda x: x['roll'] <= 30
 }
 
@@ -85,15 +86,22 @@ def show_and_pick_filters(filter_list):
     return picked
 
 
-def display_selected(x, y, yp, dims, filename):           
+def display_selected(x, y, yp, filename):           
     """ Display selected input images in a grid.
     :param xs: prioritized inputs                                         
     :param ys: predictions                                                      
     :param dims: tuple of length 2 with (#row, #column) for images grid        
     """                                                                        
+                                  
+    assert len(x) == len(y) == len(yp)
 
-    assert len(dims) == 2                                                      
-    assert len(x) >= dims[0] * dims[1] and len(x) == len(y) == len(yp)
+    # determine grid size
+    total_num = len(x)
+    print('total:', total_num)
+    if total_num < 15:
+        dims = [1, total_num]
+    else:
+        dims = [int(total_num / 15), 15]
                                                                                 
     # Annotate                                                                 
     imgs = copy.copy(x[:dims[0] * dims[1]])                                    
@@ -360,7 +368,6 @@ class DBMS(object):
             makenp_logger.error('Failed to process {} out of {} entries'.format(
                 fail_cnt, len(keys)))
 
-        print(ys)
         return xs, ys, packed_keys
 
     def show_statistics(self, cron=False, visualize=False):
@@ -558,7 +565,7 @@ class DBMS(object):
         x_out = [xs[i] for i in outlier_idx]
         y_out = [ys[i] for i in outlier_idx]
         yp_out = [predict[i] for i in outlier_idx]
-        display_selected(x_out, y_out, yp_out, [2, 2], 'grid')
+        display_selected(x_out, y_out, yp_out, 'grid')
 
         # correlation analysis
         df_corr = pd.DataFrame({'diff_loc': df.corrwith(df.diff_loc),

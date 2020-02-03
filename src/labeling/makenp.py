@@ -30,9 +30,10 @@ def setup_logger(log_file_path: str):
 def make_npy(db, keys: List[str], width: int, height: int,
              grayscale: bool, output_dir: str, filename_prefix=''):
 
-    xs, ys = db.get_npy(keys, width, height, grayscale)
+    xs, ys, packed_keys = db.get_npy(keys, width, height, grayscale)
 
     # npy file name convention
+    output_dir = os.path.join(BASE_DIR, output_dir)
     x_name = os.path.join(output_dir, filename_prefix + '_x.npy')
     y_name = os.path.join(output_dir, filename_prefix + '_y.npy')
 
@@ -53,13 +54,18 @@ def make_npy_file(args):
     if args.cross_val:
         logger.info('Generating train/test numpy files with a ratio'
                     'of {}'.format(args.ratio))
-        train_keys, val_keys = db.get_train_val_keys(args.ratio)
+        selected_filters = show_and_pick_filters(filter_list)
+
+        logger.info("Selected filters: " + str(selected_filters))
+        keys = db.filter_data(selected_filters)
+
+        train_keys, val_keys = db.get_train_val_keys(keys, args.ratio)
         make_npy(db, train_keys, args.width, args.height, args.grayscale,
-                 args.output_dir, now + '-train')
+                 os.path.join(BASE_DIR, args.output_dir), now + '-train')
         make_npy(db, val_keys, args.width, args.height, args.grayscale,
-                 args.output_dir, now + '-val')
+                 os.path.join(BASE_DIR, args.output_dir), now + '-val')
     else:
-        selected_filters = database.show_and_pick_filters(filter_list)
+        selected_filters = show_and_pick_filters(filter_list)
         logger.info("Selected filters: " + str(selected_filters))
         keys = db.filter_data(selected_filters)
         make_npy(db, keys, args.width, args.height, args.grayscale,

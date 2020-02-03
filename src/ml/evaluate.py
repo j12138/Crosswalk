@@ -1,92 +1,72 @@
-from keras.models import load_model 
+from keras.models import load_model, Model
+import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt 
-from Models.loss import smoothL1
+import matplotlib.pyplot as plt
 import time
+import os, sys, glob
 import argparse
 import cv2
+from tqdm import tqdm
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+from ml.Models.loss import smoothL1
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-e', '--eval_folder', help="path to folder of data to evaluate", 
-                    default='./preprocessed_data/eval/')    
-parser.add_argument('-m', '--model_path', help="path to model", 
-                    default='./trainings/Crosswalk_guide/SimpleModel.h5')
-args = parser.parse_args()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-#Load the data (change path as needed')
-x_test=np.load(args.eval_folder+'X.npy')
-y_test=np.load(args.eval_folder+'Y.npy') #Truth
+def mae0(y_true, y_pred):
+    return tf.keras.losses.mae(y_true[:,0], y_pred[:,0])
+
+def mae1(y_true, y_pred):
+    return tf.keras.losses.mae(y_true[:,1], y_pred[:,1])
+
+def mse0(y_true, y_pred):
+    return tf.keras.losses.mse(y_true[:,0], y_pred[:,0])
+
+def mse1(y_true, y_pred):
+    return tf.keras.losses.mse(y_true[:,1], y_pred[:,1])
+
+def load_model(model_path):
+    model_file = None
+    for file in glob.glob(os.path.join(model_path, '*')):
+        if file.split('.')[-1] == 'h5':
+            print('Model found: {}'.format(file))
+            model_file = file
+            break
+    
+    if not model_file:
+        print("There are no h5 model file")
+        return
+
+    custom_objects = {'smoothL1': smoothL1,
+                      'mae0': mae0,
+                      'mae1': mae1,
+                      'mse0': mse0,
+                      'mse1': mse1,}
+    model = tf.keras.models.load_model(model_file, custom_objects=custom_objects)
+
+    return model
 
 
-model=load_model(args.model_path,custom_objects={'smoothL1':smoothL1}) 
-print('Running Evaluation Now Please Wait')
+def predict_by_model(xs, ys, model, verbose=False):
+    predicts = []
+    cnt = 0
 
-outputs_test=[]
-inference_time=[]
-cnt = 0
+    for i in tqdm(range(len(xs))):
+        img = xs[i]
+        cnt = cnt + 1
+        t = time.time()
+        predict = model.predict(np.expand_dims(img / 255.0, axis=0))
+        predict = [[predict[0][0] * 2.0, predict[0][1] * 60.0]]
+        predicts.append(predict)
+            
+    predicts = np.squeeze(np.asarray(predicts))
 
-for img in x_test:
-    cnt = cnt + 1
-    t=time.time()
-    outputs_test.append(model.predict(np.expand_dims(img/255.0,axis=0)))
-    inference_time.append((1/(time.time()-t)))
-        
-outputs_test=np.squeeze(np.asarray(outputs_test))
-print('# of imgs : ', cnt)
-print('--- prediction ---')
-print(outputs_test)
-print('----- Truth -----')
-print(y_test)
-inference_time=np.squeeze(np.asarray(inference_time))
+    return predicts
 
-#Scale the predictions
-outputs_cte=outputs_test[:,0]*8.0
 
-#Plot the predictions vs truth
-plt.figure()
-truth,=plt.plot(y_test[:,0],label='Truth')
-predictions,=plt.plot(outputs_cte,label='Predictions')
-plt.legend(handles=[truth,predictions])
-plt.title('Test Cross Track Error')
-plt.xlabel('sample number')
-plt.ylabel('distance in meters')
-plt.show()
+def main():
+    pass
 
-#Plot the model error histogram
-error_test=np.squeeze(y_test[:,0])-outputs_cte
 
-#Print error metrics
-print(" ")
-print("Cross Track Error")
-abs_error_test=np.abs(error_test)
-print('MeanAbsoluteError: '+str(np.mean(abs_error_test)))
-print('MedianAbsoluteError: '+str(np.median(abs_error_test)))
-print('StandardDeviation: '+str(np.std(abs_error_test)))
-print('MeanInferenceTime: '+str(np.mean(inference_time)))
-print('MaxAbsoluteError: '+str(np.max(abs_error_test)))
-
-#Scale the prediction
-outputs_heading=outputs_test[:,1]*35.0
-
-#Plot the predictions vs truth
-plt.figure()
-truth,=plt.plot(y_test[:,1],label='Truth')
-predictions,=plt.plot(outputs_heading,label='Predictions')
-plt.legend(handles=[truth,predictions])
-plt.title('Test Heading Error')
-plt.xlabel('sample number')
-plt.ylabel('degrees')
-plt.show()
-
-#Plot the model error histogram
-error_test=np.squeeze(y_test[:,1])-outputs_heading
-
-print(" ")
-print("Heading Error")
-#Print error metrics
-abs_error_test=np.abs(error_test)
-print('MeanAbsoluteError: '+str(np.mean(abs_error_test)))
-print('MedianAbsoluteError: '+str(np.median(abs_error_test)))
-print('StandardDeviation: '+str(np.std(abs_error_test)))
-print('MaxAbsoluteError: '+str(np.max(abs_error_test)))
-
+if __name__ == "__main__":
+    main()

@@ -22,7 +22,8 @@ from labeling import compute_label_lib as cl
 
 fixed_w = 400
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join('.', 'dataset')
+# DATA_PATH = os.path.join('.', 'dataset')
+DATA_PATH = 'F:\\dataset'
 config_file = os.path.join(BASE_DIR, 'config.yaml')
 startTime = 0
 
@@ -150,6 +151,9 @@ class LabelingTool(QWidget):
         but_next.setToolTip('Move to next img to save')
         but_next.clicked.connect(self.__next_unlabeled_img)
         but_prev.clicked.connect(self.__prev_unlabeled_img)
+
+        but_correct_down = QPushButton('correct down')
+        but_correct_down.clicked.connect(self.__correct_down)
         self.save_status = QLabel()
 
         # Image show
@@ -195,6 +199,7 @@ class LabelingTool(QWidget):
         vbox_meta.addWidget(self.label_remarks)
         self.label_remarks.setToolTip('any additional notes.\n(체크박스 외의 특이사항 간단하게 기록)')
         vbox_meta.addWidget(self.textbox_remarks)
+        vbox_meta.addWidget(but_correct_down)
         vbox_meta.addStretch(1)
         vbox_meta.addWidget(self.widgets['cb_corner'])
         self.widgets['cb_corner'].setToolTip('cannot be used for training \n(학습 데이터로 쓰기 어려운 사진)')
@@ -255,14 +260,17 @@ class LabelingTool(QWidget):
     def __collect_outliers(self):
         outlier_files = []
 
-        with open('outlier_addr.txt', "r") as f:
+        with open(os.path.join(BASE_DIR, 'outlier_addr.txt'), "r") as f:
             lines = f.readlines()
 
             for addr in lines:
                 hashname, dir = addr.strip().split(',')
                 # print(hashname, dir)
-                file_path = os.path.join(DATA_PATH, dir, 'labeled', hashname)
-                outlier_files.append(file_path)
+                if os.path.exists(os.path.join(DATA_PATH, dir, 'labeled', hashname)):
+                    outlier_files.append(os.path.join(DATA_PATH, dir, 'labeled', hashname))
+                elif os.path.exists(os.path.join(DATA_PATH, dir, 'preprocessed', hashname)):
+                    outlier_files.append(os.path.join(DATA_PATH, dir, 'preprocessed', hashname))
+                
 
         print(outlier_files)
         return outlier_files
@@ -626,6 +634,9 @@ class LabelingTool(QWidget):
         if (temp > 0):
             self.img_idx = temp
         self.launch()
+
+    def __correct_down(self):
+        pass
 
     def closeEvent(self, event):
         """ This method is called when the window gets 'close()' signal """

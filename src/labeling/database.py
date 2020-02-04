@@ -48,7 +48,7 @@ filter_list = {
     'clip_loc': lambda x: x['loc'] <= 2.0 and x['loc'] >= -2.0,
     'except_corner': lambda x: x['corner-case'] == 0 and x['invalid'] == 0,
     'corner_invalid': lambda x: x['corner-case'] == 1 or x['invalid'] == 1,
-    'high_roll': lambda x: x['roll'] >= 40 and x['roll'] < 50,
+    'high_roll': lambda x: x['roll'] >= -40 and x['roll'] < -30,
     'except_high_roll': lambda x: x['roll'] <= 30
 }
 
@@ -344,6 +344,7 @@ class DBMS(object):
         for i in tqdm(range(len(keys))):
             key = keys[i]
             entry = self.entries[key]
+
             try:  # is it valid img?
                 img = imread(entry['img_path'], mode='RGB')
                 assert len(img.shape) >= 2
@@ -351,11 +352,17 @@ class DBMS(object):
                 print(e)
                 fail_cnt += 1
                 continue
+
             if not ('loc' in entry and 'ang' in entry):
                 fail_cnt += 1
                 continue
+
             xs.append(self.__process_img(img, width, height, grayscale))
-            is_2col = int(entry['column'] != 1)
+            
+            if entry['column'] != 1:
+                is_2col = 1
+            else: is_2col = -1
+
             if normalize:
                 # clip (optional)
                 n_loc = entry['loc'] / 2.0
@@ -448,7 +455,7 @@ class DBMS(object):
 
         for item in self.entries.values():
             try:
-                if item['invalid'] == 0:
+                if item['invalid'] == 0 and item['corner-case'] == 0:
                     loc.append(item['loc'])
                     ang.append(item['ang'])
 
@@ -488,7 +495,7 @@ class DBMS(object):
 
         if cron:
             now = datetime.datetime.now()
-            nowDatetime = now.strftime('%Y-%m-%d')
+            nowDatetime = now.strftime('%Y-%m-%d-%H-%M')
 
             if not os.path.exists(os.path.join(BASE_DIR, 'figure')):
                 os.mkdir(os.path.join(BASE_DIR, 'figure'))

@@ -153,7 +153,13 @@ class BatchGenerator(Sequence):
         return imgs, target
     
     def __normalize_label(self, target):
+        out0 = target[:,0].clip(-2, 2)
+        out1 = target[:,1].clip(-60, 60)
+        out2 = target[:,2]
+        #* 2 - 1
+        return np.vstack(out0, out1, out2)
 
+        """
         for i in range(self.batch_size):
             loc = target[i][0]
             ang = target[i][1]
@@ -185,3 +191,5 @@ class BatchGenerator(Sequence):
             target[i][1] = ang
 
         return target
+        """
+

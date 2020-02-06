@@ -108,7 +108,7 @@ def inverted_residual_block(inputs, filters, kernel, t, strides, n,block,feature
     return x
 
 
-def MobileNetV2(input_shape=(224,224,3),weight_penalty=0.0001,momentum=.9):
+def MobileNetV2s(input_shape=(224,224,3),weight_penalty=0.0001,momentum=.9):
     ''' Creates a MobileNetV2 model with specified parameters
     Args:        input_shape: shape of the input tensor
 
@@ -124,10 +124,8 @@ def MobileNetV2(input_shape=(224,224,3),weight_penalty=0.0001,momentum=.9):
     x = inverted_residual_block(x, 32, (3, 3), t=6, strides=2, n=3,block=3,featuremap='C2Features', weight_penalty=weight_penalty,momentum=momentum)
     x = inverted_residual_block(x, 64, (3, 3), t=6, strides=2, n=4,block=4,featuremap='C3Features', weight_penalty=weight_penalty,momentum=momentum)
     x = inverted_residual_block(x, 96, (3, 3), t=6, strides=1, n=3,block=5, weight_penalty=weight_penalty,momentum=momentum)
-    x = inverted_residual_block(x, 160, (3, 3), t=6, strides=2, n=3,block=6,featuremap='C4Features', weight_penalty=weight_penalty,momentum=momentum)
-    x = inverted_residual_block(x, 320, (3, 3), t=6, strides=1, n=1,block=7, weight_penalty=weight_penalty,momentum=momentum)
 
-    x = conv_block(x, 1280, (1, 1), strides=(1, 1),featuremap='C5Features',name='conv2', weight_penalty=weight_penalty,momentum=momentum)
+    x = conv_block(x, 320, (1, 1), strides=(1, 1),featuremap='C5Features',name='conv2', weight_penalty=weight_penalty,momentum=momentum)
     x = GlobalAveragePooling2D()(x)
     x = Dropout(.5)(x) 
     x=Dense(100, activation='elu',kernel_initializer='he_normal',bias_regularizer=l2(weight_penalty),kernel_regularizer=l2(weight_penalty))(x)
@@ -138,5 +136,5 @@ def MobileNetV2(input_shape=(224,224,3),weight_penalty=0.0001,momentum=.9):
     return model
 
 if __name__ == '__main__':
-    model=MobileNetV2()
+    model=MobileNetV2s()
     model.summary()

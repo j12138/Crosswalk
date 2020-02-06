@@ -16,7 +16,7 @@ from tensorflow.keras.layers import Activation, Flatten, BatchNormalization
 from tensorflow.keras.regularizers import l2
 
 
-def SimpleModel(input_shape=(300,240,3), weight_penalty=0.0001, momentum=.9):
+def SmallModel(input_shape=(300,240,3), weight_penalty=0.0001, momentum=.9):
     """Creates a simple image regressor model with specified parameters
     :param input_shape: shape of the input tensor
     :returns: a Keras Model
@@ -27,11 +27,16 @@ def SimpleModel(input_shape=(300,240,3), weight_penalty=0.0001, momentum=.9):
         input_shape=input_shape))
     model.add(BatchNormalization(momentum=momentum))
     model.add(Activation('elu'))
-    model.add(Conv2D(36, (5, 5), strides=(2, 2), padding="valid",
-        use_bias=False, kernel_regularizer=l2(weight_penalty)))
+    model.add(Conv2D(36, (5, 5), strides=(2, 2),
+        padding="valid", use_bias=False,
+        kernel_regularizer=l2(weight_penalty)))
     model.add(BatchNormalization(momentum=momentum))
     model.add(Activation('elu'))
     model.add(Conv2D(48, (5, 5), strides=(2, 2), padding="valid",
+        use_bias=False, kernel_regularizer=l2(weight_penalty)))
+    model.add(BatchNormalization(momentum=momentum))
+    model.add(Activation('elu'))
+    model.add(Conv2D(64, (5, 5), strides=(2, 2), padding="valid",
         use_bias=False, kernel_regularizer=l2(weight_penalty)))
     model.add(BatchNormalization(momentum=momentum))
     model.add(Activation('elu'))
@@ -39,26 +44,19 @@ def SimpleModel(input_shape=(300,240,3), weight_penalty=0.0001, momentum=.9):
         kernel_regularizer=l2(weight_penalty)))
     model.add(BatchNormalization(momentum=momentum))
     model.add(Activation('elu'))
-    model.add(Conv2D(96, (3, 3), padding="valid", use_bias=False,
-        kernel_regularizer=l2(weight_penalty)))
-    model.add(BatchNormalization(momentum=momentum))
-    model.add(Activation('elu'))
     model.add(Flatten())
-    model.add(Dropout(0.5))
-    model.add(Dense(100, activation='elu', kernel_initializer='he_normal',
+    model.add(Dropout(0.4))
+    model.add(Dense(64, activation='elu', kernel_initializer='he_normal',
         bias_regularizer=l2(weight_penalty),
         kernel_regularizer=l2(weight_penalty)))
-    model.add(Dense(50, activation='elu', kernel_initializer='he_normal',
-        bias_regularizer=l2(weight_penalty),
-        kernel_regularizer=l2(weight_penalty)))
-    model.add(Dense(30, activation='elu',
+    model.add(Dense(32, activation='elu',
         kernel_initializer='he_normal',
         bias_regularizer=l2(weight_penalty),
         kernel_regularizer=l2(weight_penalty)))
-    model.add(Dense(3, activation='tanh', kernel_initializer='he_normal')) 
+    model.add(Dense(2, activation='tanh', kernel_initializer='he_normal')) 
     return model
 
 if __name__ == '__main__':
-    model = SimpleModel()
+    model = SmallModel()
     model.summary()
 

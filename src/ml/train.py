@@ -16,9 +16,11 @@ from shutil import copyfile
 
 import argparse
 from Models.Simplified import SimpleModel
+from Models.Small import SmallModel
 from Models.MobileNetV2 import MobileNetV2
+from Models.MobileNetV2s import MobileNetV2s
 from Models.loss import smoothL1
-from Generator.augmentation import BatchGenerator
+from augmentation import BatchGenerator
 from datetime import datetime
 import wandb
 
@@ -35,6 +37,9 @@ def mae0(y_true, y_pred):
 
 def mae1(y_true, y_pred):
     return tensorflow.keras.losses.mae(y_true[:,1], y_pred[:,1])
+
+def mae2(y_true, y_pred):
+    return tensorflow.keras.losses.mae(y_true[:,2], y_pred[:,2])
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -172,9 +177,17 @@ elif opt['network'].lower() == 'mobilenetv2':
     model = MobileNetV2(input_shape=(height, width, channel),
                         momentum=opt['batch_momentum'],
                         weight_penalty=opt['weight_decay'])
+elif opt['network'].lower() == 'mobilenetv2s':
+    model = MobileNetV2s(input_shape=(height, width, channel),
+                         momentum=opt['batch_momentum'],
+                         weight_penalty=opt['weight_decay'])
+elif opt['network'].lower() == 'small':
+    model = SmallModel(input_shape=(height, width, channel),
+                       momentum=opt['batch_momentum'],
+                       weight_penalty=opt['weight_decay'])
 else:
     raise Exception("Network", opt['network'], "is undefined.")
-#model.summary() 
+model.summary() 
 
 if opt['optimizer'] == 'SGD':
     optim = SGD(lr=learning_rate, momentum=sgd_momentum, nesterov=True)
@@ -183,7 +196,7 @@ if opt['optimizer'] == 'Adam':
     optim = Adam(lr=learning_rate)
     # smoothL1
 model.compile(loss=smoothL1, optimizer=optim,
-        metrics=['msle', 'mae', mae0, mae1])
+        metrics=['mae', mae0, mae1, mae2])
 
 tensorboard = TensorBoard(log_dir=os.path.join('.', 'trainings', exp_name),
                           write_graph=True, update_freq='epoch',
@@ -193,7 +206,8 @@ model_path = os.path.join('.', 'trainings', exp_name, exp_name + '.h5')
 checkpoint = ModelCheckpoint(model_path, monitor='val_mae', verbose=1,
                              save_best_only=True, mode='min')
 csv_logger = CSVLogger(os.path.join('.', 'trainings', exp_name, 'training_log.csv'))
-callbacks = [tensorboard, checkpoint, csv_logger]
+wb = wandb.keras.WandbCallback(monitor='val_mae', save_model=True)
+callbacks = [tensorboard, checkpoint, csv_logger, wb]
 
 if step_decay:
     # Decay function for the learning rate
